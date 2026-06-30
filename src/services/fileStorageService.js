@@ -1,0 +1,49 @@
+const fs = require('fs/promises');
+const path = require('path');
+
+const STORAGE_ROOT = path.resolve(__dirname, '../../uploads/ocr-documents');
+const PUBLIC_BASE_URL = '/storage/ocr-documents';
+
+const ensureStorageRoot = async () => {
+  await fs.mkdir(STORAGE_ROOT, { recursive: true });
+};
+
+const buildStoredFileName = (id, checksum, originalFileName) => {
+  const extension = path.extname(originalFileName || '').toLowerCase() || '.pdf';
+  return `ocr-${id}-${checksum.slice(0, 12)}${extension}`;
+};
+
+const storePdf = async ({ id, checksum, originalFileName, buffer }) => {
+  await ensureStorageRoot();
+  const storedFileName = buildStoredFileName(id, checksum, originalFileName);
+  const storagePath = path.join(STORAGE_ROOT, storedFileName);
+  const fileUrl = `${PUBLIC_BASE_URL}/${encodeURIComponent(storedFileName)}`;
+
+  await fs.writeFile(storagePath, buffer);
+
+  return {
+    storedFileName,
+    storagePath,
+    fileUrl
+  };
+};
+
+const deleteFileIfExists = async (storagePath) => {
+  if (!storagePath) {
+    return;
+  }
+
+  try {
+    await fs.unlink(storagePath);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error;
+    }
+  }
+};
+
+module.exports = {
+  STORAGE_ROOT,
+  storePdf,
+  deleteFileIfExists
+};

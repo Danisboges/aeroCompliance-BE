@@ -1,0 +1,265 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  TECHNICIAN
+}
+
+enum DocumentType {
+  AD
+  SB
+  EES
+}
+
+enum DocumentStatus {
+  DRAFT
+  ACTIVE
+  SUPERSEDED
+  CANCELLED
+  CLOSED
+}
+
+enum ComplianceStatus {
+  NOT_APPLICABLE
+  OPEN
+  IN_PROGRESS
+  COMPLIED
+  DEFERRED
+  OVERDUE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskType {
+  INSPECTION
+  MODIFICATION
+  REPLACEMENT
+  REPAIR
+  SOFTWARE_UPDATE
+  RECORD_REVIEW
+  OTHER
+}
+
+enum OcrProcessingStatus {
+  UPLOADED
+  PROCESSING
+  EXTRACTED
+  REVIEW_REQUIRED
+  FAILED
+}
+
+enum OcrDraftStatus {
+  DRAFT
+  REVIEW_REQUIRED
+  VALIDATED
+  GENERATED
+}
+
+model User {
+  id        Int              @id @default(autoincrement())
+  email     String           @unique
+  password  String
+  role      Role             @default(TECHNICIAN)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @default(now()) @updatedAt
+  assignedComplianceTasks ComplianceTask[] @relation("ComplianceTaskAssignee")
+  createdComplianceTasks  ComplianceTask[] @relation("ComplianceTaskCreator")
+  createdDocuments        AirworthinessDocument[] @relation("DocumentCreator")
+  uploadedDocuments       OcrDocumentUpload[] @relation("OcrUploadCreator")
+}
+
+model EesDocument {
+  id             Int                    @id @default(autoincrement())
+  eesNumber      String                 @unique
+  bulletinNumber String
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @default(now()) @updatedAt
+  documentId     Int?
+  document       AirworthinessDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  evaluations    EesEvaluationItem[]
+  ocrUploads     OcrDocumentUpload[]
+  generatedFromDrafts OcrAnalysisDraft[]
+
+  @@index([bulletinNumber])
+}
+
+model OcrDocumentUpload {
+  id               Int                 @id @default(autoincrement())
+  originalFileName String
+  storedFileName   String              @default("PENDING")
+  storagePath      String              @default("PENDING") @db.Text
+  fileUrl          String              @default("PENDING") @db.Text
+  mimeType         String
+  fileSize         Int
+  checksum         String
+  status           OcrProcessingStatus @default(UPLOADED)
+  ocrProvider      String              @default("MOCK")
+  rawOcrResult     Json?
+  errorMessage     String?             @db.Text
+  eesDocumentId    Int?
+  eesDocument      EesDocument?        @relation(fields: [eesDocumentId], references: [id], onDelete: SetNull)
+  analysisDrafts   OcrAnalysisDraft[]
+  createdById      Int?
+  createdBy        User?               @relation("OcrUploadCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @default(now()) @updatedAt
+
+  @@index([status])
+  @@index([checksum])
+  @@index([storedFileName])
+  @@index([eesDocumentId])
+  @@index([createdById])
+}
+
+model OcrAnalysisDraft {
+  id                     Int                 @id @default(autoincrement())
+  uploadId               Int
+  upload                 OcrDocumentUpload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  status                 OcrDraftStatus      @default(DRAFT)
+  extractedPayload       Json
+  validatedPayload       Json?
+  generatedEesDocumentId Int?
+  generatedEesDocument   EesDocument?        @relation(fields: [generatedEesDocumentId], references: [id], onDelete: SetNull)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @default(now()) @updatedAt
+
+  @@index([uploadId])
+  @@index([status])
+  @@index([generatedEesDocumentId])
+}
+
+model EesEvaluationItem {
+  id               Int             @id @default(autoincrement())
+  eesDocumentId    Int
+  eesDocument      EesDocument     @relation(fields: [eesDocumentId], references: [id], onDelete: Cascade)
+  itemNo           String
+  paragraph        String
+  requirementDesc  String          @db.Text
+  taskType         String
+  reference        String          @db.Text
+  isApplicable     Boolean         @default(false)
+  adRelated        String
+  isWarranty       Boolean         @default(false)
+  affectedEsn      String[]
+  isRepetitive     Boolean         @default(false)
+  dueAt            String
+  remarks          String          @db.Text
+  complianceTaskId Int?
+  complianceTask   ComplianceTask? @relation(fields: [complianceTaskId], references: [id], onDelete: SetNull)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @default(now()) @updatedAt
+
+  @@index([eesDocumentId])
+  @@index([isApplicable])
+}
+
+model AirworthinessDocument {
+  id              Int              @id @default(autoincrement())
+  documentType    DocumentType
+  documentNumber  String
+  title           String
+  issuer          String?
+  revision        String?
+  status          DocumentStatus   @default(ACTIVE)
+  priority        Priority         @default(MEDIUM)
+  issueDate       DateTime?
+  effectiveDate   DateTime?
+  dueDate         DateTime?
+  description     String?          @db.Text
+  sourceUrl       String?          @db.Text
+  supersedesId    Int?
+  supersedes      AirworthinessDocument?  @relation("DocumentSupersession", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy    AirworthinessDocument[] @relation("DocumentSupersession")
+  createdById     Int?
+  createdBy       User?            @relation("DocumentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  complianceTasks ComplianceTask[]
+  eesDocuments    EesDocument[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @default(now()) @updatedAt
+
+  @@unique([documentType, documentNumber, revision])
+  @@index([documentType, status])
+  @@index([priority])
+  @@index([dueDate])
+}
+
+model Aircraft {
+  id              Int              @id @default(autoincrement())
+  registration    String           @unique
+  msn             String?          @unique
+  aircraftType    String
+  operator        String?
+  active          Boolean          @default(true)
+  engines         Engine[]
+  complianceTasks ComplianceTask[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @default(now()) @updatedAt
+
+  @@index([aircraftType])
+  @@index([active])
+}
+
+model Engine {
+  id              Int              @id @default(autoincrement())
+  esn             String           @unique
+  model           String
+  position        String?
+  aircraftId      Int?
+  aircraft        Aircraft?        @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
+  active          Boolean          @default(true)
+  complianceTasks ComplianceTask[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @default(now()) @updatedAt
+
+  @@index([model])
+  @@index([aircraftId])
+  @@index([active])
+}
+
+model ComplianceTask {
+  id             Int                    @id @default(autoincrement())
+  documentId     Int
+  document       AirworthinessDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  aircraftId     Int?
+  aircraft       Aircraft?              @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
+  engineId       Int?
+  engine         Engine?                @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  title          String
+  description    String                 @db.Text
+  taskType       TaskType               @default(OTHER)
+  status         ComplianceStatus       @default(OPEN)
+  priority       Priority               @default(MEDIUM)
+  isRepetitive   Boolean                @default(false)
+  dueDate        DateTime?
+  compliedAt     DateTime?
+  reference      String?                @db.Text
+  remarks        String?                @db.Text
+  assignedToId   Int?
+  assignedTo     User?                  @relation("ComplianceTaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdById    Int?
+  createdBy      User?                  @relation("ComplianceTaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  eesItems       EesEvaluationItem[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @default(now()) @updatedAt
+
+  @@index([documentId])
+  @@index([aircraftId])
+  @@index([engineId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+}
