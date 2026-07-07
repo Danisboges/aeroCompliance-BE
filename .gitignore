@@ -6,3 +6,10 @@ node_modules
 
 # Jangan push file hasil upload & generated PDF
 uploads/
+
+# File testing dan script uji coba
+scratch/
+api_integration_test.js
+*.test.js
+*.spec.js
+*.log
