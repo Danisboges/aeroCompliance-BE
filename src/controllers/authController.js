@@ -3,8 +3,8 @@ const authService = require('../services/authService');
 // Handles user registration requests
 const register = async (req, res) => {
   try {
-    const { email, password, role } = req.body;
-    const user = await authService.registerUser(email, password, role);
+    const { email, username, password, role } = req.body;
+    const user = await authService.registerUser(email, username, password, role);
 
     return res.status(201).json({
       message: 'User registered successfully',
@@ -27,8 +27,9 @@ const register = async (req, res) => {
 // Handles user login requests
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const result = await authService.loginUser(email, password);
+    const { email, username, password } = req.body;
+    const identifier = username || email;
+    const result = await authService.loginUser(identifier, password);
 
     return res.status(200).json({
       message: 'Login successful',

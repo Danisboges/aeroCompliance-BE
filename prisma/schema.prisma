@@ -9,15 +9,10 @@ datasource db {
   provider = "postgresql"
 }
 
+// --- ENUMS ---
 enum Role {
   ADMIN
   TECHNICIAN
-}
-
-enum DocumentType {
-  AD
-  SB
-  EES
 }
 
 enum DocumentStatus {
@@ -69,136 +64,41 @@ enum OcrDraftStatus {
   GENERATED
 }
 
+// SB Category Type for UI badge display
+enum SbType {
+  MANDATORY
+  RECOMMENDED
+  ALERT
+  ADVISORY
+}
+
+// Engineering recommendation action
+enum EngRecAction {
+  COMPLY
+  DEFER
+  NA
+}
+
+// --- AUTH & USER ---
 model User {
-  id        Int              @id @default(autoincrement())
-  email     String           @unique
+  id        String   @id
+  email     String   @unique
+  username  String   @unique
   password  String
-  role      Role             @default(TECHNICIAN)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @default(now()) @updatedAt
-  assignedComplianceTasks ComplianceTask[] @relation("ComplianceTaskAssignee")
-  createdComplianceTasks  ComplianceTask[] @relation("ComplianceTaskCreator")
-  createdDocuments        AirworthinessDocument[] @relation("DocumentCreator")
-  uploadedDocuments       OcrDocumentUpload[] @relation("OcrUploadCreator")
+  role      Role     @default(TECHNICIAN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  assignedComplianceTasks  ComplianceTask[]           @relation("ComplianceTaskAssignee")
+  createdComplianceTasks   ComplianceTask[]            @relation("ComplianceTaskCreator")
+  uploadedServiceBulletins ServiceBulletin[]           @relation("ServiceBulletinCreator")
+  updatedServiceBulletins  ServiceBulletin[]           @relation("ServiceBulletinUpdater")
+  engineeringRecs          EngineeringRecommendation[]
 }
 
-model EesDocument {
-  id             Int                    @id @default(autoincrement())
-  eesNumber      String                 @unique
-  bulletinNumber String
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @default(now()) @updatedAt
-  documentId     Int?
-  document       AirworthinessDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  evaluations    EesEvaluationItem[]
-  ocrUploads     OcrDocumentUpload[]
-  generatedFromDrafts OcrAnalysisDraft[]
-
-  @@index([bulletinNumber])
-}
-
-model OcrDocumentUpload {
-  id               Int                 @id @default(autoincrement())
-  originalFileName String
-  storedFileName   String              @default("PENDING")
-  storagePath      String              @default("PENDING") @db.Text
-  fileUrl          String              @default("PENDING") @db.Text
-  mimeType         String
-  fileSize         Int
-  checksum         String
-  status           OcrProcessingStatus @default(UPLOADED)
-  ocrProvider      String              @default("MOCK")
-  rawOcrResult     Json?
-  errorMessage     String?             @db.Text
-  eesDocumentId    Int?
-  eesDocument      EesDocument?        @relation(fields: [eesDocumentId], references: [id], onDelete: SetNull)
-  analysisDrafts   OcrAnalysisDraft[]
-  createdById      Int?
-  createdBy        User?               @relation("OcrUploadCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @default(now()) @updatedAt
-
-  @@index([status])
-  @@index([checksum])
-  @@index([storedFileName])
-  @@index([eesDocumentId])
-  @@index([createdById])
-}
-
-model OcrAnalysisDraft {
-  id                     Int                 @id @default(autoincrement())
-  uploadId               Int
-  upload                 OcrDocumentUpload   @relation(fields: [uploadId], references: [id], onDelete: Cascade)
-  status                 OcrDraftStatus      @default(DRAFT)
-  extractedPayload       Json
-  validatedPayload       Json?
-  generatedEesDocumentId Int?
-  generatedEesDocument   EesDocument?        @relation(fields: [generatedEesDocumentId], references: [id], onDelete: SetNull)
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @default(now()) @updatedAt
-
-  @@index([uploadId])
-  @@index([status])
-  @@index([generatedEesDocumentId])
-}
-
-model EesEvaluationItem {
-  id               Int             @id @default(autoincrement())
-  eesDocumentId    Int
-  eesDocument      EesDocument     @relation(fields: [eesDocumentId], references: [id], onDelete: Cascade)
-  itemNo           String
-  paragraph        String
-  requirementDesc  String          @db.Text
-  taskType         String
-  reference        String          @db.Text
-  isApplicable     Boolean         @default(false)
-  adRelated        String
-  isWarranty       Boolean         @default(false)
-  affectedEsn      String[]
-  isRepetitive     Boolean         @default(false)
-  dueAt            String
-  remarks          String          @db.Text
-  complianceTaskId Int?
-  complianceTask   ComplianceTask? @relation(fields: [complianceTaskId], references: [id], onDelete: SetNull)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @default(now()) @updatedAt
-
-  @@index([eesDocumentId])
-  @@index([isApplicable])
-}
-
-model AirworthinessDocument {
-  id              Int              @id @default(autoincrement())
-  documentType    DocumentType
-  documentNumber  String
-  title           String
-  issuer          String?
-  revision        String?
-  status          DocumentStatus   @default(ACTIVE)
-  priority        Priority         @default(MEDIUM)
-  issueDate       DateTime?
-  effectiveDate   DateTime?
-  dueDate         DateTime?
-  description     String?          @db.Text
-  sourceUrl       String?          @db.Text
-  supersedesId    Int?
-  supersedes      AirworthinessDocument?  @relation("DocumentSupersession", fields: [supersedesId], references: [id], onDelete: SetNull)
-  supersededBy    AirworthinessDocument[] @relation("DocumentSupersession")
-  createdById     Int?
-  createdBy       User?            @relation("DocumentCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  complianceTasks ComplianceTask[]
-  eesDocuments    EesDocument[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @default(now()) @updatedAt
-
-  @@unique([documentType, documentNumber, revision])
-  @@index([documentType, status])
-  @@index([priority])
-  @@index([dueDate])
-}
-
+// --- ASSETS ---
 model Aircraft {
-  id              Int              @id @default(autoincrement())
+  id              String           @id
   registration    String           @unique
   msn             String?          @unique
   aircraftType    String
@@ -208,58 +108,167 @@ model Aircraft {
   complianceTasks ComplianceTask[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @default(now()) @updatedAt
-
-  @@index([aircraftType])
-  @@index([active])
 }
 
 model Engine {
-  id              Int              @id @default(autoincrement())
-  esn             String           @unique
-  model           String
-  position        String?
-  aircraftId      Int?
-  aircraft        Aircraft?        @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
-  active          Boolean          @default(true)
-  complianceTasks ComplianceTask[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @default(now()) @updatedAt
+  id         String    @id
+  esn        String    @unique
+  msn        String?
+  model      String
+  position   String?
+  aircraftId String?
+  aircraft   Aircraft? @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
+  active     Boolean   @default(true)
 
-  @@index([model])
-  @@index([aircraftId])
-  @@index([active])
+  complianceTasks ComplianceTask[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
-model ComplianceTask {
-  id             Int                    @id @default(autoincrement())
-  documentId     Int
-  document       AirworthinessDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  aircraftId     Int?
-  aircraft       Aircraft?              @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
-  engineId       Int?
-  engine         Engine?                @relation(fields: [engineId], references: [id], onDelete: SetNull)
-  title          String
-  description    String                 @db.Text
-  taskType       TaskType               @default(OTHER)
-  status         ComplianceStatus       @default(OPEN)
-  priority       Priority               @default(MEDIUM)
-  isRepetitive   Boolean                @default(false)
-  dueDate        DateTime?
-  compliedAt     DateTime?
-  reference      String?                @db.Text
-  remarks        String?                @db.Text
-  assignedToId   Int?
-  assignedTo     User?                  @relation("ComplianceTaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  createdById    Int?
-  createdBy      User?                  @relation("ComplianceTaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  eesItems       EesEvaluationItem[]
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @default(now()) @updatedAt
+// --- DOCUMENTS (AD, SB, EES) ---
 
-  @@index([documentId])
-  @@index([aircraftId])
-  @@index([engineId])
-  @@index([status])
-  @@index([priority])
-  @@index([dueDate])
+// 1. Airworthiness Directive (AD)
+model AirworthinessDirective {
+  id        String         @id
+  adNumber  String         @unique
+  title     String
+  issuer    String
+  issueDate DateTime
+  dueDate   DateTime?
+  status    DocumentStatus @default(ACTIVE)
+
+  complianceTasks ComplianceTask[]
+  createdAt       DateTime         @default(now())
+}
+
+// 2. Service Bulletin (SB) - Sumber dokumen untuk OCR & Unified Model
+model ServiceBulletin {
+  id               String              @id
+  sbNumber         String              @unique
+  title            String
+  issuer           String
+  issueDate        DateTime
+  status           DocumentStatus      @default(ACTIVE)
+
+  // Applicability / Classification fields (from company DB or AI)
+  sbType           SbType?
+  complianceCategory Int?
+  effectivityType  String?
+  effectivityRange String?
+  compliancePeriod String?
+
+  // File Upload fields
+  originalFileName String?
+  storedFileName   String?
+  ocrStatus        OcrProcessingStatus @default(UPLOADED)
+  createdById      String?
+  createdBy        User?               @relation("ServiceBulletinCreator", fields: [createdById], references: [id])
+
+  updatedById      String?
+  updatedBy        User?               @relation("ServiceBulletinUpdater", fields: [updatedById], references: [id])
+
+  // AI Draft fields
+  rawPayload       Json?
+  draftStatus      OcrDraftStatus      @default(DRAFT)
+  extractedAt      DateTime?
+
+  // Relations
+  generatedEes   EesDocument?
+  engineeringRec EngineeringRecommendation?
+  complianceTasks ComplianceTask[]
+  createdAt        DateTime            @default(now())
+}
+
+// 3. EES (Engineering Evaluation Sheet) - Hasil AI
+model EesDocument {
+  id        String @id
+  eesNumber String @unique
+
+  sourceSbId String          @unique
+  sourceSb   ServiceBulletin @relation(fields: [sourceSbId], references: [id], onDelete: Cascade)
+
+  // Dokumen Global Fields
+  taskType       String?
+  references     String?
+  effectedType   String?
+  effectedModel  String?
+  esn            String?
+
+  storedPdfPath  String?
+
+  evaluations     EesEvaluationItem[]
+  complianceTasks ComplianceTask[]
+  createdAt       DateTime            @default(now())
+}
+
+model EesEvaluationItem {
+  id              String      @id
+  eesDocumentId   String
+  eesDocument     EesDocument @relation(fields: [eesDocumentId], references: [id], onDelete: Cascade)
+  itemNo          String
+  paragraph       String?
+  requirementDesc String      @db.Text
+  remarks         String?     @db.Text
+  taskType        String?
+  adRelated       String?
+  warranty        Boolean?
+  rep             String?
+  dueAt           DateTime?
+  isApplicable    Boolean     @default(true)
+
+  complianceTaskId String?
+  complianceTask   ComplianceTask? @relation(fields: [complianceTaskId], references: [id])
+}
+
+// 4. Engineering Recommendation — Step 4 of EES Workflow (user input)
+model EngineeringRecommendation {
+  id                String       @id
+  sbId              String       @unique
+  sb                ServiceBulletin @relation(fields: [sbId], references: [id], onDelete: Cascade)
+
+  recommendedAction EngRecAction
+  priorityLevel     Priority     @default(HIGH)
+  engineeringNotes  String?      @db.Text
+  isDeferable       Boolean      @default(false)
+  egtMarginCheck    Boolean      @default(false)
+
+  createdById       String?
+  createdBy         User?        @relation(fields: [createdById], references: [id])
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @default(now()) @updatedAt
+}
+
+// --- COMPLIANCE ---
+model ComplianceTask {
+  id     String           @id
+  title  String
+  status ComplianceStatus @default(OPEN)
+
+  adId String?
+  ad   AirworthinessDirective? @relation(fields: [adId], references: [id])
+
+  sbId String?
+  sb   ServiceBulletin? @relation(fields: [sbId], references: [id])
+
+  eesId String?
+  ees   EesDocument? @relation(fields: [eesId], references: [id])
+
+  aircraftId String?
+  aircraft   Aircraft? @relation(fields: [aircraftId], references: [id])
+
+  engineId String?
+  engine   Engine? @relation(fields: [engineId], references: [id])
+
+  assignedToId String?
+  assignedTo   User? @relation("ComplianceTaskAssignee", fields: [assignedToId], references: [id])
+  createdById  String?
+  createdBy    User? @relation("ComplianceTaskCreator", fields: [createdById], references: [id])
+
+  eesEvaluationItems EesEvaluationItem[]
+
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
 }

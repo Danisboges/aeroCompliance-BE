@@ -1,0 +1,476 @@
+# 📘 GMF AD/SB Compliance System — Application Reference Guide
+
+> **Dokumen ini adalah satu-satunya sumber kebenaran (Single Source of Truth) untuk arsitektur,
+> alur kerja, dan aturan bisnis aplikasi.**
+>
+> Setiap penambahan fitur atau perubahan kode **WAJIB** mengacu pada dokumen ini.
+> Jika terdapat konflik antara kode dan dokumen ini, **dokumen ini yang berlaku**.
+
+---
+
+## 1. Deskripsi Aplikasi
+
+Sistem backend untuk mengelola proses evaluasi **Service Bulletin (SB)** dan **Airworthiness Directive (AD)** pada mesin pesawat di lingkungan MRO (Maintenance, Repair, and Overhaul) GMF AeroAsia.
+
+**Tujuan Utama:**
+- Menerima dokumen SB dalam format PDF
+- Menganalisis isi dokumen menggunakan AI Extractor
+- Mencocokkan applicability terhadap fleet engine
+- Menghasilkan dokumen **Engineering Evaluation Sheet (EES)** dalam format PDF (template Garuda / Citilink) dan Excel
+
+---
+
+## 2. Tech Stack
+
+| Komponen | Teknologi |
+|----------|-----------|
+| Runtime | Node.js (CommonJS) |
+| Framework | Express.js v5 |
+| Database | PostgreSQL |
+| ORM | Prisma |
+| AI Extractor | Hugging Face Space (FastAPI) |
+| PDF Generator | Puppeteer (HTML → PDF) |
+| Excel Generator | ExcelJS |
+| Auth | JWT (jsonwebtoken + bcryptjs) |
+| API Docs | Swagger UI (swagger.json) |
+
+---
+
+## 3. Struktur Proyek
+
+```
+GMF-BE/
+├── prisma/
+│   ├── schema.prisma          # Skema database
+│   ├── seed.js                # Seeder data dasar (user, SB, AD)
+│   └── seedEngines.js         # Seeder fleet (aircraft + engine)
+├── src/
+│   ├── controllers/           # HTTP handler (request → response)
+│   ├── services/              # Business logic layer
+│   ├── repositories/          # Data access layer (Prisma queries)
+│   ├── routes/                # Express route definitions
+│   ├── middleware/             # Auth middleware (JWT verify, RBAC)
+│   ├── templates/             # HTML templates untuk PDF (Garuda, Citilink)
+│   ├── db/                    # Prisma client instance
+│   └── server.js              # Entry point aplikasi
+├── uploads/
+│   ├── ocr-documents/         # Storage file PDF SB asli yang diupload
+│   └── ees-documents/         # Storage file PDF EES yang di-generate
+├── swagger.json               # Dokumentasi API (Swagger/OpenAPI 3.0)
+├── .env                       # Environment variables (AI URL, token, DB)
+└── APPLICATION_REFERENCE.md   # 📌 DOKUMEN INI
+```
+
+---
+
+## 4. Sumber Data Service Bulletin (SB)
+
+> [!IMPORTANT]
+> Terdapat **DUA sumber** SB yang masuk ke sistem. Kedua sumber ini menghasilkan
+> record `ServiceBulletin` yang identik di database dan mengikuti alur yang sama
+> setelah langkah awal.
+
+### Sumber A: Database Perusahaan (Seeder / Pre-existing)
+
+SB yang sudah ada di database perusahaan sebelum user melakukan apapun.
+Data ini berasal dari seeder atau sistem eksternal.
+
+```
+[Database Perusahaan] → GET /api/service-bulletins → User pilih SB
+                        → POST /:id/upload-pdf → Upload file PDF ke SB tersebut
+                        → Lanjut ke Step 2...
+```
+
+**Karakteristik:**
+- SB sudah memiliki `sbNumber`, `title`, `issuer` dari awal
+- Field `sbType`, `effectivityType`, `effectivityRange` sudah terisi
+- User **hanya mengupload PDF** untuk melengkapi dan di-analisis AI
+- Endpoint: `POST /api/service-bulletins/:id/upload-pdf`
+
+### Sumber B: Upload Manual oleh User (SB Baru)
+
+User mengupload file PDF SB yang **belum ada** di database.
+Sistem membuat record SB baru secara otomatis berdasarkan nama file,
+lalu AI akan mengekstrak metadata (sb_code, title, dll).
+
+```
+[User Upload PDF Baru] → POST /api/documents/ocr/pdf → Sistem buat SB baru
+                         → AI menganalisis PDF → Metadata SB terisi otomatis
+                         → Lanjut ke Step 2...
+```
+
+**Karakteristik:**
+- Record SB dibuat secara otomatis dengan ID temporary
+- Jika AI berhasil mengekstrak `sb_code`:
+  - Jika SB dengan nomor tersebut sudah ada → **merge** ke SB existing
+  - Jika belum ada → update record temp menjadi SB asli
+- Jika AI gagal → SB ditandai `FAILED-{id}` untuk review manual
+- Endpoint: `POST /api/service-bulletins/upload-new`
+
+### Perbandingan Dua Sumber
+
+| Aspek | Sumber A (Database) | Sumber B (Upload Manual) |
+|-------|-------------------|------------------------|
+| SB sudah ada di DB? | ✅ Ya | ❌ Tidak |
+| Metadata awal | Lengkap | Kosong (diisi AI) |
+| Upload PDF | Ke SB existing | Buat SB baru |
+| AI wajib? | Opsional (sudah ada metadata) | Wajib (satu-satunya sumber metadata) |
+| Merge logic | Tidak perlu | Ya (jika sb_code cocok) |
+
+---
+
+## 5. Alur Kerja Utama (6 Langkah EES Generator)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ALUR KERJA EES GENERATOR                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────┐     ┌──────────┐                              │
+│  │ Database  │     │  Upload  │                              │
+│  │   SB      │     │  Manual  │                              │
+│  └────┬─────┘     └────┬─────┘                              │
+│       │                │                                     │
+│       └───────┬────────┘                                     │
+│               ▼                                              │
+│  ╔══════════════════════════════╗                             │
+│  ║  STEP 1: SELECT / INPUT SB  ║                             │
+│  ║  - List SB dari database    ║                             │
+│  ║  - Upload PDF baru          ║                             │
+│  ╚══════════════╤═══════════════╝                             │
+│                 ▼                                             │
+│  ╔══════════════════════════════╗                             │
+│  ║  STEP 2: APPLICABILITY      ║                             │
+│  ║  - Cocokkan SB vs fleet     ║                             │
+│  ║  - engine.model = SB.type   ║                             │
+│  ╚══════════════╤═══════════════╝                             │
+│                 ▼                                             │
+│  ╔══════════════════════════════╗                             │
+│  ║  STEP 3: AI SUMMARY         ║                             │
+│  ║  - AI otomatis saat upload  ║                             │
+│  ║  - Review & edit hasil AI   ║                             │
+│  ║  - Konfirmasi → VALIDATED   ║                             │
+│  ╚══════════════╤═══════════════╝                             │
+│                 ▼                                             │
+│  ╔══════════════════════════════╗                             │
+│  ║  STEP 4: ENGINEERING REC    ║                             │
+│  ║  - COMPLY / DEFER / NA      ║                             │
+│  ║  - Priority + Notes         ║                             │
+│  ╚══════════════╤═══════════════╝                             │
+│                 ▼                                             │
+│  ╔══════════════════════════════╗                             │
+│  ║  STEP 5: GENERATE EES       ║                             │
+│  ║  - Buat EesDocument + Items ║                             │
+│  ║  - Edit sebelum export      ║                             │
+│  ╚══════════════╤═══════════════╝                             │
+│                 ▼                                             │
+│  ╔══════════════════════════════╗                             │
+│  ║  STEP 6: EXPORT             ║                             │
+│  ║  - PDF Garuda / Citilink    ║                             │
+│  ║  - Excel (.xlsx)            ║                             │
+│  ╚══════════════════════════════╝                             │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 6. API Endpoint Map
+
+### 🔐 Authentication
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| POST | `/api/auth/register` | Daftar user baru |
+| POST | `/api/auth/login` | Login → JWT token |
+
+### 🗂️ Step 1: Select / Input SB
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/api/service-bulletins` | List semua SB (search, filter) |
+| GET | `/api/service-bulletins/:id` | Detail satu SB |
+| POST | `/api/service-bulletins/:id/upload-pdf` | Upload PDF ke SB existing |
+| POST | `/api/service-bulletins/upload-new` | Upload PDF baru → buat SB baru + AI |
+| GET | `/api/service-bulletins/:id/view` | Preview PDF asli di browser |
+| GET | `/api/service-bulletins/:id/download` | Download PDF asli |
+| DELETE | `/api/service-bulletins/:id` | Hapus SB (cleanup/testing) |
+
+### ✈️ Step 2: Applicability
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/api/service-bulletins/:id/applicability` | Cek engine terdampak |
+
+### 🤖 Step 3: AI Summary
+> AI analisis dijalankan **otomatis** saat upload PDF di Step 1. Step ini hanya untuk review & konfirmasi.
+
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/api/service-bulletins/:id/ai-summary` | Ambil hasil AI |
+| PATCH | `/api/service-bulletins/:id/ai-summary` | Edit & konfirmasi hasil AI |
+
+### ⚙️ Step 4: Engineering Recommendation
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/api/service-bulletins/:id/engineering-rec` | Ambil rekomendasi |
+| POST | `/api/service-bulletins/:id/engineering-rec` | Simpan rekomendasi |
+| PATCH | `/api/service-bulletins/:id/engineering-rec` | Update rekomendasi |
+
+### 📄 Step 5: Generate EES
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| POST | `/api/service-bulletins/:id/generate-ees` | Generate EES document |
+| GET | `/api/service-bulletins/:id/ees` | Ambil EES yang sudah di-generate |
+| PATCH | `/api/service-bulletins/:id/ees` | Edit evaluation items |
+
+### ⬇️ Step 6: Export
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/api/service-bulletins/:id/export/garuda/pdf` | Preview PDF Garuda |
+| GET | `/api/service-bulletins/:id/export/garuda/pdf/download` | Download PDF Garuda |
+| GET | `/api/service-bulletins/:id/export/citilink/pdf` | Preview PDF Citilink |
+| GET | `/api/service-bulletins/:id/export/citilink/pdf/download` | Download PDF Citilink |
+| GET | `/api/service-bulletins/:id/export/excel` | Download Excel |
+
+### 🔗 Webhook
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| POST | `/api/webhooks/ees` | Terima payload AI langsung (tanpa JWT) |
+
+---
+
+## 7. Model Database (ERD Ringkas)
+
+```
+User (1) ──── (N) ServiceBulletin ──── (1) EesDocument ──── (N) EesEvaluationItem
+                        │                      │
+                        ├── (1) EngineeringRec  ├── (N) ComplianceTask
+                        └── (N) ComplianceTask
+                        
+Aircraft (1) ──── (N) Engine
+    │                    │
+    └── ComplianceTask   └── ComplianceTask
+
+AirworthinessDirective ──── (N) ComplianceTask
+```
+
+### Tabel Utama
+
+| Model | Primary Key | Unique | Deskripsi |
+|-------|-------------|--------|-----------|
+| `User` | `id` (USR-xxx) | `email`, `username` | Pengguna sistem |
+| `Aircraft` | `id` | `registration`, `msn` | Pesawat di fleet |
+| `Engine` | `id` | `esn` | Mesin pesawat (terhubung via `msn` ke Aircraft) |
+| `ServiceBulletin` | `id` (SB-DOC-xxx) | `sbNumber` | Dokumen SB — tabel sentral |
+| `EesDocument` | `id` (EES-DOC-xxx) | `eesNumber`, `sourceSbId` | Hasil generate EES |
+| `EesEvaluationItem` | `id` | — | Baris evaluasi di EES |
+| `EngineeringRecommendation` | `id` | `sbId` | Keputusan COMPLY/DEFER/NA |
+| `ComplianceTask` | `id` | — | Task tracking pelaksanaan |
+
+### Status Lifecycle ServiceBulletin
+
+```
+                                    ┌─────────────┐
+ SB dibuat (dari seeder/upload) ──▶ │  ocrStatus:  │
+                                    │  UPLOADED    │
+                                    └──────┬──────┘
+                                           ▼
+                              ┌─────────────────────┐
+   PDF diupload & diproses ──▶│  ocrStatus:          │
+                              │  PROCESSING          │
+                              └──────┬──────────────┘
+                                     ▼
+                         ┌──────────────────────┐
+  AI berhasil extract ──▶│  ocrStatus: EXTRACTED │
+                         │  draftStatus: DRAFT   │
+                         └──────┬───────────────┘
+                                ▼
+                    ┌───────────────────────────┐
+ User review AI ──▶ │  draftStatus:              │
+                    │  REVIEW_REQUIRED           │
+                    └──────┬────────────────────┘
+                           ▼
+              ┌────────────────────────────┐
+ User OK ──▶  │  draftStatus: VALIDATED     │
+              └──────┬─────────────────────┘
+                     ▼
+         ┌─────────────────────────────┐
+ Gen ──▶ │  draftStatus: GENERATED      │
+  EES    │  + EesDocument dibuat        │
+         └─────────────────────────────┘
+```
+
+---
+
+## 8. Integrasi AI Extractor
+
+### Endpoint AI
+- **URL**: Dikonfigurasi via `.env` → `AI_SERVICE_URL`
+- **Token**: Dikonfigurasi via `.env` → `AI_SERVICE_API_KEY`
+- **Metode**: `POST` dengan `multipart/form-data` (field: `file`)
+- **Library**: `axios` + `form-data`
+- **Timeout**: Tidak ada (disabled) — proses AI bisa lama
+
+### Struktur Response AI
+
+```json
+{
+  "filename": "document.pdf",
+  "mro_schema": {
+    "sb_code": "SB 72-0685 R06",
+    "compliance_category": 3,
+    "effected_type": "GE90-100",
+    "effected_model": ["-110B1", "-115B"],
+    "tittle": "ENGINE - FAN HUB FRAME ASSEMBLY",
+    "problem_evidence": [
+      { "requirement_desc": "...", "remark": "..." }
+    ],
+    "description": [
+      { "requirement_desc": "...", "remark": "..." }
+    ],
+    "task_type": "REP",
+    "references": "GE90-100 Engine Manual"
+  },
+  "routing_directive": {
+    "workflow_action": "REP",
+    "compliance_category": 3
+  },
+  "raw_ocr_content": "..."
+}
+```
+
+### Normalisasi di Backend (`ocrClient.js`)
+
+AI response di-unwrap dari `mro_schema` dan dinormalisasi:
+
+1. **Data ada di `result.mro_schema`**, bukan di root level
+2. **`problem_evidence[]`** dan **`description[]`** yang tipe-nya sama di-**merge** jadi satu baris (digabung `\n\n`)
+3. **`tittle`** (typo dari AI) dipetakan ke `title`
+4. **`sb_code`** fallback: `mro_schema.sb_code` → `fileName` → `UNIDENTIFIED-{timestamp}`
+5. Response string (markdown-wrapped JSON) otomatis di-sanitize
+
+---
+
+## 9. Template PDF EES
+
+### Template Garuda Indonesia
+- **File**: `src/templates/eesGarudaTemplate.html`
+- **Logo**: `public/image/logo_garuda-removebg-preview.png` (di-encode base64)
+- **Kolom tabel**: No | Par | Requirement Desc | Task Type | Ref | AD Related | App (Y/N) | Warranty (Y/N) | Affected A/C or Engine (ESN) | Rep (Y/N) | Due At | Remarks
+
+### Template Citilink Indonesia
+- **File**: `src/templates/eesCitilinkTemplate.html`
+- **Logo**: `public/image/citilink logo.png` (di-encode base64)
+- **Format**: Form CT-3-18.1 dengan checkbox (✓)
+
+### Rendering
+- Engine: **Puppeteer** (headless Chrome)
+- Logo diinject sebagai **base64 inline** (`data:image/png;base64,...`) karena Puppeteer sandbox tidak bisa akses `file://` URL
+- Field "Evaluated by:" diambil dari `req.user.username` (JWT payload)
+
+---
+
+## 10. Matching Logic: ESN ↔ MSN
+
+```
+Engine.esn = Engine Serial Number (unik per mesin)
+Engine.msn = MSN aircraft tempat mesin terpasang
+Aircraft.msn = Manufacture Serial Number pesawat
+
+Match condition: Engine.msn === Aircraft.msn
+```
+
+Mesin spare/shop memiliki `msn = null` dan `aircraftId = null`.
+
+### Applicability Check (Step 2)
+```
+SB.effectivityType   vs   Engine.model
+SB.effectivityRange  vs   Engine.esn (range check)
+
+Jika engine.model === SB.effectivityType → Applicable ✅
+Jika tidak → Not Applicable ❌
+```
+
+---
+
+## 11. Environment Variables
+
+```env
+# Database
+DATABASE_URL="postgresql://user:pass@localhost:5432/db_gmf"
+
+# JWT Secret
+JWT_SECRET="your-secret-key"
+
+# AI Extractor Service
+AI_SERVICE_URL="https://dzakievgn-sb-extractor.hf.space/api/extract"
+AI_SERVICE_API_KEY="hf_xxxxx"
+```
+
+---
+
+## 12. Aturan Bisnis Penting
+
+### R1: SB Number adalah Primary Identifier
+- `sbNumber` bersifat `@unique` — tidak boleh duplikat
+- Saat upload PDF baru: jika AI mendeteksi `sb_code` yang sudah ada → **merge** ke record existing (bukan buat baru)
+
+### R2: EES Hanya Satu per SB
+- Relasi `ServiceBulletin` → `EesDocument` adalah **1:1** (`sourceSbId @unique`)
+- Jika generate ulang EES, record lama harus dihapus dulu (cascade)
+
+### R3: Engineering Recommendation Hanya Satu per SB
+- Relasi `ServiceBulletin` → `EngineeringRecommendation` adalah **1:1** (`sbId @unique`)
+- POST membuat baru, PATCH mengupdate existing
+
+### R4: Urutan Langkah Bersifat Logis (Bukan Teknis)
+- Langkah 1-6 adalah panduan UI flow, **bukan enforcement ketat** di backend
+- User bisa memanggil Step 5 (Generate EES) tanpa menjalankan Step 4 (Engineering Rec)
+- Yang wajib secara teknis: SB harus punya `rawPayload` (dari AI) sebelum bisa generate EES
+
+### R5: AI Bersifat Satu Arah
+- AI hanya dipanggil untuk **mengekstrak** data dari PDF
+- Hasil AI disimpan sebagai `rawPayload` (JSON) di `ServiceBulletin`
+- User bisa mengedit hasil AI sebelum generate EES
+- AI **tidak** dipanggil ulang saat generate/export
+
+### R6: Dua Template Export
+- **Garuda**: Format tabel 12 kolom, header + logo berdiri sendiri
+- **Citilink**: Format form CT-3-18.1 dengan checkbox dinamis
+- Template dipilih via endpoint path, bukan query parameter
+
+---
+
+## 13. Panduan untuk Pengembang
+
+### Menambahkan Endpoint Baru
+1. Buat handler di `controllers/`
+2. Buat/update business logic di `services/`
+3. Buat/update query di `repositories/`
+4. Daftarkan route di `routes/serviceBulletinRoutes.js`
+5. Update `swagger.json`
+6. **Update bagian 6 (API Endpoint Map) di dokumen ini**
+
+### Mengubah Skema Database
+1. Edit `prisma/schema.prisma`
+2. Jalankan `npx prisma db push`
+3. Update seeder jika perlu
+4. **Update bagian 7 (Model Database) di dokumen ini**
+
+### Mengubah Format AI Response
+1. Edit normalisasi di `src/services/ocrClient.js`
+2. Pastikan output `payload` tetap kompatibel dengan `normalizeOcrPayload()` di `eesService.js`
+3. **Update bagian 8 (Integrasi AI) di dokumen ini**
+
+### Menambahkan Template Export Baru
+1. Buat file HTML di `src/templates/`
+2. Tambahkan logic rendering di `pdfGenerationService.js`
+3. Tambahkan route export di `serviceBulletinRoutes.js`
+4. Tambahkan handler di `exportController.js`
+5. **Update bagian 9 (Template PDF) di dokumen ini**
+
+---
+
+## 14. Riwayat Perubahan Dokumen
+
+| Tanggal | Versi | Perubahan |
+|---------|-------|-----------|
+| 2026-07-07 | 1.0 | Dokumen awal — mencakup arsitektur, alur 6 langkah, dua sumber SB, integrasi AI, dan aturan bisnis |

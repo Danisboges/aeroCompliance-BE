@@ -1,228 +1,237 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
-const fs = require('fs/promises');
-const path = require('path');
 const prisma = require('../src/db/index.js');
+const { generateId } = require('../src/utils/idGenerator.js');
 
 async function main() {
-  console.log('Starting database seeding...');
-
-  await prisma.ocrDocumentUpload.deleteMany({});
+  console.log('🧹 Cleaning up existing data...');
+  await prisma.complianceTask.deleteMany({});
   await prisma.eesEvaluationItem.deleteMany({});
   await prisma.eesDocument.deleteMany({});
-  await prisma.complianceTask.deleteMany({});
-  await prisma.airworthinessDocument.deleteMany({});
+  await prisma.engineeringRecommendation.deleteMany({});
   await prisma.engine.deleteMany({});
   await prisma.aircraft.deleteMany({});
+  await prisma.serviceBulletin.deleteMany({});
+  await prisma.airworthinessDirective.deleteMany({});
   await prisma.user.deleteMany({});
-  console.log('Cleaned existing tables.');
+  console.log('✅ Cleanup completed.\n');
 
+  // ─────────────────────────────────────────────
+  // USERS
+  // ─────────────────────────────────────────────
+  console.log('👤 Seeding users...');
   const adminPassword = await bcrypt.hash('admin123', 10);
   const technicianPassword = await bcrypt.hash('tech123', 10);
 
   const admin = await prisma.user.create({
-    data: {
-      email: 'admin@gmf.com',
-      password: adminPassword,
-      role: 'ADMIN'
-    }
+    data: { id: generateId('USR'), email: 'admin@gmf.com', username: 'admin', password: adminPassword, role: 'ADMIN' }
   });
-
   const technician = await prisma.user.create({
-    data: {
-      email: 'technician@gmf.com',
-      password: technicianPassword,
-      role: 'TECHNICIAN'
-    }
+    data: { id: generateId('USR'), email: 'technician@gmf.com', username: 'technician', password: technicianPassword, role: 'TECHNICIAN' }
   });
+  console.log(`  ✔ ${admin.email} (ADMIN)`);
+  console.log(`  ✔ ${technician.email} (TECHNICIAN)\n`);
 
-  const aircraft = await prisma.aircraft.create({
-    data: {
-      registration: 'PK-GMF',
-      msn: 'GMF-SEED-737-001',
-      aircraftType: 'B737-800',
-      operator: 'GMF Trial Operator',
-      engines: {
-        create: [
-          {
-            esn: 'ESN-SEED-X01',
-            model: 'CFM56-7B',
-            position: 'LH'
-          },
-          {
-            esn: 'ESN-SEED-X02',
-            model: 'CFM56-7B',
-            position: 'RH'
-          }
-        ]
+  // ─────────────────────────────────────────────
+  // FLEET — AIRCRAFT
+  // ─────────────────────────────────────────────
+  console.log('✈️  Seeding fleet aircrafts...');
+  const [acA, acB, acC] = await Promise.all([
+    prisma.aircraft.create({
+      data: { id: generateId('AC'), registration: 'PK-GPX', msn: '6432', aircraftType: 'A320', operator: 'Garuda Indonesia', active: true }
+    }),
+    prisma.aircraft.create({
+      data: { id: generateId('AC'), registration: 'PK-GPS', msn: '5432', aircraftType: 'A320', operator: 'Garuda Indonesia', active: true }
+    }),
+    prisma.aircraft.create({
+      data: { id: generateId('AC'), registration: 'PK-GPA', msn: '6789', aircraftType: 'A321', operator: 'Garuda Indonesia', active: true }
+    }),
+  ]);
+  console.log(`  ✔ ${acA.registration} (MSN-${acA.msn}, A320)`);
+  console.log(`  ✔ ${acB.registration} (MSN-${acB.msn}, A320)`);
+  console.log(`  ✔ ${acC.registration} (MSN-${acC.msn}, A321)\n`);
+
+  // ─────────────────────────────────────────────
+  // FLEET — ENGINES
+  // ─────────────────────────────────────────────
+  console.log('⚙️  Seeding fleet engines...');
+  const [eng1, eng2, eng3, eng4] = await Promise.all([
+    prisma.engine.create({
+      data: { id: generateId('ENG'), esn: 'ESN-881432', msn: 'MSN-5432', model: 'V2527-A5', position: '1', aircraftId: acA.id, active: true }
+    }),
+    prisma.engine.create({
+      data: { id: generateId('ENG'), esn: 'ESN-881433', msn: 'MSN-5433', model: 'V2527-A5', position: '2', aircraftId: acA.id, active: true }
+    }),
+    prisma.engine.create({
+      data: { id: generateId('ENG'), esn: 'ESN-992341', msn: 'MSN-6789', model: 'CFM56-5B4', position: '1', aircraftId: acC.id, active: true }
+    }),
+    prisma.engine.create({
+      data: { id: generateId('ENG'), esn: 'ESN-870001', msn: 'MSN-5432', model: 'V2527-A5', position: '1', aircraftId: acB.id, active: true }
+    }),
+  ]);
+  console.log(`  ✔ ${eng1.esn} (V2527-A5, pos:1, ${acA.registration})`);
+  console.log(`  ✔ ${eng2.esn} (V2527-A5, pos:2, ${acA.registration})`);
+  console.log(`  ✔ ${eng3.esn} (CFM56-5B4, pos:1, ${acC.registration})`);
+  console.log(`  ✔ ${eng4.esn} (V2527-A5, pos:1, ${acB.registration})\n`);
+
+  // ─────────────────────────────────────────────
+  // SERVICE BULLETINS (Representasi Database Perusahaan)
+  // ─────────────────────────────────────────────
+  console.log('📄 Seeding Service Bulletins (fleet SB database)...');
+  const sbs = await Promise.all([
+    prisma.serviceBulletin.create({
+      data: {
+        id: generateId('SB-DOC'),
+        sbNumber: 'SB-V25-73-0234',
+        title: 'Fuel Control Unit Inspection',
+        issuer: 'IAE International Aero Engines',
+        issueDate: new Date('2024-01-15'),
+        status: 'ACTIVE',
+        sbType: 'MANDATORY',
+        complianceCategory: 4,
+        effectivityType: 'V2527-A5',
+        effectivityRange: 'All V2527-A5',
+        compliancePeriod: '12 months',
+        draftStatus: 'DRAFT',
+        ocrStatus: 'UPLOADED',
       }
-    },
-    include: {
-      engines: true
-    }
-  });
-
-  const adDocument = await prisma.airworthinessDocument.create({
-    data: {
-      documentType: 'AD',
-      documentNumber: 'AD-2026-CFM-04',
-      title: 'Fan Blade Leading Edge Inspection',
-      issuer: 'DGCA / Trial Data',
-      revision: 'R0',
-      status: 'ACTIVE',
-      priority: 'CRITICAL',
-      issueDate: new Date('2026-06-01T00:00:00.000Z'),
-      effectiveDate: new Date('2026-06-15T00:00:00.000Z'),
-      dueDate: new Date('2026-09-15T00:00:00.000Z'),
-      description: 'Trial AD seed for monitoring urgent inspection compliance.',
-      createdById: admin.id
-    }
-  });
-
-  const sbDocument = await prisma.airworthinessDocument.create({
-    data: {
-      documentType: 'SB',
-      documentNumber: 'SB-CFM56-1234',
-      title: 'Electronic Engine Control Software Upgrade',
-      issuer: 'CFM International / Trial Data',
-      revision: 'R1',
-      status: 'ACTIVE',
-      priority: 'HIGH',
-      issueDate: new Date('2026-05-20T00:00:00.000Z'),
-      dueDate: new Date('2026-12-31T00:00:00.000Z'),
-      description: 'Trial SB seed for software modification tracking.',
-      createdById: admin.id
-    }
-  });
-
-  const adTask = await prisma.complianceTask.create({
-    data: {
-      documentId: adDocument.id,
-      aircraftId: aircraft.id,
-      engineId: aircraft.engines[0].id,
-      title: 'Inspect LH engine fan blade leading edges',
-      description: 'Perform detailed visual inspection for erosion and crack indications.',
-      taskType: 'INSPECTION',
-      status: 'OPEN',
-      priority: 'CRITICAL',
-      isRepetitive: true,
-      dueDate: new Date('2026-09-15T00:00:00.000Z'),
-      reference: 'AMM 72-21-01-200',
-      remarks: 'Seed task linked to AD and aircraft/engine effectivity.',
-      assignedToId: technician.id,
-      createdById: admin.id
-    }
-  });
-
-  const sbTask = await prisma.complianceTask.create({
-    data: {
-      documentId: sbDocument.id,
-      aircraftId: aircraft.id,
-      engineId: aircraft.engines[1].id,
-      title: 'Upgrade RH engine EEC software',
-      description: 'Upgrade electronic engine control software to the required version.',
-      taskType: 'SOFTWARE_UPDATE',
-      status: 'IN_PROGRESS',
-      priority: 'HIGH',
-      isRepetitive: false,
-      dueDate: new Date('2026-12-31T00:00:00.000Z'),
-      reference: 'SB CFM56 73-0125',
-      remarks: 'Seed task showing SB monitoring flow.',
-      assignedToId: technician.id,
-      createdById: admin.id
-    }
-  });
-
-  const webhookEesDocument = await prisma.eesDocument.create({
-    data: {
-      eesNumber: 'EES-WEBHOOK-SEED-001',
-      bulletinNumber: sbDocument.documentNumber,
-      documentId: sbDocument.id,
-      evaluations: {
-        create: [
-          {
-            itemNo: '1',
-            paragraph: 'Para 3.A',
-            requirementDesc: 'Perform a detailed visual inspection of the fan blade leading edges for erosion.',
-            taskType: 'Inspection',
-            reference: 'AMM 72-21-01-200',
-            isApplicable: true,
-            adRelated: adDocument.documentNumber,
-            isWarranty: false,
-            affectedEsn: ['ESN-SEED-X01', 'ESN-SEED-X02'],
-            isRepetitive: true,
-            dueAt: 'Next A-Check or 250 Flight Cycles',
-            remarks: 'Example data as if AI OCR already sent JSON to /api/webhooks/ees.',
-            complianceTaskId: adTask.id
-          },
-          {
-            itemNo: '2',
-            paragraph: 'Para 3.B',
-            requirementDesc: 'Upgrade the electronic engine control software to version 5.4.1.',
-            taskType: 'Modification',
-            reference: 'SB CFM56 73-0125',
-            isApplicable: true,
-            adRelated: 'N/A',
-            isWarranty: true,
-            affectedEsn: ['ESN-SEED-X02'],
-            isRepetitive: false,
-            dueAt: 'Next Shop Visit',
-            remarks: 'Warranty claim should be reviewed by planning team.',
-            complianceTaskId: sbTask.id
-          }
-        ]
+    }),
+    prisma.serviceBulletin.create({
+      data: {
+        id: generateId('SB-DOC'),
+        sbNumber: 'SB-CFM56-72-1123',
+        title: 'HPC Blade Inspection - Stage 5',
+        issuer: 'CFM International',
+        issueDate: new Date('2024-03-01'),
+        status: 'ACTIVE',
+        sbType: 'ALERT',
+        complianceCategory: 2,
+        effectivityType: 'CFM56-5B4',
+        effectivityRange: 'All CFM56-5B4',
+        compliancePeriod: '6 months',
+        draftStatus: 'DRAFT',
+        ocrStatus: 'UPLOADED',
       }
-    },
-    include: {
-      evaluations: true
-    }
-  });
+    }),
+    prisma.serviceBulletin.create({
+      data: {
+        id: generateId('SB-DOC'),
+        sbNumber: 'SB-LEAP-72-0089',
+        title: 'CMC Software Update v4.12',
+        issuer: 'CFM International (LEAP)',
+        issueDate: new Date('2024-06-10'),
+        status: 'ACTIVE',
+        sbType: 'RECOMMENDED',
+        complianceCategory: 6,
+        effectivityType: 'LEAP-1A26',
+        effectivityRange: 'All LEAP-1A26',
+        compliancePeriod: '24 months',
+        draftStatus: 'DRAFT',
+        ocrStatus: 'UPLOADED',
+      }
+    }),
+    prisma.serviceBulletin.create({
+      data: {
+        id: generateId('SB-DOC'),
+        sbNumber: 'SB-V25-79-0041',
+        title: 'Oil Pump Seal Replacement',
+        issuer: 'IAE International Aero Engines',
+        issueDate: new Date('2024-08-20'),
+        status: 'ACTIVE',
+        sbType: 'MANDATORY',
+        complianceCategory: 5,
+        effectivityType: 'V2527-A5',
+        effectivityRange: 'ESN below 882000',
+        compliancePeriod: '3 months',
+        draftStatus: 'DRAFT',
+        ocrStatus: 'UPLOADED',
+      }
+    }),
+    prisma.serviceBulletin.create({
+      data: {
+        id: generateId('SB-DOC'),
+        sbNumber: 'SB-CFM56-78-0221',
+        title: 'Thrust Reverser Actuator Check',
+        issuer: 'CFM International',
+        issueDate: new Date('2024-09-05'),
+        status: 'ACTIVE',
+        sbType: 'MANDATORY',
+        complianceCategory: 4,
+        effectivityType: 'CFM56-5B',
+        effectivityRange: 'All CFM56-5B',
+        compliancePeriod: '6 months',
+        draftStatus: 'DRAFT',
+        ocrStatus: 'UPLOADED',
+      }
+    }),
+    prisma.serviceBulletin.create({
+      data: {
+        id: generateId('SB-DOC'),
+        sbNumber: 'SB-GE98-71-0345',
+        title: 'Fan Blade Inspection - FOD Assessment',
+        issuer: 'GE Aviation',
+        issueDate: new Date('2024-11-01'),
+        status: 'ACTIVE',
+        sbType: 'ALERT',
+        complianceCategory: 1,
+        effectivityType: 'GE90-115B',
+        effectivityRange: 'All GE90-115B',
+        compliancePeriod: 'On Event',
+        draftStatus: 'DRAFT',
+        ocrStatus: 'UPLOADED',
+      }
+    }),
+    // SB for existing test compatibility
+    prisma.serviceBulletin.create({
+      data: {
+        id: generateId('SB-DOC'),
+        sbNumber: 'RB211-73-AJ366',
+        title: 'Trent 700 Series Propulsion System Modification',
+        issuer: 'Rolls-Royce',
+        issueDate: new Date('2026-03-10'),
+        status: 'ACTIVE',
+        sbType: 'MANDATORY',
+        complianceCategory: 4,
+        effectivityType: 'Trent 700',
+        effectivityRange: 'All Trent 700',
+        compliancePeriod: '12 months',
+        draftStatus: 'DRAFT',
+        ocrStatus: 'UPLOADED',
+      }
+    }),
+  ]);
 
-  const fakePdfBuffer = Buffer.from('%PDF-1.4\nseed pdf placeholder\n%%EOF');
-  const checksum = crypto.createHash('sha256').update(fakePdfBuffer).digest('hex');
-  const storageRoot = path.resolve(__dirname, '../uploads/ocr-documents');
-  const storedFileName = `seed-upload-${checksum.slice(0, 12)}.pdf`;
-  const storagePath = path.join(storageRoot, storedFileName);
-  const fileUrl = `/storage/ocr-documents/${encodeURIComponent(storedFileName)}`;
-  await fs.mkdir(storageRoot, { recursive: true });
-  await fs.writeFile(storagePath, fakePdfBuffer);
+  sbs.forEach(sb => console.log(`  ✔ ${sb.sbNumber} [${sb.sbType}] — ${sb.title}`));
 
-  const ocrUpload = await prisma.ocrDocumentUpload.create({
+  // ─────────────────────────────────────────────
+  // AD (Airworthiness Directive)
+  // ─────────────────────────────────────────────
+  console.log('\n📋 Seeding Airworthiness Directives (AD)...');
+  const ad = await prisma.airworthinessDirective.create({
     data: {
-      originalFileName: 'seed-uploaded-ad-sb.pdf',
-      storedFileName,
-      storagePath,
-      fileUrl,
-      mimeType: 'application/pdf',
-      fileSize: fakePdfBuffer.length,
-      checksum,
-      status: 'UPLOADED',
-      ocrProvider: 'URL_STORAGE_ONLY',
-      createdById: technician.id
+      id: generateId('AD'),
+      adNumber: 'EASA-AD-2024-0189',
+      title: 'CFM56-5B Engine — Fan Blade Inspection',
+      issuer: 'EASA',
+      issueDate: new Date('2024-01-15'),
+      dueDate: new Date('2024-12-31'),
+      status: 'ACTIVE'
     }
   });
+  console.log(`  ✔ ${ad.adNumber} (EASA)\n`);
 
-  console.log('Seeded users:');
-  console.log(` - ${admin.email} / admin123 / ${admin.role}`);
-  console.log(` - ${technician.email} / tech123 / ${technician.role}`);
-  console.log('Seeded aircraft and engines:');
-  console.log(` - ${aircraft.registration} (${aircraft.aircraftType})`);
-  aircraft.engines.forEach((engine) => {
-    console.log(` - ${engine.position} ${engine.model} / ${engine.esn}`);
-  });
-  console.log('Seeded AD/SB documents and compliance tasks:');
-  console.log(` - ${adDocument.documentNumber} -> task ${adTask.id} (${adTask.status})`);
-  console.log(` - ${sbDocument.documentNumber} -> task ${sbTask.id} (${sbTask.status})`);
-  console.log('Seeded EES flows:');
-  console.log(` - Webhook JSON flow: ${webhookEesDocument.eesNumber} with ${webhookEesDocument.evaluations.length} items`);
-  console.log(` - PDF storage flow: upload ${ocrUpload.id} -> ${ocrUpload.fileUrl}`);
-  console.log('Database seeding completed successfully.');
+  console.log('🎉 Database seeding successfully completed!');
+  console.log('\n📊 Summary:');
+  console.log(`   Users:           2`);
+  console.log(`   Aircraft:        3`);
+  console.log(`   Engines:         4`);
+  console.log(`   Service Bulletins: ${sbs.length}`);
+  console.log(`   ADs:             1`);
 }
 
 main()
   .catch((error) => {
-    console.error('Seeding failed with error:', error);
+    console.error('❌ Seeding failed with error:', error);
     process.exit(1);
   })
   .finally(async () => {

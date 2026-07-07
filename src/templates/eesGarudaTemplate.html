@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { 
+        font-family: 'Arial', sans-serif; 
+        margin: 15px; 
+        color: #000; 
+        font-size: 9px;
+    }
+    
+    /* Logo standing alone at the very top */
+    .logo-container {
+        text-align: center;
+        margin-bottom: 15px;
+        width: 100%;
+    }
+    .logo { 
+        max-width: 180px; 
+        height: auto;
+    }
+    
+    /* Header layout below logo (single horizontal row, vertically centered) */
+    .header-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 12px;
+        padding-bottom: 5px;
+        font-size: 10px;
+    }
+    .header-info-row div {
+        flex: 1;
+    }
+    .header-info-row .col-left {
+        text-align: left;
+    }
+    .header-info-row .col-ees {
+        text-align: center;
+    }
+    .header-info-row .col-right {
+        text-align: right;
+    }
+
+    /* Main Table Section */
+    .main-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        table-layout: fixed; 
+        margin-bottom: 15px;
+    }
+    .main-table th { 
+        border: 1px solid #000; 
+        background-color: #ffffff; 
+        color: #000;
+        font-size: 9px; 
+        padding: 5px 2px; 
+        text-align: center; 
+        vertical-align: middle;
+        font-weight: normal; /* No bold on table header */
+    }
+    .main-table td { 
+        border: 1px solid #000; 
+        padding: 5px 3px; 
+        font-size: 9px; 
+        text-align: center; 
+        vertical-align: top;
+        word-wrap: break-word; 
+        font-weight: normal; /* No bold on table body */
+    }
+    .align-left {
+        text-align: left !important;
+    }
+
+    /* Footer / Signature Section */
+    .footer-container { 
+        width: 100%; 
+        margin-top: 15px;
+        font-size: 9px;
+    }
+    .eval-date { 
+        margin-bottom: 8px; 
+        font-weight: normal; /* No bold */
+    }
+    .signature-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 10px;
+    }
+    .signature-table td { 
+        width: 33.33%; 
+        border: none; 
+        height: 50px; 
+        vertical-align: top; 
+        padding: 5px 0; 
+        font-weight: normal; /* No bold */
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo-container">
+    <img src="{{logoBase64}}" alt="Garuda Indonesia Logo" class="logo">
+  </div>
+
+  <!-- Horizontal Header Row below the logo -->
+  <div class="header-info-row">
+    <div class="col-left">
+      <span>Engineering Evaluation Sheet</span>
+    </div>
+    <div class="col-ees">
+      <span>EES No: {{eesNumber}}</span>
+    </div>
+    <div class="col-right">
+      <span>SB/SL/Other Bulletin No: {{sbNumber}}</span>
+    </div>
+  </div>
+
+  <!-- Table with 12 Columns matching user screenshot -->
+  <table class="main-table">
+    <thead>
+      <tr>
+        <th style="width: 3%;">No</th>
+        <th style="width: 4%;">Par</th>
+        <th style="width: 25%;">Requirement Descriptions & Evaluation</th>
+        <th style="width: 7%;">Task Type</th>
+        <th style="width: 7%;">Ref.</th>
+        <th style="width: 5%;">App<br>(Y/N)</th>
+        <th style="width: 7%;">AD Related</th>
+        <th style="width: 6%;">Warranty (Y/N)</th>
+        <th style="width: 12%;">Affected A/C or Engine<br>(ESN)</th>
+        <th style="width: 5%;">Rep (Y/N)</th>
+        <th style="width: 6%;">Due At</th>
+        <th style="width: 13%;">Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{tableRows}}
+    </tbody>
+  </table>
+
+  <div class="footer-container">
+    <div class="eval-date">Evaluation Date: {{evaluationDate}}</div>
+    <table class="signature-table">
+      <tr>
+        <td>Prepared by:</td>
+        <td>Checked by:</td>
+        <td>Verified by:</td>
+      </tr>
+    </table>
+  </div>
+
+</body>
+</html>

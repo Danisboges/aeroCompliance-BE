@@ -47,3 +47,32 @@ module.exports = {
   storePdf,
   deleteFileIfExists
 };
+
+const EES_STORAGE_ROOT = path.resolve(__dirname, '../../uploads/ees-documents');
+
+const ensureEesStorageRoot = async () => {
+  await fs.mkdir(EES_STORAGE_ROOT, { recursive: true });
+};
+
+const storeGeneratedEesPdf = async ({ eesNumber, buffer }) => {
+  await ensureEesStorageRoot();
+  const storedFileName = `ees-${eesNumber}-${Date.now()}.pdf`;
+  const storagePath = path.join(EES_STORAGE_ROOT, storedFileName);
+  const fileUrl = `/storage/ees-documents/${encodeURIComponent(storedFileName)}`;
+
+  await fs.writeFile(storagePath, buffer);
+
+  return {
+    storedFileName,
+    storagePath,
+    fileUrl
+  };
+};
+
+module.exports = {
+  STORAGE_ROOT,
+  EES_STORAGE_ROOT,
+  storePdf,
+  deleteFileIfExists,
+  storeGeneratedEesPdf
+};
