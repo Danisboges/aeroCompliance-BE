@@ -119,7 +119,6 @@ const analyzePdf = async ({ fileName, checksum, buffer, storagePath }) => {
       isMod: false,
       task_type: schema.task_type || routing.workflow_action || '',
       references: schema.references || '',
-      raw_ocr_content: rawOcrContent,
       items: {
         '': normalizedItems
       }

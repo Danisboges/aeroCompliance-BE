@@ -489,7 +489,7 @@
       "post": {
         "tags": ["📄 Step 5: Generate EES"],
         "summary": "Generate EES Document dari hasil AI",
-        "description": "Membuat dokumen EES dari hasil analisis AI yang sudah divalidasi. Otomatis juga men-generate file PDF.",
+        "description": "Membuat record dokumen EES dari hasil analisis AI yang sudah divalidasi ke dalam Database. (PDF Document tidak lagi di-generate secara otomatis di sini untuk menghemat ruang, melainkan di-generate secara live saat dipanggil lewat endpoint Export)",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }

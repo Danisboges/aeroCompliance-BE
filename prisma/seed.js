@@ -36,7 +36,7 @@ async function main() {
   // FLEET — AIRCRAFT
   // ─────────────────────────────────────────────
   console.log('✈️  Seeding fleet aircrafts...');
-  const [acA, acB, acC] = await Promise.all([
+  const [acA, acB, acC, acD] = await Promise.all([
     prisma.aircraft.create({
       data: { id: generateId('AC'), registration: 'PK-GPX', msn: '6432', aircraftType: 'A320', operator: 'Garuda Indonesia', active: true }
     }),
@@ -46,16 +46,20 @@ async function main() {
     prisma.aircraft.create({
       data: { id: generateId('AC'), registration: 'PK-GPA', msn: '6789', aircraftType: 'A321', operator: 'Garuda Indonesia', active: true }
     }),
+    prisma.aircraft.create({
+      data: { id: generateId('AC'), registration: 'PK-GIA', msn: '7777', aircraftType: 'B777-300ER', operator: 'Garuda Indonesia', active: true }
+    }),
   ]);
   console.log(`  ✔ ${acA.registration} (MSN-${acA.msn}, A320)`);
   console.log(`  ✔ ${acB.registration} (MSN-${acB.msn}, A320)`);
-  console.log(`  ✔ ${acC.registration} (MSN-${acC.msn}, A321)\n`);
+  console.log(`  ✔ ${acC.registration} (MSN-${acC.msn}, A321)`);
+  console.log(`  ✔ ${acD.registration} (MSN-${acD.msn}, B777-300ER)\n`);
 
   // ─────────────────────────────────────────────
   // FLEET — ENGINES
   // ─────────────────────────────────────────────
   console.log('⚙️  Seeding fleet engines...');
-  const [eng1, eng2, eng3, eng4] = await Promise.all([
+  const [eng1, eng2, eng3, eng4, eng5, eng6] = await Promise.all([
     prisma.engine.create({
       data: { id: generateId('ENG'), esn: 'ESN-881432', msn: 'MSN-5432', model: 'V2527-A5', position: '1', aircraftId: acA.id, active: true }
     }),
@@ -68,11 +72,19 @@ async function main() {
     prisma.engine.create({
       data: { id: generateId('ENG'), esn: 'ESN-870001', msn: 'MSN-5432', model: 'V2527-A5', position: '1', aircraftId: acB.id, active: true }
     }),
+    prisma.engine.create({
+      data: { id: generateId('ENG'), esn: 'ESN-901111', msn: 'MSN-7777', model: 'GE90-100-115B', position: '1', aircraftId: acD.id, active: true }
+    }),
+    prisma.engine.create({
+      data: { id: generateId('ENG'), esn: 'ESN-901112', msn: 'MSN-7777', model: 'GE90-100-110B1', position: '2', aircraftId: acD.id, active: true }
+    }),
   ]);
   console.log(`  ✔ ${eng1.esn} (V2527-A5, pos:1, ${acA.registration})`);
   console.log(`  ✔ ${eng2.esn} (V2527-A5, pos:2, ${acA.registration})`);
   console.log(`  ✔ ${eng3.esn} (CFM56-5B4, pos:1, ${acC.registration})`);
-  console.log(`  ✔ ${eng4.esn} (V2527-A5, pos:1, ${acB.registration})\n`);
+  console.log(`  ✔ ${eng4.esn} (V2527-A5, pos:1, ${acB.registration})`);
+  console.log(`  ✔ ${eng5.esn} (GE90-100-115B, pos:1, ${acD.registration})`);
+  console.log(`  ✔ ${eng6.esn} (GE90-100-110B1, pos:2, ${acD.registration})\n`);
 
   // ─────────────────────────────────────────────
   // SERVICE BULLETINS (Representasi Database Perusahaan)

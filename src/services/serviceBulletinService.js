@@ -130,6 +130,14 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
         finalSb = await serviceBulletinRepository.updateServiceBulletin(existingSb.id, {
           originalFileName,
           storedFileName: storedFile.storedFileName,
+          
+          // Map AI extracted payload to root SB fields if they are available
+          complianceCategory: aiResult.payload.compliance_category ? parseInt(aiResult.payload.compliance_category) : existingSb.complianceCategory,
+          effectivityType: aiResult.payload.effected_type || existingSb.effectivityType,
+          effectivityRange: Array.isArray(aiResult.payload.effected_model) 
+                              ? aiResult.payload.effected_model.join(', ') 
+                              : (aiResult.payload.effected_model || existingSb.effectivityRange),
+                              
           ocrStatus: 'EXTRACTED',
           draftStatus: 'REVIEW_REQUIRED',
           rawPayload: aiResult.payload,
@@ -147,6 +155,14 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
           title: aiResult.payload.title || `Service Bulletin ${normalized.bulletinNumber}`,
           issuer: aiResult.payload.issuer || aiResult.payload.effected_type || 'Unknown Issuer',
           issueDate: aiResult.payload.issueDate ? new Date(aiResult.payload.issueDate) : new Date(),
+          
+          // Map AI extracted payload to root SB fields
+          complianceCategory: aiResult.payload.compliance_category ? parseInt(aiResult.payload.compliance_category) : null,
+          effectivityType: aiResult.payload.effected_type || null,
+          effectivityRange: Array.isArray(aiResult.payload.effected_model) 
+                              ? aiResult.payload.effected_model.join(', ') 
+                              : (aiResult.payload.effected_model || null),
+                              
           ocrStatus: 'EXTRACTED',
           draftStatus: 'REVIEW_REQUIRED',
           rawPayload: aiResult.payload,
@@ -328,14 +344,11 @@ const generateEes = async (id, updatedById = null) => {
   const eesDoc = await eesService.processEesWebhook(payload, sb.id);
 
   try {
-    // Refresh SB to get the newly created EES relation
-    const refreshedSb = await getServiceBulletinById(sb.id);
-    const pdfBuffer = await pdfGenerationService.generateEesPdf({ sb: refreshedSb, templateType: 'GARUDA' });
-    const storeResult = await fileStorageService.storeGeneratedEesPdf({ eesNumber: eesDoc.eesNumber, buffer: pdfBuffer });
-    await eesRepository.updateEesDocumentPdfPath(eesDoc.id, storeResult.fileUrl);
+    // Kita tidak men-generate dan menyimpan file PDF secara permanen ke disk
+    // untuk menghemat ruang penyimpanan. PDF (baik Garuda maupun Citilink)
+    // akan di-generate secara live (on-the-fly) saat user menekan tombol export/download.
   } catch (error) {
-    console.error('Failed to generate or store EES PDF during generateEes:', error);
-    // Kita tetap lanjutkan karena EesDocument sudah terbuat di DB
+    console.error('Error in generateEes:', error);
   }
 
   return serviceBulletinRepository.updateServiceBulletin(sb.id, {

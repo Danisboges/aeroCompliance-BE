@@ -65,8 +65,31 @@ const generateEesExcel = async ({ sb, items, eesNumber, sbNumber }) => {
     { width: 20 },  // Remark
   ];
 
+  // Expand items based on \n\n in desc to split long paragraphs
+  const expandedItems = [];
+  items.forEach((item, index) => {
+    const descs = item.desc ? item.desc.split('\n\n') : ['-'];
+    const remarksArr = item.remarks ? item.remarks.split('\n\n') : ['-'];
+    
+    descs.forEach((d, i) => {
+      expandedItems.push({
+        ...item,
+        no: String(index + 1), // Recalculate No based on group
+        desc: d.trim(),
+        remarks: remarksArr[i] ? remarksArr[i].trim() : (remarksArr[0] || '-'),
+        isFirstInGroup: i === 0,
+        groupLength: descs.length,
+        isVeryFirstRow: expandedItems.length === 0
+      });
+    });
+  });
+
   // ── Data Rows ─────────────────────────────────────────────────────────────
-  items.forEach((item) => {
+  const dataStartRow = 5;
+  expandedItems.forEach((item, idx) => {
+    const rowIndex = dataStartRow + idx;
+    
+    // We still add all data for the row, but we'll merge them vertically afterwards
     const dataRow = sheet.addRow([
       item.no,
       item.par,
@@ -84,16 +107,36 @@ const generateEesExcel = async ({ sb, items, eesNumber, sbNumber }) => {
     dataRow.height = 30;
     dataRow.eachCell((cell) => {
       cell.font = { size: 9 };
-      cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
       cell.border = {
         top: { style: 'thin' }, left: { style: 'thin' },
         bottom: { style: 'thin' }, right: { style: 'thin' }
       };
     });
 
-    // Left-align the description column
-    dataRow.getCell(3).alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+    // Justify-align the description and remarks column
+    dataRow.getCell(3).alignment = { horizontal: 'justify', vertical: 'middle', wrapText: true };
+    dataRow.getCell(5).alignment = { horizontal: 'justify', vertical: 'middle', wrapText: true };
+    dataRow.getCell(11).alignment = { horizontal: 'justify', vertical: 'middle', wrapText: true };
+
+    // Apply vertical merges for grouped columns
+    if (item.isFirstInGroup && item.groupLength > 1) {
+      const endRow = rowIndex + item.groupLength - 1;
+      sheet.mergeCells(rowIndex, 1, endRow, 1); // No
+      sheet.mergeCells(rowIndex, 2, endRow, 2); // Par
+      sheet.mergeCells(rowIndex, 4, endRow, 4); // Task Type
+      sheet.mergeCells(rowIndex, 6, endRow, 6); // App Y/N
+      sheet.mergeCells(rowIndex, 7, endRow, 7); // Warranty Y/N
+      sheet.mergeCells(rowIndex, 8, endRow, 8); // Affected A/C
+      sheet.mergeCells(rowIndex, 9, endRow, 9); // Rep Y/N
+      sheet.mergeCells(rowIndex, 10, endRow, 10); // Due At
+    }
   });
+
+  // Apply vertical merge for ALL rows in Ref column
+  if (expandedItems.length > 1) {
+    sheet.mergeCells(dataStartRow, 5, dataStartRow + expandedItems.length - 1, 5);
+  }
 
   // ── Footer ────────────────────────────────────────────────────────────────
   sheet.addRow([]);

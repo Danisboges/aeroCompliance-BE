@@ -134,7 +134,14 @@ const downloadExcel = async (req, res) => {
     const sb = await getSbOrFail(req.params.id, res);
     if (!sb) return;
 
-    const items = pdfGenerationService.extractPdfItems(sb);
+    const applicabilityResults = await serviceBulletinRepository.checkApplicabilityForSb(sb);
+    const applicableEsns = applicabilityResults
+      .filter(r => r.isApplicable)
+      .map(r => r.engine.esn)
+      .join(', ');
+    const dynamicEsnVal = applicableEsns || '-';
+
+    const items = pdfGenerationService.extractPdfItems(sb, dynamicEsnVal);
 
     const norm = sb.rawPayload ? normalizeOcrPayload(sb.rawPayload) : {};
     const eesNumber = sb.generatedEes?.eesNumber || norm.eesNumber || `EES-${sb.sbNumber}`;

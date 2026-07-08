@@ -5,320 +5,399 @@
   <style>
     body { 
         font-family: 'Arial', sans-serif; 
-        margin: 15px; 
+        margin: 20px; 
         color: #000; 
-        font-size: 9px;
+        font-size: 11px;
         line-height: 1.2;
     }
     
-    /* Header layout matching Citilink style */
+    /* Header layout matching Citilink blank form */
     .header-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
     }
     .header-table td {
         border: none;
-        padding: 2px;
-        vertical-align: middle;
+        padding: 0;
+        vertical-align: top;
     }
     .citilink-logo {
         font-family: 'Arial', sans-serif;
         font-weight: bold;
         font-style: italic;
-        font-size: 26px;
+        font-size: 42px;
         color: #00a859;
         letter-spacing: -1px;
     }
-    .header-title-block {
+    .header-right {
         text-align: right;
-        font-size: 9px;
-    }
-    .header-title-block strong {
-        font-size: 10px;
+        font-size: 11px;
+        font-weight: bold;
+        padding-top: 10px;
     }
 
-    /* Form Fields Grid */
+    /* Main Table Grid */
     .form-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 10px;
+        table-layout: fixed;
     }
-    .form-table td {
+    .form-table, .form-table > tbody > tr > td {
         border: 1px solid #000;
+    }
+    .form-table > tbody > tr > td {
         padding: 5px;
         vertical-align: top;
-        font-size: 9px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal; /* Fix for the massive gaps and vertical stacking! */
+    }
+    .pre-text {
+        white-space: pre-line; /* Only preserve newlines for text fields */
     }
     .label-col {
         width: 15%;
-        font-weight: normal;
+        border-right: none !important;
+    }
+    .colon-col {
+        width: 2%;
+        text-align: center;
+        border-left: none !important;
+        border-right: none !important;
     }
     .value-col {
-        width: 85%;
+        width: 83%;
+        border-left: none !important;
+    }
+    
+    /* Inner tables (for layouts inside a td) */
+    .inner-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .inner-table td {
+        border: none;
+        padding: 0 5px;
+        vertical-align: top;
     }
 
-    /* Checkbox Styles */
+    /* Checkboxes */
     .checkbox-container {
         display: flex;
         flex-wrap: wrap;
-        gap: 15px;
-        margin-top: 3px;
     }
     .checkbox-item {
-        display: flex;
-        align-items: center;
-        gap: 4px;
+        margin-right: 12px;
+        display: inline-block;
+        white-space: nowrap;
     }
     .checkbox-box {
         display: inline-block;
-        width: 10px;
-        height: 10px;
+        width: 12px;
+        height: 12px;
         border: 1px solid #000;
         text-align: center;
-        line-height: 9px;
-        font-size: 8px;
-        font-family: sans-serif;
-    }
-
-    /* Section Header */
-    .section-title {
+        line-height: 12px;
+        font-size: 10px;
         font-weight: bold;
-        background-color: #f2f2f2;
-        padding: 3px 5px;
-        border: 1px solid #000;
-        border-bottom: none;
-        font-size: 9px;
+        margin-right: 5px;
+        margin-bottom: -2px;
     }
 
-    /* Content block style */
+    /* Content rendering for Evaluation Result */
     .content-block {
-        border: 1px solid #000;
-        padding: 6px;
-        margin-bottom: 10px;
-        min-height: 80px;
-        font-size: 9px;
-        background: #fff;
+        width: 100%;
     }
     .content-block ul {
         margin: 0;
-        padding-left: 15px;
+        padding-left: 20px;
     }
     .content-block li {
-        margin-bottom: 4px;
+        margin-bottom: 5px;
+        text-align: justify;
     }
 
-    /* Footer styling */
+    /* Footer */
     .footer-table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 15px;
-        font-size: 9px;
+        font-size: 11px;
     }
     .footer-table td {
         border: none;
-        padding: 3px 0;
+        padding: 5px 0;
+    }
+    
+    /* Prevent page break issues */
+    tr, td, div {
+        page-break-inside: auto;
+    }
+    .form-table > tbody > tr {
+        page-break-inside: avoid;
     }
   </style>
 </head>
 <body>
 
-  <!-- Citilink Header -->
+  <!-- Header -->
   <table class="header-table">
     <tr>
-      <td>
-        <img src="{{logoBase64}}" alt="Citilink Logo" class="logo" style="max-width: 140px; height: auto;" onerror="this.style.display='none'; document.getElementById('logo-text').style.display='block';">
+      <td style="width: 50%;">
+        <img src="{{logoBase64}}" alt="Citilink Logo" class="logo" style="max-width: 180px; height: auto;" onerror="this.style.display='none'; document.getElementById('logo-text').style.display='block';">
         <div class="citilink-logo" style="display: none;" id="logo-text">Citilink</div>
       </td>
-      <td class="header-title-block">
-        <strong>ENGINEERING PROGRAM</strong><br>
-        CT-3-18.1 Engineering Evaluation Sheet<br>
-        CT-3 / CT-3-18.1
+      <td style="width: 50%;" class="header-right">
+        ENGINEERING PROGRAM<br>
+        <span style="font-weight: normal;">Engineering Evaluation Sheet</span>
       </td>
     </tr>
   </table>
 
-  <!-- Main metadata form matching Citilink CT-3-18.1 -->
+  <!-- Main Table -->
   <table class="form-table">
-    <tr>
-      <td class="label-col">EES No.</td>
-      <td style="width: 35%;">{{eesNumber}}</td>
-      <td class="label-col">Unit Concern:</td>
-      <td style="width: 35%;">
-        <div class="checkbox-container">
-          <div class="checkbox-item"><span class="checkbox-box">{{checkTEA1}}</span> TEA-1</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkTEA2}}</span> TEA-2</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkTEA3}}</span> TEA-3</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkTEA4}}</span> TEA-4</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkTEA5}}</span> TEA-5</div>
-        </div>
-      </td>
-    </tr>
-    <tr>
-      <td class="label-col">Issued Date</td>
-      <td>{{evaluationDate}}</td>
-      <td class="label-col">Transfer to:</td>
-      <td>CTV</td>
-    </tr>
-    <tr>
-      <td class="label-col">Bulletin No.</td>
-      <td colspan="3">{{sbNumber}}</td>
-    </tr>
-    <tr>
-      <td class="label-col">Manufacturer</td>
-      <td>{{manufacturer}}</td>
-      <td class="label-col">Issued Date:</td>
-      <td>{{sbIssuedDate}}</td>
-    </tr>
-    <tr>
-      <td class="label-col">Subject</td>
-      <td colspan="3" style="text-transform: uppercase;">{{subject}}</td>
-    </tr>
-    <tr>
-      <td class="label-col">Other Ref.</td>
-      <td colspan="3">{{otherRef}}</td>
-    </tr>
-    <tr>
-      <td class="label-col">Aircraft Type</td>
-      <td>{{aircraftType}}</td>
-      <td colspan="2">
-        <div class="checkbox-container">
-          <div class="checkbox-item"><span class="checkbox-box">{{checkComponent}}</span> Component</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkTool}}</span> Tool and Equipment</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkPart}}</span> Part</div>
-        </div>
-      </td>
-    </tr>
-    <tr>
-      <td class="label-col">Part Number</td>
-      <td>{{partNumber}}</td>
-      <td class="label-col">Note:</td>
-      <td>{{note}}</td>
-    </tr>
-    <tr>
-      <td class="label-col">Effectivity</td>
-      <td colspan="3">{{effectivity}}</td>
-    </tr>
-  </table>
+    <tbody>
+      <tr>
+        <td class="label-col">EES No.</td>
+        <td class="colon-col">:</td>
+        <td class="value-col">{{eesNumber}}</td>
+      </tr>
+      <tr>
+        <td class="label-col">Issued Date</td>
+        <td class="colon-col">:</td>
+        <td class="value-col" style="padding: 0;">
+          <table class="inner-table" style="height: 100%;">
+            <tr>
+              <td style="width: 35%; padding-top: 5px; padding-bottom: 5px;">{{evaluationDate}}</td>
+              <td style="width: 45%; padding-top: 5px; padding-bottom: 5px;">
+                <table style="border: none; width: 100%;">
+                  <tr>
+                    <td style="vertical-align: top; width: 30%; border: none; padding: 0;">Unit Concern:</td>
+                    <td style="vertical-align: top; border: none; padding: 0;">
+                      <div style="margin-bottom: 2px;">
+                        <span class="checkbox-item"><span class="checkbox-box">{{checkTEA1}}</span> TEA-1</span>
+                        <span class="checkbox-item"><span class="checkbox-box">{{checkTEA2}}</span> TEA-2</span>
+                        <span class="checkbox-item"><span class="checkbox-box">{{checkTEA3}}</span> TEA-3</span>
+                      </div>
+                      <div>
+                        <span class="checkbox-item"><span class="checkbox-box">{{checkTEA4}}</span> TEA-4</span>
+                        <span class="checkbox-item"><span class="checkbox-box">{{checkTEA5}}</span> TEA-5</span>
+                        <span class="checkbox-item"><span class="checkbox-box"></span> TEA-6</span>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+              <td style="width: 20%; padding-top: 5px; padding-bottom: 5px; text-align: right;">Transfer to: CTV</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td class="label-col">Bulletin No.</td>
+        <td class="colon-col">:</td>
+        <td class="value-col">{{sbNumber}}</td>
+      </tr>
+      <tr>
+        <td class="label-col">Manufacturer</td>
+        <td class="colon-col">:</td>
+        <td class="value-col" style="padding: 0;">
+          <table class="inner-table">
+            <tr>
+              <td style="width: 50%; padding-top: 5px; padding-bottom: 5px;">{{manufacturer}}</td>
+              <td style="width: 50%; padding-top: 5px; padding-bottom: 5px; text-align: center;">Issued Date: {{sbIssuedDate}}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td class="label-col" style="height: 40px;">Subject</td>
+        <td class="colon-col">:</td>
+        <td class="value-col pre-text" style="text-transform: uppercase;">{{subject}}</td>
+      </tr>
+      <tr>
+        <td class="label-col" style="height: 100px;">Other Ref.</td>
+        <td class="colon-col">:</td>
+        <td class="value-col pre-text">{{otherRef}}</td>
+      </tr>
+      <tr>
+        <td class="label-col">Aircraft Type<br>Engine/APU</td>
+        <td class="colon-col">:<br>:</td>
+        <td class="value-col">
+          {{aircraftType}}<br>
+          <div style="margin-top:5px;">
+            <span class="checkbox-item"><span class="checkbox-box">{{checkComponent}}</span> Component</span>
+            <span class="checkbox-item"><span class="checkbox-box">{{checkTool}}</span> Tool and Equipment</span>
+            <span class="checkbox-item"><span class="checkbox-box">{{checkPart}}</span> Part</span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="label-col">Part Number</td>
+        <td class="colon-col">:</td>
+        <td class="value-col pre-text">{{partNumber}}</td>
+      </tr>
+      <tr>
+        <td class="label-col">Note</td>
+        <td class="colon-col">:</td>
+        <td class="value-col pre-text">{{note}}</td>
+      </tr>
+      <tr>
+        <td class="label-col" style="height: 60px;">Effectivity</td>
+        <td class="colon-col">:</td>
+        <td class="value-col pre-text">{{effectivity}}</td>
+      </tr>
+      
+      <!-- Reason of Evaluation -->
+      <tr>
+        <td colspan="3" style="padding: 5px;">
+          Reason of Evaluation:<br>
+          <table class="inner-table" style="margin-top: 5px;">
+            <tr>
+              <td style="width: 40%; padding: 0;">
+                <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkReason1}}</span> Affects A/C Operation</div>
+                <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkReason2}}</span> To Meet Company policy</div>
+                <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkReason3}}</span> Improve A/C Performance</div>
+                <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkReason4}}</span> To Comply with Government/ Authority Regulatory Requirement.</div>
+              </td>
+              <td style="width: 35%; padding: 0;">
+                <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkReason5}}</span> Pax or Crew Satisfaction</div>
+                <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkReason6}}</span> Improve Maintainability</div>
+              </td>
+              <td style="width: 25%; padding: 0;">
+                <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkReason7}}</span> Improve Reliability</div>
+                <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkReason8}}</span> Safety</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
 
-  <!-- Reason of Evaluation Section -->
-  <div class="section-title">Reason of Evaluation:</div>
-  <table class="form-table" style="margin-bottom: 10px;">
-    <tr>
-      <td style="border-top: none;">
-        <div class="checkbox-container">
-          <div class="checkbox-item"><span class="checkbox-box">{{checkReason1}}</span> Affects A/C Operation</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkReason2}}</span> To Meet Company policy</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkReason3}}</span> Improve A/C Performance</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkReason4}}</span> To Comply with Govt/Authority Regulatory Req.</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkReason5}}</span> Pax or Crew Satisfaction</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkReason6}}</span> Improve Maintainability</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkReason7}}</span> Improve Reliability</div>
-          <div class="checkbox-item"><span class="checkbox-box">{{checkReason8}}</span> Safety</div>
-        </div>
-      </td>
-    </tr>
-  </table>
+      <!-- Maintenance Level & Warranty -->
+      <tr>
+        <td colspan="3" style="padding: 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="width: 50%; border-right: 1px solid #000; border-bottom: none; border-top: none; border-left: none; padding: 5px; vertical-align: top;">
+                Maintenance Level:<br>
+                <div style="margin-top: 5px;">
+                  <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkMaint1}}</span> To be performed prior to certain date</div>
+                  <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkMaint2}}</span> To be performed prior to certain hours/cycles</div>
+                  <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkMaint3}}</span> To be performed at next maintenance scheduled</div>
+                  <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkMaint4}}</span> To be performed at attrition basis</div>
+                </div>
+              </td>
+              <td style="width: 50%; border: none; padding: 5px; vertical-align: top;">
+                Warranty:<br>
+                <table class="inner-table" style="margin-top: 5px;">
+                  <tr>
+                    <td style="width: 50%; padding: 0;">Type: {{warrantyType}}</td>
+                    <td style="width: 50%; padding: 0;">Due date: {{warrantyDueDate}}</td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="padding-top: 5px; padding-left: 0; padding-right: 0;">Note: {{warrantyNote}}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
 
-  <!-- Maintenance Level & Warranty Grid -->
-  <table class="form-table" style="margin-bottom: 10px;">
-    <tr>
-      <td style="width: 50%;">
-        <strong>Maintenance Level:</strong>
-        <div style="margin-top: 5px;">
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkMaint1}}</span> To be performed prior to certain date</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkMaint2}}</span> To be performed prior to certain hours/cycles</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkMaint3}}</span> To be performed at next maintenance scheduled</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkMaint4}}</span> To be performed at attrition basis</div>
-        </div>
-      </td>
-      <td style="width: 50%;">
-        <strong>Warranty:</strong>
-        <div style="margin-top: 5px;">
-          Type: {{warrantyType}}<br>
-          Due date: {{warrantyDueDate}}<br>
-          Note: {{warrantyNote}}
-        </div>
-      </td>
-    </tr>
-  </table>
+      <!-- Consequence, Accomplishment & Inspection -->
+      <tr>
+        <td colspan="3" style="padding: 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="width: 33%; border-right: 1px solid #000; border-bottom: none; border-top: none; border-left: none; padding: 5px; vertical-align: top;">
+                Consequence:<br>
+                <div style="margin-top: 5px;">
+                  <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkConseq1}}</span> Affected</div>
+                  <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkConseq2}}</span> Not Affected</div>
+                </div>
+              </td>
+              <td style="width: 34%; border-right: 1px solid #000; border-bottom: none; border-top: none; border-left: none; padding: 5px; vertical-align: top;">
+                Accomplishment Method:<br>
+                <div style="margin-top: 5px;">
+                  <div style="margin-bottom:2px; display:inline-block; width:45%;"><span class="checkbox-box">{{checkMethod1}}</span> Modification</div>
+                  <div style="margin-bottom:2px; display:inline-block; width:50%;"><span class="checkbox-box">{{checkMethod2}}</span> Inspection</div>
+                  <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkMethod3}}</span> Others</div>
+                </div>
+              </td>
+              <td style="width: 33%; border: none; padding: 5px; vertical-align: top;">
+                Inspection Type:<br>
+                <div style="margin-top: 5px;">
+                  <div style="margin-bottom:2px; display:inline-block; width:45%;"><span class="checkbox-box">{{checkInsp1}}</span> One Time</div>
+                  <div style="margin-bottom:2px; display:inline-block; width:50%;"><span class="checkbox-box">{{checkInsp2}}</span> Recurring</div>
+                  <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkInsp3}}</span> Cost Analysis</div>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
 
-  <!-- Consequence, Accomplishment & Inspection Grid -->
-  <table class="form-table" style="margin-bottom: 10px;">
-    <tr>
-      <td style="width: 33%;">
-        <strong>Consequence:</strong>
-        <div style="margin-top: 5px;">
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkConseq1}}</span> Affected</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkConseq2}}</span> Not Affected</div>
-        </div>
-      </td>
-      <td style="width: 34%;">
-        <strong>Accomplishment Method:</strong>
-        <div style="margin-top: 5px;">
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkMethod1}}</span> Modification</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkMethod2}}</span> Inspection</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkMethod3}}</span> Others</div>
-        </div>
-      </td>
-      <td style="width: 33%;">
-        <strong>Inspection Type:</strong>
-        <div style="margin-top: 5px;">
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkInsp1}}</span> One Time</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkInsp2}}</span> Recurring</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkInsp3}}</span> Cost Analysis</div>
-        </div>
-      </td>
-    </tr>
+      <!-- Evaluation Result -->
+      <tr>
+        <td class="label-col" style="height: 120px;">Evaluation<br>Result</td>
+        <td class="colon-col">:<br>:</td>
+        <td class="value-col">
+          <div class="content-block">
+            {{evaluationContent}}
+          </div>
+        </td>
+      </tr>
+    </tbody>
   </table>
-
-  <!-- Evaluation Result -->
-  <div class="section-title">Evaluation Result:</div>
-  <div class="content-block">
-    {{evaluationContent}}
-  </div>
 
   <!-- Engineering Action, Implementation & Management Approval -->
-  <table class="form-table" style="margin-bottom: 10px;">
-    <tr>
-      <td style="width: 33%;">
-        <strong>Engineering Action:</strong>
-        <div style="margin-top: 5px;">
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkActionYes}}</span> Yes</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkActionNo}}</span> No</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkActionHold}}</span> Hold/Postpone</div>
-        </div>
-      </td>
-      <td style="width: 34%;">
-        <strong>Further Implementation:</strong>
-        <div style="margin-top: 5px;">
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkImpl1}}</span> Technical Order</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkImpl2}}</span> Engineering Information</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkImpl3}}</span> M.S. Revision</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkImpl4}}</span> Manual revision</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkImpl5}}</span> Others (shop visit)</div>
-        </div>
-      </td>
-      <td style="width: 33%;">
-        <strong>Management Approval:</strong>
-        <div style="margin-top: 5px;">
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkApproval1}}</span> TEA</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkApproval2}}</span> WQR</div>
-          <div class="checkbox-item" style="margin-bottom: 3px;"><span class="checkbox-box">{{checkApproval3}}</span> DE</div>
-        </div>
-      </td>
-    </tr>
+  <table class="form-table" style="margin-top: -1px;">
+    <tbody>
+      <tr>
+        <td style="width: 30%; padding: 5px; vertical-align: top;">
+          Engineering Action:<br>
+          <div style="margin-top: 5px;">
+            <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkActionYes}}</span> Yes</div>
+            <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkActionNo}}</span> No</div>
+            <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkActionHold}}</span> Hold/Postpone</div>
+          </div>
+        </td>
+        <td style="width: 40%; padding: 5px; vertical-align: top; border-right: none;">
+          Further Implementation:<br>
+          <div style="margin-top: 5px;">
+            <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkImpl1}}</span> Technical Order</div>
+            <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkImpl2}}</span> Engineering Information</div>
+            <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkImpl3}}</span> M.S. Revision</div>
+          </div>
+        </td>
+        <td style="width: 30%; padding: 5px; vertical-align: top; border-left: none; padding-top: 25px;">
+            <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkImpl4}}</span> Manual revision</div>
+            <div style="margin-bottom:2px;"><span class="checkbox-box">{{checkImpl5}}</span> Others (shop visit)</div>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="3" style="padding: 5px;">
+          Management Approval:<br>
+          <div style="margin-top: 5px;">
+            <span class="checkbox-item"><span class="checkbox-box">{{checkApproval1}}</span> TEA</span>
+            <span class="checkbox-item"><span class="checkbox-box">{{checkApproval2}}</span> WQR</span>
+            <span class="checkbox-item"><span class="checkbox-box">{{checkApproval3}}</span> DE</span>
+          </div>
+        </td>
+      </tr>
+    </tbody>
   </table>
 
   <!-- Footer block -->
   <table class="footer-table">
     <tr>
-      <td style="text-align: left;">Evaluated by: {{evaluatorName}}</td>
-      <td style="text-align: center;">Date: {{evaluationDate}}</td>
-      <td style="text-align: right;">Reliability and Engineering Services</td>
+      <td style="text-align: left; width: 33%;">Evaluated by: {{evaluatorName}}</td>
+      <td style="text-align: left; width: 34%;">Date: {{evaluationDate}}</td>
+      <td style="text-align: right; width: 33%;">Reliability and Engineering Services</td>
     </tr>
     <tr>
-      <td colspan="3" style="text-align: left; font-size: 8px; font-style: italic; color: #555;">Form CT-18.1 (1-06)</td>
+      <td colspan="3" style="text-align: left; font-size: 9px; margin-top: 5px;">Form CT-18.1 (1-06)</td>
     </tr>
   </table>
 

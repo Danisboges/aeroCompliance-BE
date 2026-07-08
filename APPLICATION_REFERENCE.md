@@ -309,33 +309,36 @@ AirworthinessDirective ──── (N) ComplianceTask
 - **Library**: `axios` + `form-data`
 - **Timeout**: Tidak ada (disabled) — proses AI bisa lama
 
-### Struktur Response AI
+### Struktur Response AI (Terbaru v2.1)
 
 ```json
 {
   "filename": "document.pdf",
   "mro_schema": {
     "sb_code": "SB 72-0685 R06",
-    "compliance_category": 3,
+    "tittle": "ENGINE - FAN HUB FRAME ASSEMBLY",
     "effected_type": "GE90-100",
     "effected_model": ["-110B1", "-115B"],
-    "tittle": "ENGINE - FAN HUB FRAME ASSEMBLY",
+    "compliance_category": 3,
+    "task_type": "REP",
+    "references": "GE90-100 Engine Manual",
+    "component_type": "COMPONENT",
+    "compliance_time_type": "HOUR_CYCLE",
+    "compliance_period": "every 500 flight hours",
     "problem_evidence": [
       { "requirement_desc": "...", "remark": "..." }
     ],
     "description": [
       { "requirement_desc": "...", "remark": "..." }
-    ],
-    "task_type": "REP",
-    "references": "GE90-100 Engine Manual"
+    ]
   },
   "routing_directive": {
     "workflow_action": "REP",
     "compliance_category": 3
-  },
-  "raw_ocr_content": "..."
+  }
 }
 ```
+
 
 ### Normalisasi di Backend (`ocrClient.js`)
 
@@ -355,11 +358,21 @@ AI response di-unwrap dari `mro_schema` dan dinormalisasi:
 - **File**: `src/templates/eesGarudaTemplate.html`
 - **Logo**: `public/image/logo_garuda-removebg-preview.png` (di-encode base64)
 - **Kolom tabel**: No | Par | Requirement Desc | Task Type | Ref | AD Related | App (Y/N) | Warranty (Y/N) | Affected A/C or Engine (ESN) | Rep (Y/N) | Due At | Remarks
+- **Logic Mapping Khusus**: Semua field di tabel adalah turunan langsung dari JSON AI, sisanya dikalkulasi di backend berdasar ketersediaan ESN.
 
 ### Template Citilink Indonesia
 - **File**: `src/templates/eesCitilinkTemplate.html`
 - **Logo**: `public/image/citilink logo.png` (di-encode base64)
 - **Format**: Form CT-3-18.1 dengan checkbox (✓)
+- **Logika Ceklis (Rule-Base)**:
+  1. **Unit Concern**: Otomatis terceklis **TEA-2**.
+  2. **Aircraft Type**: Berdasarkan AI `component_type` (COMPONENT / TOOL / PART).
+  3. **Reason of Evaluation**: Jika kategori `ALERT` → Safety & Improve Reliability diceklis.
+  4. **Maintenance Level**: Berdasarkan AI `compliance_time_type` (DATE / HOUR_CYCLE / SCHEDULED / ATTRITION).
+  5. **Consequence**: Affected jika *Engineering Action* = COMPLY/DEFER, Not Affected jika NA.
+  6. **Accomplishment Method**: Berdasarkan AI `task_type` (INSP → Inspection, MOD/REP → Modification).
+  7. **Inspection Type**: Berdasarkan teks `compliance_period` AI (jika ada kata "every" → Recurring, selebihnya One Time).
+  8. **Evaluation Result**: Sengaja dibiarkan **KOSONG** agar *Technician* dapat mengisi/memvalidasi secara manual di UI.
 
 ### Rendering
 - Engine: **Puppeteer** (headless Chrome)
@@ -469,8 +482,32 @@ AI_SERVICE_API_KEY="hf_xxxxx"
 
 ---
 
-## 14. Riwayat Perubahan Dokumen
+## 14. Alur Pengerjaan Kedepannya (Future Workflow & Next Steps)
+
+Untuk memperjelas target pengembangan (roadmap) sistem kedepannya, berikut adalah tahapan pekerjaan yang perlu difokuskan oleh tim:
+
+### A. Penyesuaian AI Service (Tim AI)
+- Tim AI harus menyesuaikan *output* JSON LLM agar 100% mematuhi panduan skema terbaru (v2.1).
+- Fokus utama adalah mengeluarkan 3 variabel baru khusus (`component_type`, `compliance_time_type`, `compliance_period`) untuk mengendalikan otomatisasi PDF Citilink.
+- Backend sudah diprogram untuk menangani variabel tersebut secara aman, baik untuk template Garuda maupun Citilink.
+
+### B. Integrasi Database Maskapai Internal (Tim Backend)
+- Backend harus menembak API/Database internal GMF untuk menarik **Daftar Engine Serial Number (ESN)** yang valid berdasarkan model pesawat (`effected_model`) yang terdampak.
+- Nilai ESN asli ini nantinya akan diinjeksi secara langsung pada saat proses `Generate PDF EES` (pada baris *Affected A/C Engine*).
+
+### C. Finalisasi Alur Approval & Tanda Tangan (Tim Backend & Frontend)
+- Pada bagian bawah PDF EES terdapat kolom *Management Approval* (seperti WQR, DE, Evaluated By).
+- Kedepannya perlu dibuatkan sistem otorisasi pengguna (*Role-Based Access Control / RBAC*) agar *user* dengan level Supervisor bisa melakukan Approval secara sistem, yang kemudian akan menanamkan tanda tangan digital atau nama mereka langsung ke dalam cetakan PDF.
+
+### D. Penyempurnaan Template UI & UX (Tim Frontend)
+- Menggabungkan *form* interaktif *review* EES dengan fitur *live-preview* (pratinjau PDF di layar) agar teknisi dapat melihat hasil cetakan PDF Garuda/Citilink secara aktual sebelum menekan tombol Generate.
+- Menyiapkan mekanisme pengetikan manual untuk *Evaluation Result* di *form* UI khusus untuk melengkapi dokumen Citilink.
+
+---
+
+## 15. Riwayat Perubahan Dokumen
 
 | Tanggal | Versi | Perubahan |
 |---------|-------|-----------|
 | 2026-07-07 | 1.0 | Dokumen awal — mencakup arsitektur, alur 6 langkah, dua sumber SB, integrasi AI, dan aturan bisnis |
+| 2026-07-08 | 1.1 | Penambahan Section 14 mengenai Alur Pengerjaan Kedepannya (Future Workflow & Next Steps) |

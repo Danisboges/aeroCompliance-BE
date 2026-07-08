@@ -2,11 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer');
 const { normalizeOcrPayload } = require('./eesService');
+const serviceBulletinRepository = require('../repositories/serviceBulletinRepository');
 
 /**
  * Extracts and maps evaluation items from Service Bulletin rawPayload.
  */
-const extractPdfItems = (sb) => {
+const extractPdfItems = (sb, dynamicEsnVal = '-') => {
   const payload = sb.rawPayload || {};
   let rawItems = [];
   if (Array.isArray(payload.evaluations)) {
@@ -26,7 +27,8 @@ const extractPdfItems = (sb) => {
     rawItems = sb.generatedEes.evaluations;
   }
 
-  const esnVal = sb.generatedEes?.esn || '-';
+  const esnVal = sb.generatedEes?.esn ? sb.generatedEes.esn : dynamicEsnVal;
+  const globalRef = sb.generatedEes?.references || payload.references || '-';
 
   return rawItems.map((item, index) => {
     const isApplicable = item.isApplicable !== undefined ? Boolean(item.isApplicable) : true;
@@ -39,7 +41,7 @@ const extractPdfItems = (sb) => {
       par: item.paragraph || '-',
       desc: item.requirementDesc || '-',
       taskType: item.taskType || '-',
-      ref: item.ref || '-',
+      ref: item.ref || item.reference || globalRef,
       app: isApplicable ? 'Y' : 'N',
       adRelated: item.adRelated || '-',
       warranty: warrantyVal,
@@ -55,6 +57,15 @@ const extractPdfItems = (sb) => {
  * Generates EES PDF document buffer using Puppeteer.
  */
 const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) => {
+  // Fetch matching ESNs based on applicability
+  const applicabilityResults = await serviceBulletinRepository.checkApplicabilityForSb(sb);
+  const applicableEsns = applicabilityResults
+    .filter(r => r.isApplicable)
+    .map(r => r.engine.esn)
+    .join(', ');
+  
+  const dynamicEsnVal = applicableEsns || '-';
+
   const norm = sb.rawPayload ? normalizeOcrPayload(sb.rawPayload) : {
     eesNumber: sb.generatedEes?.eesNumber || `EES-${sb.sbNumber}`,
     bulletinNumber: sb.sbNumber
@@ -62,7 +73,7 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
 
   const eesNumber = norm.eesNumber;
   const sbNumber = norm.bulletinNumber;
-  const items = extractPdfItems(sb);
+  const items = extractPdfItems(sb, dynamicEsnVal);
 
   // Load the correct template file
   const templateFileName = templateType.toUpperCase() === 'CITILINK' 
@@ -91,23 +102,66 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     console.error('Failed to encode logo to base64:', err);
   }
 
+  // Expand items based on \n\n in desc to split long paragraphs
+  const expandedItems = [];
+  items.forEach((item, index) => {
+    const descs = item.desc ? item.desc.split('\n\n') : ['-'];
+    const remarksArr = item.remarks ? item.remarks.split('\n\n') : ['-'];
+    
+    descs.forEach((d, i) => {
+      expandedItems.push({
+        ...item,
+        no: String(index + 1), // Recalculate No based on group
+        desc: d.trim(),
+        remarks: remarksArr[i] ? remarksArr[i].trim() : (remarksArr[0] || '-'),
+        isFirstInGroup: i === 0,
+        groupLength: descs.length,
+        isVeryFirstRow: expandedItems.length === 0
+      });
+    });
+  });
+
+  const totalRows = expandedItems.length;
+
   // Build the table rows HTML
-  const tableRowsHtml = items.map(item => `
-    <tr>
-      <td>${item.no}</td>
-      <td>${item.par}</td>
-      <td class="align-left">${item.desc}</td>
-      <td>${item.taskType}</td>
-      <td>${item.ref}</td>
-      <td>${item.app}</td>
-      <td>${item.adRelated}</td>
-      <td>${item.warranty}</td>
-      <td>${item.affectedAcEngine}</td>
-      <td>${item.rep}</td>
-      <td>${item.dueAt}</td>
-      <td>${item.remarks}</td>
-    </tr>
-  `).join('');
+  const tableRowsHtml = expandedItems.map((item, idx) => {
+    let html = '<tr>';
+    
+    // Group merged columns
+    if (item.isFirstInGroup) {
+      html += `<td rowspan="${item.groupLength}">${item.no}</td>`;
+      html += `<td rowspan="${item.groupLength}">${item.par}</td>`;
+    }
+    
+    // Individual column
+    html += `<td style="text-align: justify;">${item.desc}</td>`;
+    
+    // Group merged column
+    if (item.isFirstInGroup) {
+      html += `<td rowspan="${item.groupLength}">${item.taskType}</td>`;
+    }
+
+    // ALL merged column (Ref)
+    if (item.isVeryFirstRow) {
+      html += `<td rowspan="${totalRows}" style="text-align: justify;">${item.ref}</td>`;
+    }
+
+    // Group merged columns
+    if (item.isFirstInGroup) {
+      html += `<td rowspan="${item.groupLength}">${item.app}</td>`;
+      html += `<td rowspan="${item.groupLength}">${item.adRelated}</td>`;
+      html += `<td rowspan="${item.groupLength}">${item.warranty}</td>`;
+      html += `<td rowspan="${item.groupLength}">${item.affectedAcEngine}</td>`;
+      html += `<td rowspan="${item.groupLength}">${item.rep}</td>`;
+      html += `<td rowspan="${item.groupLength}">${item.dueAt}</td>`;
+    }
+    
+    // Individual column
+    html += `<td style="text-align: justify;">${item.remarks}</td>`;
+    
+    html += '</tr>';
+    return html;
+  }).join('');
 
   // Interpolate placeholders
   const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -126,9 +180,9 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkConseq1 = isConseqAffected ? '✓' : '';
     const checkConseq2 = !isConseqAffected ? '✓' : '';
 
-    const taskTypeClean = (sb.generatedEes?.taskType || '').toUpperCase();
-    const isMod = taskTypeClean.includes('MOD') || taskTypeClean.includes('SOFTWARE_UPDATE') || taskTypeClean.includes('REP');
+    const taskTypeClean = (sb.generatedEes?.taskType || sb.rawPayload?.task_type || '').toUpperCase();
     const isInsp = taskTypeClean.includes('INSP');
+    const isMod = !isInsp && (taskTypeClean.includes('MOD') || taskTypeClean.includes('SOFTWARE_UPDATE') || taskTypeClean.includes('REP'));
     const checkMethod1 = isMod ? '✓' : '';
     const checkMethod2 = isInsp ? '✓' : '';
     const checkMethod3 = (!isMod && !isInsp) ? '✓' : '';
@@ -136,17 +190,30 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkReason7 = '✓'; // Improve Reliability
     const checkReason8 = sb.sbType === 'ALERT' ? '✓' : ''; // Safety
 
-    const checkMaint3 = (sb.compliancePeriod && sb.compliancePeriod.toLowerCase().includes('scheduled')) ? '✓' : '';
-    const checkMaint4 = (!checkMaint3) ? '✓' : '';
+    const compType = (sb.rawPayload?.compliance_time_type || '').toUpperCase();
+    const checkMaint1 = compType === 'DATE' ? '✓' : '';
+    const checkMaint2 = compType === 'HOUR_CYCLE' ? '✓' : '';
+    const checkMaint3 = compType === 'SCHEDULED' || (sb.compliancePeriod && sb.compliancePeriod.toLowerCase().includes('scheduled')) ? '✓' : '';
+    const checkMaint4 = (!checkMaint1 && !checkMaint2 && !checkMaint3) ? '✓' : '';
 
-    const evaluationHtml = items.map(item => `<li>${item.desc} (Task Type: ${item.taskType}, Ref: ${item.ref})</li>`).join('');
-    const evaluationContent = `<ul>${evaluationHtml || '<li>No specific items listed</li>'}</ul>`;
+    const compliancePeriod = (sb.compliancePeriod || sb.rawPayload?.compliance_period || '').toLowerCase();
+    const isRecurring = compliancePeriod.includes('every');
+    const checkInsp1 = !isRecurring ? '✓' : '';
+    const checkInsp2 = isRecurring ? '✓' : '';
+    
+    const componentType = (sb.rawPayload?.component_type || 'COMPONENT').toUpperCase();
+    const checkComponent = componentType === 'COMPONENT' ? '✓' : '';
+    const checkTool = componentType === 'TOOL' ? '✓' : '';
+    const checkPart = componentType === 'PART' ? '✓' : '';
+
+    const evaluationContent = ''; // Left blank for manual user input
     const sbDate = sb.issueDate ? new Date(sb.issueDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
 
     htmlContent = htmlContent
       .replace(/\{\{eesNumber\}\}/g, eesNumber)
       .replace(/\{\{sbNumber\}\}/g, sbNumber)
       .replace(/\{\{evaluationDate\}\}/g, today)
+      .replace(/\{\{logoBase64\}\}/g, logoBase64)
       .replace(/\{\{manufacturer\}\}/g, sb.issuer || '-')
       .replace(/\{\{sbIssuedDate\}\}/g, sbDate)
       .replace(/\{\{subject\}\}/g, sb.title || '-')
@@ -161,13 +228,13 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       .replace(/\{\{evaluationContent\}\}/g, evaluationContent)
       .replace(/\{\{evaluatorName\}\}/g, evaluatorName || sb.updatedBy?.username || sb.createdBy?.username || 'M Badruz Zaman')
       .replace(/\{\{checkTEA1\}\}/g, '')
-      .replace(/\{\{checkTEA2\}\}/g, '')
-      .replace(/\{\{checkTEA3\}\}/g, '✓')
+      .replace(/\{\{checkTEA2\}\}/g, '✓')
+      .replace(/\{\{checkTEA3\}\}/g, '')
       .replace(/\{\{checkTEA4\}\}/g, '')
       .replace(/\{\{checkTEA5\}\}/g, '')
-      .replace(/\{\{checkComponent\}\}/g, '✓')
-      .replace(/\{\{checkTool\}\}/g, '')
-      .replace(/\{\{checkPart\}\}/g, '')
+      .replace(/\{\{checkComponent\}\}/g, checkComponent)
+      .replace(/\{\{checkTool\}\}/g, checkTool)
+      .replace(/\{\{checkPart\}\}/g, checkPart)
       .replace(/\{\{checkReason1\}\}/g, '')
       .replace(/\{\{checkReason2\}\}/g, '')
       .replace(/\{\{checkReason3\}\}/g, '')
@@ -176,8 +243,8 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       .replace(/\{\{checkReason6\}\}/g, '')
       .replace(/\{\{checkReason7\}\}/g, checkReason7)
       .replace(/\{\{checkReason8\}\}/g, checkReason8)
-      .replace(/\{\{checkMaint1\}\}/g, '')
-      .replace(/\{\{checkMaint2\}\}/g, '')
+      .replace(/\{\{checkMaint1\}\}/g, checkMaint1)
+      .replace(/\{\{checkMaint2\}\}/g, checkMaint2)
       .replace(/\{\{checkMaint3\}\}/g, checkMaint3)
       .replace(/\{\{checkMaint4\}\}/g, checkMaint4)
       .replace(/\{\{checkConseq1\}\}/g, checkConseq1)
@@ -185,8 +252,8 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       .replace(/\{\{checkMethod1\}\}/g, checkMethod1)
       .replace(/\{\{checkMethod2\}\}/g, checkMethod2)
       .replace(/\{\{checkMethod3\}\}/g, checkMethod3)
-      .replace(/\{\{checkInsp1\}\}/g, '')
-      .replace(/\{\{checkInsp2\}\}/g, '✓')
+      .replace(/\{\{checkInsp1\}\}/g, checkInsp1)
+      .replace(/\{\{checkInsp2\}\}/g, checkInsp2)
       .replace(/\{\{checkInsp3\}\}/g, '')
       .replace(/\{\{checkActionYes\}\}/g, checkActionYes)
       .replace(/\{\{checkActionNo\}\}/g, checkActionNo)
