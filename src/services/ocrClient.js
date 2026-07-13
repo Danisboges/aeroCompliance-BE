@@ -49,7 +49,7 @@ const analyzePdf = async ({ fileName, checksum, buffer, storagePath }) => {
     // UNWRAP: AI mengembalikan data di dalam wrapper `mro_schema`
     // Struktur: { filename, mro_schema: {...}, routing_directive: {...}, raw_ocr_content }
     // ============================================================
-    const schema = result.mro_schema || result; // fallback ke root jika mro_schema tidak ada
+    const schema = result.mro_schema?.mro_schema || result.mro_schema || result; // fallback ke root jika mro_schema tidak ada
     const routing = result.routing_directive || {};
     const rawOcrContent = result.raw_ocr_content || null;
 
@@ -116,6 +116,8 @@ const analyzePdf = async ({ fileName, checksum, buffer, storagePath }) => {
       effected_type: schema.effected_type || '',
       effected_model: schema.effected_model || [],
       title: schema.tittle || schema.title || 'Untitled Service Bulletin',
+      manufacturer: schema.manufacturer || '',
+      part_number: schema.part_number || '',
       isMod: false,
       task_type: schema.task_type || routing.workflow_action || '',
       references: schema.references || '',

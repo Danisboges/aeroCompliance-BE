@@ -15,6 +15,60 @@ const eesRepository = require('../repositories/eesRepository');
  * @param {Array}  payload.evaluations    - Array of evaluation items.
  * @returns {Promise<Object>} EesDocument yang berhasil dibuat beserta evaluations.
  */
+
+const formatReferences = (references) => {
+  let refArray = [];
+  if (Array.isArray(references)) {
+    refArray = references;
+  } else if (typeof references === 'string') {
+    const cleanStr = references.replace(/[\r\n\t]+/g, ' ');
+    if (cleanStr.includes(',')) {
+      refArray = cleanStr
+        .split(',')
+        .map(r => r.trim())
+        .filter(r => r.length > 0);
+    } else {
+      refArray = [cleanStr.trim()];
+    }
+  }
+
+  const boilerplateKeywords = [
+    'subject to the restrictions', 
+    'proprietary information', 
+    'cfm proprietary', 
+    'ge proprietary', 
+    'not to be used',
+    'disclosed to others'
+  ];
+
+  const uniqueRefs = [];
+  const seen = new Set();
+
+  for (const ref of refArray) {
+    let cleaned = ref.replace(/\s+/g, ' ').trim();
+    cleaned = cleaned.replace(/-\s+/g, '-');
+
+    if (!cleaned) continue;
+    
+    const lowerCleaned = cleaned.toLowerCase();
+    
+    if (cleaned.length <= 2) continue;
+    if (['and as follows:', 'and as follows'].some(k => lowerCleaned.includes(k))) continue;
+    
+    const isBoilerplate = boilerplateKeywords.some(keyword => lowerCleaned.includes(keyword));
+    if (isBoilerplate) continue;
+
+    if (!seen.has(lowerCleaned)) {
+      seen.add(lowerCleaned);
+      uniqueRefs.push(cleaned);
+    }
+  }
+
+  if (uniqueRefs.length === 0) return '-';
+  
+  return uniqueRefs.map(r => `- ${r}`).join('\n');
+};
+
 /**
  * Normalizes different variations of OCR/AI payloads into a standard format.
  * Supports:
@@ -22,7 +76,18 @@ const eesRepository = require('../repositories/eesRepository');
  * - items object (with dynamic keys) or evaluations array
  * - paragraph mapping to requirementDesc if description is missing
  */
-const normalizeOcrPayload = (payload) => {
+const normalizeOcrPayload = (rawPayload) => {
+  let payload = rawPayload;
+  if (payload && payload.provider && payload.payload) {
+    payload = payload.payload;
+  }
+  if (payload && payload.mro_schema) {
+    if (payload.mro_schema.mro_schema) {
+      payload = payload.mro_schema.mro_schema;
+    } else {
+      payload = payload.mro_schema;
+    }
+  }
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new Error('Validation Error: OCR payload must be an object');
   }
@@ -46,7 +111,10 @@ const normalizeOcrPayload = (payload) => {
   const isCategoryManual = (typeof category === 'number' && category <= 3) || (typeof category === 'string' && ['1', '2', '3'].includes(category));
   const requiresManualEes = isCategoryManual || isAlert;
 
-  // 4. Resolve Evaluations / Items
+  // 4. Resolve Manufacturer
+  const manufacturer = payload.manufacturer || (payload.mro_schema && payload.mro_schema.mro_schema && payload.mro_schema.mro_schema.manufacturer) || null;
+
+  // 5. Resolve Evaluations / Items
   let evaluations = [];
 
   let rawItems = [];
@@ -87,16 +155,20 @@ const normalizeOcrPayload = (payload) => {
   });
 
   return {
-    bulletinNumber,
     eesNumber,
+    bulletinNumber,
     title: payload.tittle || payload.title || '',
     issuer: payload.effected_type || payload.issuer || '',
     taskType: payload.task_type || '',
-    references: Array.isArray(payload.references) ? payload.references.join(', ') : (typeof payload.references === 'string' ? payload.references : ''),
+    references: formatReferences(payload.references),
     effectedType: payload.effected_type || '',
     effectedModel: Array.isArray(payload.effected_model) ? payload.effected_model.join(', ') : (typeof payload.effected_model === 'string' ? payload.effected_model : ''),
+    aircraftType: payload.aircraftType,
+    aircraftId: payload.aircraftId,
+    manufacturer,
+    partNumber: payload.part_number || (payload.mro_schema && payload.mro_schema.mro_schema ? payload.mro_schema.mro_schema.part_number : '') || '',
     requiresManualEes,
-    evaluations
+    evaluations,
   };
 };
 
@@ -105,7 +177,7 @@ const normalizeOcrPayload = (payload) => {
  */
 const processEesWebhook = async (payload, explicitSourceSbId = null) => {
   const normalized = normalizeOcrPayload(payload);
-  const { eesNumber, bulletinNumber, evaluations, taskType, references, effectedType, effectedModel } = normalized;
+  const { eesNumber, bulletinNumber, evaluations, taskType, references, effectedType, effectedModel, aircraftType, manufacturer, partNumber } = normalized;
 
   let sourceSbId = explicitSourceSbId;
 
@@ -124,9 +196,16 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
     sourceSbId = sb.id;
   }
 
+  if (manufacturer) {
+    await prisma.serviceBulletin.update({
+      where: { id: sourceSbId },
+      data: { issuer: manufacturer }
+    });
+  }
+
   // Teruskan ke repository dengan sourceSbId yang sudah di-resolve
   return await eesRepository.createEesDocument(
-    { eesNumber, sourceSbId, taskType, references, effectedType, effectedModel },
+    { eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, aircraftType, partNumber },
     evaluations
   );
 };
@@ -135,4 +214,3 @@ module.exports = {
   processEesWebhook,
   normalizeOcrPayload,
 };
-

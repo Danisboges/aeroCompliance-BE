@@ -8,6 +8,7 @@ const fileStorageService = require('./services/fileStorageService');
 const eesRoutes = require('./routes/eesRoutes');
 const authRoutes = require('./routes/authRoutes');
 const serviceBulletinRoutes = require('./routes/serviceBulletinRoutes');
+const aircraftRoutes = require('./routes/aircraftRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +25,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/api', eesRoutes);
 app.use('/api', authRoutes);
 app.use('/api', serviceBulletinRoutes); // EES Generator workflow (6-step)
+app.use('/api', aircraftRoutes);
 
 // ... sisa kode server.js tetap sama
 app.listen(PORT, HOST, () => {

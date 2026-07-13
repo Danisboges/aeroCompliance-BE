@@ -2,8 +2,33 @@ const path = require('path');
 const fs = require('fs');
 const pdfGenerationService = require('../services/pdfGenerationService');
 const excelGenerationService = require('../services/excelGenerationService');
+const prisma = require('../db');
 const serviceBulletinRepository = require('../repositories/serviceBulletinRepository');
 const { normalizeOcrPayload } = require('../services/eesService');
+
+const saveEesFile = async (sb, buffer, templateType, filename) => {
+  if (!sb.generatedEes || !sb.generatedEes.id) return;
+  
+  const uploadDir = path.join(__dirname, '../../uploads/ees-documents');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  const filePath = path.join(uploadDir, filename);
+  await fs.promises.writeFile(filePath, buffer);
+  
+  const relativePath = `/uploads/ees-documents/${filename}`;
+  
+  const updateData = {};
+  if (templateType === 'GARUDA') updateData.storedGarudaPdfPath = relativePath;
+  else if (templateType === 'CITILINK') updateData.storedCitilinkPdfPath = relativePath;
+  else if (templateType === 'EXCEL') updateData.storedExcelPath = relativePath;
+
+  await prisma.eesDocument.update({
+    where: { id: sb.generatedEes.id },
+    data: updateData
+  });
+};
 
 const handleControllerError = (res, error) => {
   if (error.message.startsWith('Validation Error')) {
@@ -41,6 +66,8 @@ const exportGarudaPdf = async (req, res) => {
     });
     const eesNumber = sb.generatedEes?.eesNumber || `EES-${sb.sbNumber}`;
     const filename = `EES-${eesNumber}-GARUDA.pdf`;
+    
+    await saveEesFile(sb, pdfBuffer, 'GARUDA', filename);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
@@ -66,6 +93,8 @@ const downloadGarudaPdf = async (req, res) => {
     });
     const eesNumber = sb.generatedEes?.eesNumber || `EES-${sb.sbNumber}`;
     const filename = `EES-${eesNumber}-GARUDA.pdf`;
+    
+    await saveEesFile(sb, pdfBuffer, 'GARUDA', filename);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -92,6 +121,8 @@ const exportCitilinkPdf = async (req, res) => {
     const eesNumber = sb.generatedEes?.eesNumber || `EES-${sb.sbNumber}`;
     const filename = `EES-${eesNumber}-CITILINK.pdf`;
 
+    await saveEesFile(sb, pdfBuffer, 'CITILINK', filename);
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     return res.send(pdfBuffer);
@@ -116,6 +147,8 @@ const downloadCitilinkPdf = async (req, res) => {
     });
     const eesNumber = sb.generatedEes?.eesNumber || `EES-${sb.sbNumber}`;
     const filename = `EES-${eesNumber}-CITILINK.pdf`;
+
+    await saveEesFile(sb, pdfBuffer, 'CITILINK', filename);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -143,12 +176,14 @@ const downloadExcel = async (req, res) => {
 
     const items = pdfGenerationService.extractPdfItems(sb, dynamicEsnVal);
 
-    const norm = sb.rawPayload ? normalizeOcrPayload(sb.rawPayload) : {};
+    const norm = sb.ocrResult?.rawPayload ? normalizeOcrPayload(sb.ocrResult?.rawPayload) : {};
     const eesNumber = sb.generatedEes?.eesNumber || norm.eesNumber || `EES-${sb.sbNumber}`;
     const sbNumber = sb.sbNumber;
 
     const excelBuffer = await excelGenerationService.generateEesExcel({ sb, items, eesNumber, sbNumber });
     const filename = `EES-${eesNumber}.xlsx`;
+
+    await saveEesFile(sb, excelBuffer, 'EXCEL', filename);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

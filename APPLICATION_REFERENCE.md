@@ -363,21 +363,27 @@ AI response di-unwrap dari `mro_schema` dan dinormalisasi:
 ### Template Citilink Indonesia
 - **File**: `src/templates/eesCitilinkTemplate.html`
 - **Logo**: `public/image/citilink logo.png` (di-encode base64)
-- **Format**: Form CT-3-18.1 dengan checkbox (✓)
-- **Logika Ceklis (Rule-Base)**:
-  1. **Unit Concern**: Otomatis terceklis **TEA-2**.
+- **Format**: Form CT-3-18.1 dengan checkbox pengisian berupa simbol silang (**X**)
+- **Logika Ceklis & Desain**:
+  1. **Unit Concern**: Otomatis tersilang **TEA-2**. Layout checkbox disusun dalam **2 kolom vertikal** di bawah label:
+     - Kolom Kiri: **TEA-1**, **TEA-2**, **TEA-3**
+     - Kolom Kanan: **TEA-4**, **TEA-5**, **TEA-6**
   2. **Aircraft Type**: Berdasarkan AI `component_type` (COMPONENT / TOOL / PART).
-  3. **Reason of Evaluation**: Jika kategori `ALERT` → Safety & Improve Reliability diceklis.
+  3. **Reason of Evaluation**: Jika kategori `ALERT` → Safety & Improve Reliability disilang.
   4. **Maintenance Level**: Berdasarkan AI `compliance_time_type` (DATE / HOUR_CYCLE / SCHEDULED / ATTRITION).
   5. **Consequence**: Affected jika *Engineering Action* = COMPLY/DEFER, Not Affected jika NA.
   6. **Accomplishment Method**: Berdasarkan AI `task_type` (INSP → Inspection, MOD/REP → Modification).
   7. **Inspection Type**: Berdasarkan teks `compliance_period` AI (jika ada kata "every" → Recurring, selebihnya One Time).
   8. **Evaluation Result**: Sengaja dibiarkan **KOSONG** agar *Technician* dapat mengisi/memvalidasi secara manual di UI.
+  9. **Pemisah Kolom Titik Dua (`:`)**: Garis batas/border vertikal di sekitar kolom titik dua disembunyikan menggunakan `border-right: hidden !important` dan `border-left: hidden !important` agar terlihat melebur rapi ke layout form.
+  10. **Pemotongan Halaman Alami**: Aturan CSS `.form-table > tbody > tr { page-break-inside: auto; }` diterapkan agar baris referensi yang sangat panjang (`Other Ref.`) dapat terpotong secara alami ke halaman berikutnya tanpa menyisakan ruang kosong besar di Halaman 1.
+  11. **Ukuran Tulisan**: Base font size diset ke **`12px`** untuk meningkatkan legibilitas, dan ukuran tanda silang diset ke `12px` di dalam kotak `11px x 11px` agar tanda silang memenuhi kotak checkbox.
 
 ### Rendering
 - Engine: **Puppeteer** (headless Chrome)
 - Logo diinject sebagai **base64 inline** (`data:image/png;base64,...`) karena Puppeteer sandbox tidak bisa akses `file://` URL
-- Field "Evaluated by:" diambil dari `req.user.username` (JWT payload)
+- Field "Evaluated by:" diambil dari `req.user.username` (`JWT` payload)
+- Tanda pengisian checkbox menggunakan karakter silang **`X`** (diubah dari sebelumnya centang `✓`).
 
 ---
 
@@ -511,3 +517,19 @@ Untuk memperjelas target pengembangan (roadmap) sistem kedepannya, berikut adala
 |---------|-------|-----------|
 | 2026-07-07 | 1.0 | Dokumen awal — mencakup arsitektur, alur 6 langkah, dua sumber SB, integrasi AI, dan aturan bisnis |
 | 2026-07-08 | 1.1 | Penambahan Section 14 mengenai Alur Pengerjaan Kedepannya (Future Workflow & Next Steps) |
+| 2026-07-13 | 1.2 | Perbaikan normalisasi data AI (unwrapping nested `mro_schema`), penyempurnaan layout Citilink (Portrait, page-break, 2-column checkbox, simbol silang X), pembersihan boilerplate referensi, dan optimasi visual border kolom titik dua. |
+
+### Fitur Terbaru (2026-07-13)
+- **Unwrapping Nested Payload AI**: Backend secara dinamis membuka pembungkus ganda payload AI (`payload.mro_schema.mro_schema`) agar data aman diekstrak secara otomatis.
+- **Normalisasi & Pembersihan Referensi**:
+  - Semua referensi panjang dibersihkan dari spasi berlebih, digabungkan baris yang terputus tanda hubung, dan dihapus dari data hukum/boilerplate.
+  - Duplikasi referensi dibersihkan secara otomatis.
+  - Ditampilkan dalam format baris baru per poin (`- Referensi 1\n- Referensi 2`).
+- **Penyempurnaan Template PDF Citilink**:
+  - Layout diatur dinamis menjadi **Portrait** untuk Citilink, sementara Garuda tetap **Landscape**.
+  - Checkbox unit concern diatur ulang menjadi 2 kolom vertikal: Kolom Kiri (TEA-1, TEA-2, TEA-3) dan Kolom Kanan (TEA-4, TEA-5, TEA-6).
+  - Mengubah tanda pengisian checkbox dari centang (`✓`) menjadi silang (**`X`**).
+  - Tanda silang **`X`** diatur agar memenuhi kotak dengan menaikkan font-size tanda silang (`12px`) dan memperkecil kotaknya (`11px` x `11px`).
+  - Menghilangkan pembatas border vertikal di sekitar kolom titik dua (`:`) agar tampilan form terlihat lebih menyatu.
+  - Membuka pembatasan pemotongan halaman (`page-break-inside: auto`) pada baris tabel utama agar baris referensi yang sangat panjang terpotong alami ke Halaman 2 dan tidak menyisakan ruang kosong besar di Halaman 1.
+  - Meningkatkan ukuran huruf dasar template dari `11px` ke `12px` untuk legibilitas cetak.

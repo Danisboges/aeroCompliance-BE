@@ -89,8 +89,6 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  assignedComplianceTasks  ComplianceTask[]           @relation("ComplianceTaskAssignee")
-  createdComplianceTasks   ComplianceTask[]            @relation("ComplianceTaskCreator")
   uploadedServiceBulletins ServiceBulletin[]           @relation("ServiceBulletinCreator")
   updatedServiceBulletins  ServiceBulletin[]           @relation("ServiceBulletinUpdater")
   engineeringRecs          EngineeringRecommendation[]
@@ -105,7 +103,6 @@ model Aircraft {
   operator        String?
   active          Boolean          @default(true)
   engines         Engine[]
-  complianceTasks ComplianceTask[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @default(now()) @updatedAt
 }
@@ -119,8 +116,6 @@ model Engine {
   aircraftId String?
   aircraft   Aircraft? @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
   active     Boolean   @default(true)
-
-  complianceTasks ComplianceTask[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -138,7 +133,6 @@ model AirworthinessDirective {
   dueDate   DateTime?
   status    DocumentStatus @default(ACTIVE)
 
-  complianceTasks ComplianceTask[]
   createdAt       DateTime         @default(now())
 }
 
@@ -161,23 +155,31 @@ model ServiceBulletin {
   // File Upload fields
   originalFileName String?
   storedFileName   String?
-  ocrStatus        OcrProcessingStatus @default(UPLOADED)
   createdById      String?
   createdBy        User?               @relation("ServiceBulletinCreator", fields: [createdById], references: [id])
 
   updatedById      String?
   updatedBy        User?               @relation("ServiceBulletinUpdater", fields: [updatedById], references: [id])
 
-  // AI Draft fields
-  rawPayload       Json?
-  draftStatus      OcrDraftStatus      @default(DRAFT)
-  extractedAt      DateTime?
-
   // Relations
+  ocrResult      OcrResult?
   generatedEes   EesDocument?
   engineeringRec EngineeringRecommendation?
-  complianceTasks ComplianceTask[]
-  createdAt        DateTime            @default(now())
+  createdAt      DateTime            @default(now())
+}
+
+model OcrResult {
+  id                String              @id @default(uuid())
+  serviceBulletinId String              @unique
+  serviceBulletin   ServiceBulletin     @relation(fields: [serviceBulletinId], references: [id], onDelete: Cascade)
+  
+  ocrStatus         OcrProcessingStatus @default(UPLOADED)
+  draftStatus       OcrDraftStatus      @default(DRAFT)
+  rawPayload        Json?
+  extractedAt       DateTime?
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @default(now()) @updatedAt
 }
 
 // 3. EES (Engineering Evaluation Sheet) - Hasil AI
@@ -193,12 +195,16 @@ model EesDocument {
   references     String?
   effectedType   String?
   effectedModel  String?
+  
+  aircraftType   String?
+  
   esn            String?
 
-  storedPdfPath  String?
+  storedGarudaPdfPath    String?
+  storedCitilinkPdfPath  String?
+  storedExcelPath        String?
 
   evaluations     EesEvaluationItem[]
-  complianceTasks ComplianceTask[]
   createdAt       DateTime            @default(now())
 }
 
@@ -216,9 +222,6 @@ model EesEvaluationItem {
   rep             String?
   dueAt           DateTime?
   isApplicable    Boolean     @default(true)
-
-  complianceTaskId String?
-  complianceTask   ComplianceTask? @relation(fields: [complianceTaskId], references: [id])
 }
 
 // 4. Engineering Recommendation — Step 4 of EES Workflow (user input)
@@ -240,35 +243,3 @@ model EngineeringRecommendation {
   updatedAt         DateTime     @default(now()) @updatedAt
 }
 
-// --- COMPLIANCE ---
-model ComplianceTask {
-  id     String           @id
-  title  String
-  status ComplianceStatus @default(OPEN)
-
-  adId String?
-  ad   AirworthinessDirective? @relation(fields: [adId], references: [id])
-
-  sbId String?
-  sb   ServiceBulletin? @relation(fields: [sbId], references: [id])
-
-  eesId String?
-  ees   EesDocument? @relation(fields: [eesId], references: [id])
-
-  aircraftId String?
-  aircraft   Aircraft? @relation(fields: [aircraftId], references: [id])
-
-  engineId String?
-  engine   Engine? @relation(fields: [engineId], references: [id])
-
-  assignedToId String?
-  assignedTo   User? @relation("ComplianceTaskAssignee", fields: [assignedToId], references: [id])
-  createdById  String?
-  createdBy    User? @relation("ComplianceTaskCreator", fields: [createdById], references: [id])
-
-  eesEvaluationItems EesEvaluationItem[]
-
-  dueDate   DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now()) @updatedAt
-}

@@ -27,9 +27,12 @@ const formatSbResponse = (sb, originalUrl = '') => {
   // Convert prisma serializeable object to plain JSON to allow virtual properties
   const sbJson = JSON.parse(JSON.stringify(sb));
 
+  const status = isOcrDraftRoute ? sbJson.ocrResult?.draftStatus : sbJson.ocrResult?.ocrStatus;
+  
   const result = {
     ...sbJson,
-    status: isOcrDraftRoute ? sbJson.draftStatus : sbJson.ocrStatus
+    rawPayload: sbJson.ocrResult?.rawPayload,
+    status
   };
 
   // Add virtual sb property pointing back to the result details (without circular references)
@@ -40,7 +43,7 @@ const formatSbResponse = (sb, originalUrl = '') => {
     title: sbJson.title,
     issuer: sbJson.issuer,
     issueDate: sbJson.issueDate,
-    status: sbJson.status,
+    status,
     generatedEes: sbJson.generatedEes
   };
 
@@ -137,7 +140,11 @@ const validateServiceBulletin = async (req, res) => {
 
 const generateEes = async (req, res) => {
   try {
-    const result = await serviceBulletinService.generateEes(req.params.id, req.user?.id);
+    const customData = {
+      eesNumber: req.body?.eesNumber,
+      aircraftType: req.body?.aircraftType
+    };
+    const result = await serviceBulletinService.generateEes(req.params.id, req.user?.id, customData);
     return res.status(201).json({
       message: 'EES document generated from validated Service Bulletin draft',
       data: formatSbResponse(result, req.originalUrl)
@@ -282,9 +289,9 @@ async function getAiSummary(req, res) {
       data: {
         sbId: sb.id,
         sbNumber: sb.sbNumber,
-        draftStatus: sb.draftStatus,
-        ocrStatus: sb.ocrStatus,
-        aiSummary: sb.rawPayload || null,
+        draftStatus: sb.ocrResult?.draftStatus,
+        ocrStatus: sb.ocrResult?.ocrStatus,
+        aiSummary: sb.ocrResult?.rawPayload || null,
         extractedAt: sb.extractedAt,
       }
     });

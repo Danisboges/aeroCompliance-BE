@@ -1,8 +1,8 @@
 const fs = require('fs/promises');
 const path = require('path');
 
-const STORAGE_ROOT = path.resolve(__dirname, '../../uploads/ocr-documents');
-const PUBLIC_BASE_URL = '/storage/ocr-documents';
+const STORAGE_ROOT = path.resolve(__dirname, '../../uploads/sb-documents');
+const PUBLIC_BASE_URL = '/storage/sb-documents';
 
 const ensureStorageRoot = async () => {
   await fs.mkdir(STORAGE_ROOT, { recursive: true });
@@ -10,7 +10,7 @@ const ensureStorageRoot = async () => {
 
 const buildStoredFileName = (id, checksum, originalFileName) => {
   const extension = path.extname(originalFileName || '').toLowerCase() || '.pdf';
-  return `ocr-${id}-${checksum.slice(0, 12)}${extension}`;
+  return `sb-${id}-${checksum.slice(0, 12)}${extension}`;
 };
 
 const storePdf = async ({ id, checksum, originalFileName, buffer }) => {

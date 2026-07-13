@@ -7,7 +7,7 @@
         font-family: 'Arial', sans-serif; 
         margin: 20px; 
         color: #000; 
-        font-size: 11px;
+        font-size: 12px;
         line-height: 1.2;
     }
     
@@ -32,7 +32,7 @@
     }
     .header-right {
         text-align: right;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: bold;
         padding-top: 10px;
     }
@@ -58,17 +58,17 @@
     }
     .label-col {
         width: 15%;
-        border-right: none !important;
+        border-right: hidden !important;
     }
     .colon-col {
         width: 2%;
         text-align: center;
-        border-left: none !important;
-        border-right: none !important;
+        border-left: hidden !important;
+        border-right: hidden !important;
     }
     .value-col {
         width: 83%;
-        border-left: none !important;
+        border-left: hidden !important;
     }
     
     /* Inner tables (for layouts inside a td) */
@@ -94,12 +94,12 @@
     }
     .checkbox-box {
         display: inline-block;
-        width: 12px;
-        height: 12px;
+        width: 11px;
+        height: 11px;
         border: 1px solid #000;
         text-align: center;
-        line-height: 12px;
-        font-size: 10px;
+        line-height: 10px;
+        font-size: 12px;
         font-weight: bold;
         margin-right: 5px;
         margin-bottom: -2px;
@@ -123,7 +123,7 @@
         width: 100%;
         border-collapse: collapse;
         margin-top: 15px;
-        font-size: 11px;
+        font-size: 12px;
     }
     .footer-table td {
         border: none;
@@ -135,7 +135,14 @@
         page-break-inside: auto;
     }
     .form-table > tbody > tr {
-        page-break-inside: avoid;
+        page-break-inside: auto;
+    }
+  
+    .no-border-bottom th, .no-border-bottom td {
+        border-bottom: none !important;
+    }
+    .no-border-top th, .no-border-top td {
+        border-top: none !important;
     }
   </style>
 </head>
@@ -170,22 +177,20 @@
           <table class="inner-table" style="height: 100%;">
             <tr>
               <td style="width: 35%; padding-top: 5px; padding-bottom: 5px;">{{evaluationDate}}</td>
-              <td style="width: 45%; padding-top: 5px; padding-bottom: 5px;">
+              <td style="width: 45%; padding-top: 5px; padding-bottom: 5px; vertical-align: top;">
+                <div style="font-weight: bold; margin-bottom: 5px;">Unit Concern:</div>
                 <table style="border: none; width: 100%;">
                   <tr>
-                    <td style="vertical-align: top; width: 30%; border: none; padding: 0;">Unit Concern:</td>
-                    <td style="vertical-align: top; border: none; padding: 0;">
-                      <div style="margin-bottom: 2px;">
-                        <span class="checkbox-item"><span class="checkbox-box">{{checkTEA1}}</span> TEA-1</span>
-                        <span class="checkbox-item"><span class="checkbox-box">{{checkTEA2}}</span> TEA-2</span>
-                        <span class="checkbox-item"><span class="checkbox-box">{{checkTEA3}}</span> TEA-3</span>
-                      </div>
-                      <div>
-                        <span class="checkbox-item"><span class="checkbox-box">{{checkTEA4}}</span> TEA-4</span>
-                        <span class="checkbox-item"><span class="checkbox-box">{{checkTEA5}}</span> TEA-5</span>
-                        <span class="checkbox-item"><span class="checkbox-box"></span> TEA-6</span>
-                      </div>
-                    </td>
+                    <td style="vertical-align: top; border: none; padding: 2px 0; width: 50%;"><span class="checkbox-box">{{checkTEA1}}</span> TEA-1</td>
+                    <td style="vertical-align: top; border: none; padding: 2px 0; width: 50%;"><span class="checkbox-box">{{checkTEA4}}</span> TEA-4</td>
+                  </tr>
+                  <tr>
+                    <td style="vertical-align: top; border: none; padding: 2px 0;"><span class="checkbox-box">{{checkTEA2}}</span> TEA-2</td>
+                    <td style="vertical-align: top; border: none; padding: 2px 0;"><span class="checkbox-box">{{checkTEA5}}</span> TEA-5</td>
+                  </tr>
+                  <tr>
+                    <td style="vertical-align: top; border: none; padding: 2px 0;"><span class="checkbox-box">{{checkTEA3}}</span> TEA-3</td>
+                    <td style="vertical-align: top; border: none; padding: 2px 0;"><span class="checkbox-box">{{checkTEA6}}</span> TEA-6</td>
                   </tr>
                 </table>
               </td>
@@ -194,12 +199,23 @@
           </table>
         </td>
       </tr>
-      <tr>
+      <tr class="no-border-bottom">
         <td class="label-col">Bulletin No.</td>
         <td class="colon-col">:</td>
-        <td class="value-col">{{sbNumber}}</td>
+        <td class="value-col" style="padding: 0;">
+          <table class="inner-table">
+            <tr>
+              <td style="width: 40%; padding-top: 5px; padding-bottom: 5px;">{{sbNumber}}</td>
+              <td style="width: 60%; padding-top: 5px; padding-bottom: 5px; text-align: right;">
+                <span style="margin-right: 15px;">Bull Type: {{bullType}}</span>
+                <span style="margin-right: 15px;">ATA: {{ata}}</span>
+                <span>Sub ATA: {{subAta}}</span>
+              </td>
+            </tr>
+          </table>
+        </td>
       </tr>
-      <tr>
+      <tr class="no-border-top no-border-bottom">
         <td class="label-col">Manufacturer</td>
         <td class="colon-col">:</td>
         <td class="value-col" style="padding: 0;">
@@ -211,17 +227,17 @@
           </table>
         </td>
       </tr>
-      <tr>
-        <td class="label-col" style="height: 40px;">Subject</td>
+      <tr class="no-border-top no-border-bottom">
+        <td class="label-col">Subject</td>
         <td class="colon-col">:</td>
         <td class="value-col pre-text" style="text-transform: uppercase;">{{subject}}</td>
       </tr>
-      <tr>
-        <td class="label-col" style="height: 100px;">Other Ref.</td>
+      <tr class="no-border-top">
+        <td class="label-col">Other Ref.</td>
         <td class="colon-col">:</td>
         <td class="value-col pre-text">{{otherRef}}</td>
       </tr>
-      <tr>
+      <tr class="no-border-bottom">
         <td class="label-col">Aircraft Type<br>Engine/APU</td>
         <td class="colon-col">:<br>:</td>
         <td class="value-col">
@@ -233,12 +249,12 @@
           </div>
         </td>
       </tr>
-      <tr>
+      <tr class="no-border-top no-border-bottom">
         <td class="label-col">Part Number</td>
         <td class="colon-col">:</td>
         <td class="value-col pre-text">{{partNumber}}</td>
       </tr>
-      <tr>
+      <tr class="no-border-top">
         <td class="label-col">Note</td>
         <td class="colon-col">:</td>
         <td class="value-col pre-text">{{note}}</td>

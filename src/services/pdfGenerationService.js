@@ -4,11 +4,27 @@ const puppeteer = require('puppeteer');
 const { normalizeOcrPayload } = require('./eesService');
 const serviceBulletinRepository = require('../repositories/serviceBulletinRepository');
 
+const getPayloadData = (sb) => {
+  let payload = sb.ocrResult?.rawPayload || sb.rawPayload || {};
+  if (payload && payload.provider && payload.payload) {
+    payload = payload.payload;
+  }
+  if (payload && payload.mro_schema) {
+    if (payload.mro_schema.mro_schema) {
+      payload = payload.mro_schema.mro_schema;
+    } else {
+      payload = payload.mro_schema;
+    }
+  }
+  return payload;
+};
+
+
 /**
  * Extracts and maps evaluation items from Service Bulletin rawPayload.
  */
 const extractPdfItems = (sb, dynamicEsnVal = '-') => {
-  const payload = sb.rawPayload || {};
+  const payload = getPayloadData(sb);
   let rawItems = [];
   if (Array.isArray(payload.evaluations)) {
     rawItems = payload.evaluations;
@@ -33,8 +49,9 @@ const extractPdfItems = (sb, dynamicEsnVal = '-') => {
   return rawItems.map((item, index) => {
     const isApplicable = item.isApplicable !== undefined ? Boolean(item.isApplicable) : true;
     let warrantyVal = '-';
-    if (item.warranty === true) warrantyVal = 'Y';
-    else if (item.warranty === false) warrantyVal = 'N';
+    const itemWarranty = item.warranty !== undefined && item.warranty !== null ? item.warranty : payload.warranty;
+    if (itemWarranty === true || itemWarranty === 'true' || itemWarranty === 'Yes' || itemWarranty === 'Y') warrantyVal = 'Y';
+    else if (itemWarranty === false || itemWarranty === 'false' || itemWarranty === 'No' || itemWarranty === 'N') warrantyVal = 'N';
     
     return {
       no: item.itemNo !== undefined && item.itemNo !== null ? String(item.itemNo) : String(index + 1),
@@ -66,7 +83,8 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
   
   const dynamicEsnVal = applicableEsns || '-';
 
-  const norm = sb.rawPayload ? normalizeOcrPayload(sb.rawPayload) : {
+  const payload = getPayloadData(sb);
+  const norm = sb.ocrResult?.rawPayload || sb.rawPayload ? normalizeOcrPayload(sb.ocrResult?.rawPayload || sb.rawPayload) : {
     eesNumber: sb.generatedEes?.eesNumber || `EES-${sb.sbNumber}`,
     bulletinNumber: sb.sbNumber
   };
@@ -172,46 +190,62 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const isDefer = engRec.recommendedAction === 'DEFER';
     const isNA = engRec.recommendedAction === 'NA';
 
-    const checkActionYes = isComply ? '✓' : '';
-    const checkActionNo = isNA ? '✓' : '';
-    const checkActionHold = isDefer ? '✓' : '';
+    const checkActionYes = isComply ? 'X' : '';
+    const checkActionNo = isNA ? 'X' : '';
+    const checkActionHold = isDefer ? 'X' : '';
 
     const isConseqAffected = isComply || isDefer;
-    const checkConseq1 = isConseqAffected ? '✓' : '';
-    const checkConseq2 = !isConseqAffected ? '✓' : '';
+    const checkConseq1 = isConseqAffected ? 'X' : '';
+    const checkConseq2 = !isConseqAffected ? 'X' : '';
 
-    const taskTypeClean = (sb.generatedEes?.taskType || sb.rawPayload?.task_type || '').toUpperCase();
+    const taskTypeClean = (sb.generatedEes?.taskType || payload.task_type || '').toUpperCase();
     const isInsp = taskTypeClean.includes('INSP');
     const isMod = !isInsp && (taskTypeClean.includes('MOD') || taskTypeClean.includes('SOFTWARE_UPDATE') || taskTypeClean.includes('REP'));
-    const checkMethod1 = isMod ? '✓' : '';
-    const checkMethod2 = isInsp ? '✓' : '';
-    const checkMethod3 = (!isMod && !isInsp) ? '✓' : '';
+    const checkMethod1 = isMod ? 'X' : '';
+    const checkMethod2 = isInsp ? 'X' : '';
+    const checkMethod3 = (!isMod && !isInsp) ? 'X' : '';
 
-    const checkReason7 = '✓'; // Improve Reliability
-    const checkReason8 = sb.sbType === 'ALERT' ? '✓' : ''; // Safety
+    const checkReason7 = 'X'; // Improve Reliability
+    const checkReason8 = sb.sbType === 'ALERT' ? 'X' : ''; // Safety
 
-    const compType = (sb.rawPayload?.compliance_time_type || '').toUpperCase();
-    const checkMaint1 = compType === 'DATE' ? '✓' : '';
-    const checkMaint2 = compType === 'HOUR_CYCLE' ? '✓' : '';
-    const checkMaint3 = compType === 'SCHEDULED' || (sb.compliancePeriod && sb.compliancePeriod.toLowerCase().includes('scheduled')) ? '✓' : '';
-    const checkMaint4 = (!checkMaint1 && !checkMaint2 && !checkMaint3) ? '✓' : '';
+    const compType = (payload.compliance_time_type || '').toUpperCase();
+    const checkMaint1 = compType === 'DATE' ? 'X' : '';
+    const checkMaint2 = compType === 'HOUR_CYCLE' ? 'X' : '';
+    const checkMaint3 = compType === 'SCHEDULED' || (sb.compliancePeriod && sb.compliancePeriod.toLowerCase().includes('scheduled')) ? 'X' : '';
+    const checkMaint4 = (!checkMaint1 && !checkMaint2 && !checkMaint3) ? 'X' : '';
 
-    const compliancePeriod = (sb.compliancePeriod || sb.rawPayload?.compliance_period || '').toLowerCase();
+    const compliancePeriod = (sb.compliancePeriod || payload.compliance_period || '').toLowerCase();
     const isRecurring = compliancePeriod.includes('every');
-    const checkInsp1 = !isRecurring ? '✓' : '';
-    const checkInsp2 = isRecurring ? '✓' : '';
+    const checkInsp1 = !isRecurring ? 'X' : '';
+    const checkInsp2 = isRecurring ? 'X' : '';
     
-    const componentType = (sb.rawPayload?.component_type || 'COMPONENT').toUpperCase();
-    const checkComponent = componentType === 'COMPONENT' ? '✓' : '';
-    const checkTool = componentType === 'TOOL' ? '✓' : '';
-    const checkPart = componentType === 'PART' ? '✓' : '';
+    const componentType = (payload.component_type || 'COMPONENT').toUpperCase();
+    const checkComponent = componentType === 'COMPONENT' ? 'X' : '';
+    const checkTool = componentType === 'TOOL' ? 'X' : '';
+    const checkPart = componentType === 'PART' ? 'X' : '';
 
     const evaluationContent = ''; // Left blank for manual user input
     const sbDate = sb.issueDate ? new Date(sb.issueDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
 
+    let ata = '';
+    let subAta = '';
+    const ataMatch = sbNumber.match(/(?:^|-| )(\d{2})-(\d{2})(?:-|$)/);
+    if (ataMatch) {
+      ata = ataMatch[1];
+      subAta = ataMatch[2];
+    } else {
+      const ataMatch2 = sbNumber.match(/(?:^|-| )(\d{2})-(\d{3,4})(?:-|$)/);
+      if (ataMatch2) {
+        ata = ataMatch2[1];
+      }
+    }
+
     htmlContent = htmlContent
       .replace(/\{\{eesNumber\}\}/g, eesNumber)
       .replace(/\{\{sbNumber\}\}/g, sbNumber)
+      .replace(/\{\{bullType\}\}/g, 'SB')
+      .replace(/\{\{ata\}\}/g, ata)
+      .replace(/\{\{subAta\}\}/g, subAta)
       .replace(/\{\{evaluationDate\}\}/g, today)
       .replace(/\{\{logoBase64\}\}/g, logoBase64)
       .replace(/\{\{manufacturer\}\}/g, sb.issuer || '-')
@@ -219,26 +253,27 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       .replace(/\{\{subject\}\}/g, sb.title || '-')
       .replace(/\{\{otherRef\}\}/g, sb.generatedEes?.references || '-')
       .replace(/\{\{aircraftType\}\}/g, sb.effectivityType || '-')
-      .replace(/\{\{partNumber\}\}/g, '-')
-      .replace(/\{\{note\}\}/g, '-')
+      .replace(/\{\{partNumber\}\}/g, norm.partNumber || '-')
+      .replace(/\{\{note\}\}/g, payload.note || '-')
       .replace(/\{\{effectivity\}\}/g, sb.effectivityRange || '-')
-      .replace(/\{\{warrantyType\}\}/g, '-')
-      .replace(/\{\{warrantyDueDate\}\}/g, '-')
-      .replace(/\{\{warrantyNote\}\}/g, '-')
+      .replace(/\{\{warrantyType\}\}/g, payload.warranty === true || payload.warranty === 'true' ? 'Yes' : (payload.warranty === false || payload.warranty === 'false' ? 'No' : (payload.warranty || '-')))
+      .replace(/\{\{warrantyDueDate\}\}/g, payload.warranty_due_date || '-')
+      .replace(/\{\{warrantyNote\}\}/g, payload.warranty_note || '-')
       .replace(/\{\{evaluationContent\}\}/g, evaluationContent)
       .replace(/\{\{evaluatorName\}\}/g, evaluatorName || sb.updatedBy?.username || sb.createdBy?.username || 'M Badruz Zaman')
       .replace(/\{\{checkTEA1\}\}/g, '')
-      .replace(/\{\{checkTEA2\}\}/g, '✓')
+      .replace(/\{\{checkTEA2\}\}/g, 'X')
       .replace(/\{\{checkTEA3\}\}/g, '')
       .replace(/\{\{checkTEA4\}\}/g, '')
       .replace(/\{\{checkTEA5\}\}/g, '')
+      .replace(/\{\{checkTEA6\}\}/g, '')
       .replace(/\{\{checkComponent\}\}/g, checkComponent)
       .replace(/\{\{checkTool\}\}/g, checkTool)
       .replace(/\{\{checkPart\}\}/g, checkPart)
       .replace(/\{\{checkReason1\}\}/g, '')
       .replace(/\{\{checkReason2\}\}/g, '')
       .replace(/\{\{checkReason3\}\}/g, '')
-      .replace(/\{\{checkReason4\}\}/g, '✓')
+      .replace(/\{\{checkReason4\}\}/g, 'X')
       .replace(/\{\{checkReason5\}\}/g, '')
       .replace(/\{\{checkReason6\}\}/g, '')
       .replace(/\{\{checkReason7\}\}/g, checkReason7)
@@ -262,8 +297,8 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       .replace(/\{\{checkImpl2\}\}/g, '')
       .replace(/\{\{checkImpl3\}\}/g, '')
       .replace(/\{\{checkImpl4\}\}/g, '')
-      .replace(/\{\{checkImpl5\}\}/g, '✓')
-      .replace(/\{\{checkApproval1\}\}/g, '✓')
+      .replace(/\{\{checkImpl5\}\}/g, 'X')
+      .replace(/\{\{checkApproval1\}\}/g, 'X')
       .replace(/\{\{checkApproval2\}\}/g, '')
       .replace(/\{\{checkApproval3\}\}/g, '');
   } else {
@@ -285,10 +320,11 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
-    // Print to A4 landscape PDF
+    // Print to A4 PDF (Citilink is Portrait, Garuda is Landscape)
+    const isLandscape = templateType.toUpperCase() !== 'CITILINK';
     const pdfBuffer = await page.pdf({
       format: 'A4',
-      landscape: true,
+      landscape: isLandscape,
       margin: {
         top: '10mm',
         right: '10mm',

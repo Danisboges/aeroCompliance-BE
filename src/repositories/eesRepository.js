@@ -5,18 +5,12 @@ const { generateId } = require('../utils/idGenerator');
  * Persists EesDocument along with its nested EesEvaluationItems.
  */
 const createEesDocument = async (documentData, evaluations) => {
-  const { eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, esn } = documentData;
+  const { eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, esn, aircraftType } = documentData;
 
   // Hapus EesDocument lama jika sudah ada untuk menghindari kendala keunikan
-  const existingBySb = await prisma.eesDocument.findUnique({
-    where: { sourceSbId },
+  await prisma.eesDocument.deleteMany({
+    where: { sourceSbId }
   });
-
-  if (existingBySb) {
-    await prisma.eesDocument.delete({
-      where: { id: existingBySb.id }
-    });
-  }
 
   const existingByNumber = await prisma.eesDocument.findUnique({
     where: { eesNumber },
@@ -38,6 +32,7 @@ const createEesDocument = async (documentData, evaluations) => {
       effectedType: effectedType || null,
       effectedModel: effectedModel || null,
       esn: esn || null,
+      aircraftType: aircraftType || null,
       evaluations: {
         create: evaluations.map((item) => ({
           id: generateId('ITEM'),

@@ -11,6 +11,7 @@ const includeRelations = {
   generatedEes: {
     include: { evaluations: true }
   },
+  ocrResult: true,
   engineeringRec: true
 };
 
@@ -18,10 +19,19 @@ const includeRelations = {
  * Creates a new ServiceBulletin record.
  */
 const createServiceBulletin = async (data) => {
+  const { ocrStatus, draftStatus, rawPayload, extractedAt, ...sbData } = data;
   return prisma.serviceBulletin.create({
     data: {
       id: generateId('SB-DOC'),
-      ...data
+      ...sbData,
+      ocrResult: {
+        create: {
+          ...(ocrStatus !== undefined && { ocrStatus }),
+          ...(draftStatus !== undefined && { draftStatus }),
+          ...(rawPayload !== undefined && { rawPayload }),
+          ...(extractedAt !== undefined && { extractedAt })
+        }
+      }
     },
     include: includeRelations
   });
@@ -31,9 +41,26 @@ const createServiceBulletin = async (data) => {
  * Updates an existing ServiceBulletin record.
  */
 const updateServiceBulletin = async (id, data) => {
+  const { ocrStatus, draftStatus, rawPayload, extractedAt, ...sbData } = data;
+  const ocrUpdates = {};
+  if (ocrStatus !== undefined) ocrUpdates.ocrStatus = ocrStatus;
+  if (draftStatus !== undefined) ocrUpdates.draftStatus = draftStatus;
+  if (rawPayload !== undefined) ocrUpdates.rawPayload = rawPayload;
+  if (extractedAt !== undefined) ocrUpdates.extractedAt = extractedAt;
+
   return prisma.serviceBulletin.update({
     where: { id },
-    data,
+    data: {
+      ...sbData,
+      ...(Object.keys(ocrUpdates).length > 0 && {
+        ocrResult: {
+          upsert: {
+            create: ocrUpdates,
+            update: ocrUpdates
+          }
+        }
+      })
+    },
     include: includeRelations
   });
 };
@@ -42,11 +69,14 @@ const updateServiceBulletin = async (id, data) => {
  * Lists ServiceBulletins based on filters.
  */
 const listServiceBulletins = async ({ skip = 0, take = 20, ocrStatus, draftStatus } = {}) => {
+  const where = {};
+  if (ocrStatus || draftStatus) {
+    where.ocrResult = {};
+    if (ocrStatus) where.ocrResult.ocrStatus = ocrStatus;
+    if (draftStatus) where.ocrResult.draftStatus = draftStatus;
+  }
   return prisma.serviceBulletin.findMany({
-    where: {
-      ...(ocrStatus ? { ocrStatus } : {}),
-      ...(draftStatus ? { draftStatus } : {})
-    },
+    where,
     skip: parseInt(skip, 10),
     take: parseInt(take, 10),
     orderBy: {
@@ -60,11 +90,14 @@ const listServiceBulletins = async ({ skip = 0, take = 20, ocrStatus, draftStatu
  * Counts ServiceBulletins based on filters.
  */
 const countServiceBulletins = async ({ ocrStatus, draftStatus } = {}) => {
+  const where = {};
+  if (ocrStatus || draftStatus) {
+    where.ocrResult = {};
+    if (ocrStatus) where.ocrResult.ocrStatus = ocrStatus;
+    if (draftStatus) where.ocrResult.draftStatus = draftStatus;
+  }
   return prisma.serviceBulletin.count({
-    where: {
-      ...(ocrStatus ? { ocrStatus } : {}),
-      ...(draftStatus ? { draftStatus } : {})
-    }
+    where
   });
 };
 

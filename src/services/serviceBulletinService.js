@@ -300,7 +300,7 @@ const updateServiceBulletin = async (id, data, updatedById = null) => {
  */
 const validateServiceBulletin = async (id, validatedPayload, updatedById = null) => {
   const sb = await getServiceBulletinById(id);
-  const payload = validatedPayload || sb.rawPayload || {
+  const payload = validatedPayload || sb.ocrResult?.rawPayload || {
     bulletinNumber: sb.sbNumber,
     title: sb.title,
     issuer: sb.issuer,
@@ -322,19 +322,31 @@ const validateServiceBulletin = async (id, validatedPayload, updatedById = null)
 /**
  * Generates EesDocument from validated draft.
  */
-const generateEes = async (id, updatedById = null) => {
+const generateEes = async (id, updatedById = null, customData = {}) => {
   const sb = await getServiceBulletinById(id);
 
-  if (sb.draftStatus === 'GENERATED' && sb.generatedEes) {
+  if (sb.ocrResult?.draftStatus === 'GENERATED' && sb.generatedEes) {
     return sb;
   }
 
-  const payload = sb.rawPayload || {
+  const payload = sb.ocrResult?.rawPayload || {
     bulletinNumber: sb.sbNumber,
     title: sb.title,
     issuer: sb.issuer,
     evaluations: []
   };
+
+  if (customData.eesNumber) payload.eesNumber = customData.eesNumber;
+  if (customData.aircraftType) {
+    const prisma = require('../db');
+    const validAircraft = await prisma.aircraft.findFirst({
+      where: { aircraftType: customData.aircraftType }
+    });
+    if (!validAircraft) {
+      throw new Error(`Validation Error: Aircraft type '${customData.aircraftType}' is not registered in the system. Please choose a valid aircraft type.`);
+    }
+    payload.aircraftType = customData.aircraftType;
+  }
 
   if (!payload || typeof payload !== 'object') {
     throw new Error('Validation Error: cannot generate EES from empty OCR payload');
@@ -377,7 +389,7 @@ const deleteServiceBulletin = async (id) => {
 const getServiceBulletinFile = async (id) => {
   const sb = await getServiceBulletinById(id);
 
-  if (!sb.storedFileName || sb.storedFileName === 'PENDING' || sb.ocrStatus === 'FAILED') {
+  if (!sb.storedFileName || sb.storedFileName === 'PENDING' || sb.ocrResult?.ocrStatus === 'FAILED') {
     throw new Error('Not Found: uploaded PDF file is not available yet');
   }
 

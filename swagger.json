@@ -23,51 +23,119 @@
     "schemas": {
       "RegisterRequest": {
         "type": "object",
-        "required": ["email", "password", "role"],
+        "required": [
+          "email",
+          "password",
+          "role"
+        ],
         "properties": {
-          "email": { "type": "string", "format": "email", "example": "user@gmf.com" },
-          "password": { "type": "string", "minLength": 6, "example": "password123" },
-          "role": { "type": "string", "enum": ["ADMIN", "TECHNICIAN"], "example": "TECHNICIAN" }
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "user@gmf.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "example": "password123"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "TECHNICIAN"
+            ],
+            "example": "TECHNICIAN"
+          }
         }
       },
       "LoginRequest": {
         "type": "object",
-        "required": ["email", "password"],
+        "required": [
+          "email",
+          "password"
+        ],
         "properties": {
-          "email": { "type": "string", "format": "email", "example": "admin@gmf.com" },
-          "password": { "type": "string", "example": "admin123" }
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "admin@gmf.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "admin123"
+          }
         }
       },
       "LoginResponse": {
         "type": "object",
         "properties": {
-          "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
+          "token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          },
           "user": {
             "type": "object",
             "properties": {
-              "id": { "type": "string", "example": "USR-XXXXXXXX" },
-              "email": { "type": "string", "example": "admin@gmf.com" },
-              "role": { "type": "string", "example": "ADMIN" }
+              "id": {
+                "type": "string",
+                "example": "USR-XXXXXXXX"
+              },
+              "email": {
+                "type": "string",
+                "example": "admin@gmf.com"
+              },
+              "role": {
+                "type": "string",
+                "example": "ADMIN"
+              }
             }
           }
         }
       },
       "EesWebhookRequest": {
         "type": "object",
-        "required": ["sb_code"],
+        "required": [
+          "sb_code"
+        ],
         "properties": {
-          "sb_code": { "type": "string", "example": "SB 72-0685 R06" },
-          "compliance_category": { "type": "integer", "example": 3 },
-          "effected_type": { "type": "string", "example": "GE90-100" },
-          "effected_model": { "type": "array", "items": { "type": "string" }, "example": ["-110B1", "-115B"] },
-          "tittle": { "type": "string", "example": "ENGINE - FAN HUB FRAME ASSEMBLY" },
+          "sb_code": {
+            "type": "string",
+            "example": "SB 72-0685 R06"
+          },
+          "compliance_category": {
+            "type": "integer",
+            "example": 3
+          },
+          "effected_type": {
+            "type": "string",
+            "example": "GE90-100"
+          },
+          "effected_model": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "-110B1",
+              "-115B"
+            ]
+          },
+          "tittle": {
+            "type": "string",
+            "example": "ENGINE - FAN HUB FRAME ASSEMBLY"
+          },
           "problem_evidence": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "requirement_desc": { "type": "string" },
-                "remark": { "type": "string" }
+                "requirement_desc": {
+                  "type": "string"
+                },
+                "remark": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -76,52 +144,104 @@
             "items": {
               "type": "object",
               "properties": {
-                "requirement_desc": { "type": "string" },
-                "remark": { "type": "string" }
+                "requirement_desc": {
+                  "type": "string"
+                },
+                "remark": {
+                  "type": "string"
+                }
               }
             }
           },
-          "task_type": { "type": "string", "example": "REP" },
-          "references": { "type": "string", "example": "GE90-100 Engine Manual (EM)" }
+          "task_type": {
+            "type": "string",
+            "example": "REP"
+          },
+          "references": {
+            "type": "string",
+            "example": "GE90-100 Engine Manual (EM)"
+          }
         }
       },
       "ErrorResponse": {
         "type": "object",
         "properties": {
-          "error": { "type": "string", "example": "Pesan error" }
+          "error": {
+            "type": "string",
+            "example": "Pesan error"
+          }
         }
       }
     }
   },
-  "security": [{ "bearerAuth": [] }],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "tags": [
-    { "name": "🔐 Authentication", "description": "Login, register, dan verifikasi role" },
-    { "name": "🗂️ Step 1: Select SB", "description": "Pilih Service Bulletin, upload PDF, view/download dokumen asli" },
-    { "name": "✈️ Step 2: Applicability", "description": "Cek engine mana di fleet yang terdampak SB" },
-    { "name": "🤖 Step 3: AI Summary", "description": "Review & konfirmasi hasil AI (AI dijalankan otomatis saat upload PDF di Step 1)" },
-    { "name": "⚙️ Step 4: Engineering Rec", "description": "Keputusan engineering: Comply / Defer / N/A" },
-    { "name": "📄 Step 5: Generate EES", "description": "Generate & edit EES Document" },
-    { "name": "⬇️ Step 6: Export", "description": "Export PDF (Garuda/Citilink) dan Excel" },
-    { "name": "🔗 EES Webhook", "description": "Endpoint webhook untuk integrasi langsung dari AI Engine" },
-    { "name": "🧹 Cleanup", "description": "Hapus data SB untuk keperluan testing" }
+    {
+      "name": "🔐 Authentication",
+      "description": "Login, register, dan verifikasi role"
+    },
+    {
+      "name": "🗂️ Step 1: Select SB",
+      "description": "Pilih Service Bulletin, upload PDF, view/download dokumen asli"
+    },
+    {
+      "name": "✈️ Step 2: Applicability",
+      "description": "Cek engine mana di fleet yang terdampak SB"
+    },
+    {
+      "name": "🤖 Step 3: AI Summary",
+      "description": "Review & konfirmasi hasil AI (AI dijalankan otomatis saat upload PDF di Step 1)"
+    },
+    {
+      "name": "⚙️ Step 4: Engineering Rec",
+      "description": "Keputusan engineering: Comply / Defer / N/A"
+    },
+    {
+      "name": "📄 Step 5: Generate EES",
+      "description": "Generate & edit EES Document"
+    },
+    {
+      "name": "⬇️ Step 6: Export",
+      "description": "Export PDF (Garuda/Citilink) dan Excel"
+    },
+    {
+      "name": "🔗 EES Webhook",
+      "description": "Endpoint webhook untuk integrasi langsung dari AI Engine"
+    },
+    {
+      "name": "🧹 Cleanup",
+      "description": "Hapus data SB untuk keperluan testing"
+    }
   ],
   "paths": {
     "/api/auth/register": {
       "post": {
         "summary": "Daftarkan pengguna baru",
-        "tags": ["🔐 Authentication"],
+        "tags": [
+          "🔐 Authentication"
+        ],
         "security": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
             }
           }
         },
         "responses": {
-          "201": { "description": "✅ Pendaftaran berhasil" },
-          "400": { "description": "❌ Email sudah terdaftar / input tidak valid" }
+          "201": {
+            "description": "✅ Pendaftaran berhasil"
+          },
+          "400": {
+            "description": "❌ Email sudah terdaftar / input tidak valid"
+          }
         }
       }
     },
@@ -129,16 +249,30 @@
       "post": {
         "summary": "Login dan dapatkan token JWT",
         "description": "**Langkah pertama!** Login → salin `token` → klik **Authorize 🔒** → paste token.",
-        "tags": ["🔐 Authentication"],
+        "tags": [
+          "🔐 Authentication"
+        ],
         "security": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/LoginRequest" },
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
               "examples": {
-                "Admin": { "value": { "email": "admin@gmf.com", "password": "admin123" } },
-                "Technician": { "value": { "email": "technician@gmf.com", "password": "tech123" } }
+                "Admin": {
+                  "value": {
+                    "email": "admin@gmf.com",
+                    "password": "admin123"
+                  }
+                },
+                "Technician": {
+                  "value": {
+                    "email": "technician@gmf.com",
+                    "password": "tech123"
+                  }
+                }
               }
             }
           }
@@ -148,99 +282,219 @@
             "description": "✅ Login berhasil",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/LoginResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
               }
             }
           },
-          "401": { "description": "❌ Email atau password salah" }
+          "401": {
+            "description": "❌ Email atau password salah"
+          }
         }
       }
     },
-
     "/api/service-bulletins": {
       "get": {
-        "tags": ["🗂️ Step 1: Select SB"],
+        "tags": [
+          "🗂️ Step 1: Select SB"
+        ],
         "summary": "List semua Service Bulletin",
         "description": "Menampilkan daftar SB dari database perusahaan. Mendukung filter berdasarkan nama, tipe, dan status.",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "search", "in": "query", "description": "Cari berdasarkan nomor SB atau judul", "schema": { "type": "string", "example": "V25" } },
-          { "name": "sbType", "in": "query", "schema": { "type": "string", "enum": ["MANDATORY", "RECOMMENDED", "ALERT", "ADVISORY"] } },
-          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ACTIVE", "SUPERSEDED", "CANCELLED"] } }
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Cari berdasarkan nomor SB atau judul",
+            "schema": {
+              "type": "string",
+              "example": "V25"
+            }
+          },
+          {
+            "name": "sbType",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "MANDATORY",
+                "RECOMMENDED",
+                "ALERT",
+                "ADVISORY"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "SUPERSEDED",
+                "CANCELLED"
+              ]
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ Daftar SB berhasil diambil" }
+          "200": {
+            "description": "✅ Daftar SB berhasil diambil"
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}": {
       "get": {
-        "tags": ["🗂️ Step 1: Select SB"],
+        "tags": [
+          "🗂️ Step 1: Select SB"
+        ],
         "summary": "Get detail satu Service Bulletin",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ID database SB" }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID database SB"
+          }
         ],
         "responses": {
-          "200": { "description": "✅ Detail SB ditemukan" },
-          "404": { "description": "❌ SB tidak ditemukan" }
+          "200": {
+            "description": "✅ Detail SB ditemukan"
+          },
+          "404": {
+            "description": "❌ SB tidak ditemukan"
+          }
         }
       },
       "delete": {
-        "tags": ["🧹 Cleanup"],
+        "tags": [
+          "🧹 Cleanup"
+        ],
         "summary": "Hapus Service Bulletin",
         "description": "Menghapus record SB beserta relasi dari database. Berguna untuk membersihkan data testing.",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ SB berhasil dihapus" },
-          "404": { "description": "❌ SB tidak ditemukan" }
+          "200": {
+            "description": "✅ SB berhasil dihapus"
+          },
+          "404": {
+            "description": "❌ SB tidak ditemukan"
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/upload-pdf": {
       "post": {
-        "tags": ["🗂️ Step 1: Select SB"],
+        "tags": [
+          "🗂️ Step 1: Select SB"
+        ],
         "summary": "[Sumber A] Upload PDF ke SB yang sudah ada di database",
         "description": "**Sumber A — SB dari Database:** Upload file PDF asli ke SB yang sudah ada di database perusahaan. File ini akan dianalisis oleh AI.\n\n**Cara pakai di Swagger:**\n1. Ambil `id` dari `GET /api/service-bulletins`\n2. Set header `X-File-Name: nama-file.pdf`\n3. Upload binary PDF di request body",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "X-File-Name", "in": "header", "required": false, "schema": { "type": "string", "example": "SB-72-0685-R06.pdf" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-File-Name",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "SB-72-0685-R06.pdf"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/pdf": {
-              "schema": { "type": "string", "format": "binary" }
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
             }
           }
         },
         "responses": {
-          "200": { "description": "✅ PDF berhasil diupload ke SB existing" },
-          "404": { "description": "❌ SB tidak ditemukan" }
+          "200": {
+            "description": "✅ PDF berhasil diupload ke SB existing"
+          },
+          "404": {
+            "description": "❌ SB tidak ditemukan"
+          }
         }
       }
     },
-
     "/api/service-bulletins/upload-new": {
       "post": {
-        "tags": ["🗂️ Step 1: Select SB"],
+        "tags": [
+          "🗂️ Step 1: Select SB"
+        ],
         "summary": "[Sumber B] Upload PDF SB baru (belum ada di database)",
         "description": "**Sumber B — SB Baru dari User:** Upload file PDF untuk SB yang **belum ada** di database.\n\nSistem akan:\n1. Membuat record SB baru secara otomatis\n2. Menyimpan file PDF ke storage\n3. Mengirim PDF ke AI untuk diekstrak metadata (sb_code, title, dll)\n4. Jika AI menemukan `sb_code` yang sudah ada di DB → **merge** ke SB existing\n5. Jika `sb_code` belum ada → SB baru disimpan dengan data dari AI\n\n**Cara pakai di Swagger:**\n1. Set header `X-File-Name: nama-file-asli.pdf`\n2. Upload binary PDF di request body\n3. Salin `id` dari response untuk melanjutkan ke Step 2-6",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "X-File-Name", "in": "header", "required": false, "schema": { "type": "string", "example": "SB-GE90-72-0685-R06.pdf" }, "description": "Nama asli file PDF (opsional, digunakan sebagai fallback sb_code jika AI gagal)" }
+          {
+            "name": "X-File-Name",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "SB-GE90-72-0685-R06.pdf"
+            },
+            "description": "Nama asli file PDF (opsional, digunakan sebagai fallback sb_code jika AI gagal)"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/pdf": {
-              "schema": { "type": "string", "format": "binary" }
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
             }
           }
         },
@@ -259,56 +513,121 @@
                     "draftStatus": "DRAFT",
                     "ai": {
                       "provider": "REAL_AI",
-                      "payload": { "sb_code": "SB 72-0685 R06", "compliance_category": 3 }
+                      "payload": {
+                        "sb_code": "SB 72-0685 R06",
+                        "compliance_category": 3
+                      }
                     }
                   }
                 }
               }
             }
           },
-          "400": { "description": "❌ File bukan PDF / file kosong" }
+          "400": {
+            "description": "❌ File bukan PDF / file kosong"
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/view": {
       "get": {
-        "tags": ["🗂️ Step 1: Select SB"],
+        "tags": [
+          "🗂️ Step 1: Select SB"
+        ],
         "summary": "Preview file PDF SB asli di browser",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ File PDF ditampilkan", "content": { "application/pdf": { "schema": { "type": "string", "format": "binary" } } } },
-          "404": { "description": "❌ File tidak ditemukan" }
+          "200": {
+            "description": "✅ File PDF ditampilkan",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "❌ File tidak ditemukan"
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/download": {
       "get": {
-        "tags": ["🗂️ Step 1: Select SB"],
+        "tags": [
+          "🗂️ Step 1: Select SB"
+        ],
         "summary": "Download file PDF SB asli",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ File PDF siap didownload", "content": { "application/pdf": { "schema": { "type": "string", "format": "binary" } } } },
-          "404": { "description": "❌ File tidak ditemukan" }
+          "200": {
+            "description": "✅ File PDF siap didownload",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "❌ File tidak ditemukan"
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/applicability": {
       "get": {
-        "tags": ["✈️ Step 2: Applicability"],
+        "tags": [
+          "✈️ Step 2: Applicability"
+        ],
         "summary": "Cek applicability — engine mana di fleet yang terdampak",
         "description": "Mencocokkan semua engine aktif di database fleet dengan `effectivityType` dari SB.\n\n**Logika:**\n- ✅ `Applicable` → Engine model cocok\n- ❌ `N/A` → Engine type berbeda",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -317,41 +636,84 @@
               "application/json": {
                 "example": {
                   "data": {
-                    "sb": { "sbNumber": "SB-V25-73-0234", "effectivityType": "V2527-A5" },
-                    "summary": { "totalEngines": 25, "applicable": 8, "notApplicable": 17 },
+                    "sb": {
+                      "sbNumber": "SB-V25-73-0234",
+                      "effectivityType": "V2527-A5"
+                    },
+                    "summary": {
+                      "totalEngines": 25,
+                      "applicable": 8,
+                      "notApplicable": 17
+                    },
                     "engines": [
-                      { "esn": "ESN-881432", "model": "V2527-A5", "isApplicable": true, "reason": "Within effectivity range" }
+                      {
+                        "esn": "ESN-881432",
+                        "model": "V2527-A5",
+                        "isApplicable": true,
+                        "reason": "Within effectivity range"
+                      }
                     ]
                   }
                 }
               }
             }
           },
-          "404": { "description": "❌ SB tidak ditemukan" }
+          "404": {
+            "description": "❌ SB tidak ditemukan"
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/ai-summary": {
       "get": {
-        "tags": ["🤖 Step 3: AI Summary"],
+        "tags": [
+          "🤖 Step 3: AI Summary"
+        ],
         "summary": "Ambil hasil analisis AI (raw payload)",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ AI summary berhasil diambil" },
-          "404": { "description": "❌ SB tidak ditemukan" }
+          "200": {
+            "description": "✅ AI summary berhasil diambil"
+          },
+          "404": {
+            "description": "❌ SB tidak ditemukan"
+          }
         }
       },
       "patch": {
-        "tags": ["🤖 Step 3: AI Summary"],
+        "tags": [
+          "🤖 Step 3: AI Summary"
+        ],
         "summary": "Konfirmasi / edit hasil analisis AI",
         "description": "User mengedit hasil AI lalu mengkonfirmasi. Status berubah ke `VALIDATED`.",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -362,14 +724,23 @@
                   "sb_code": "SB 72-0685 R06",
                   "compliance_category": 3,
                   "effected_type": "GE90-100",
-                  "effected_model": ["-110B1", "-115B"],
+                  "effected_model": [
+                    "-110B1",
+                    "-115B"
+                  ],
                   "tittle": "ENGINE - FAN HUB FRAME ASSEMBLY",
                   "task_type": "REP",
                   "problem_evidence": [
-                    { "requirement_desc": "Root technical issue...", "remark": "Revised SB aims to address..." }
+                    {
+                      "requirement_desc": "Root technical issue...",
+                      "remark": "Revised SB aims to address..."
+                    }
                   ],
                   "description": [
-                    { "requirement_desc": "Corrective actions include...", "remark": "Updates TGB assembly..." }
+                    {
+                      "requirement_desc": "Corrective actions include...",
+                      "remark": "Updates TGB assembly..."
+                    }
                   ]
                 }
               }
@@ -377,32 +748,65 @@
           }
         },
         "responses": {
-          "200": { "description": "✅ AI summary dikonfirmasi → status VALIDATED" },
-          "400": { "description": "❌ Payload tidak valid" }
+          "200": {
+            "description": "✅ AI summary dikonfirmasi → status VALIDATED"
+          },
+          "400": {
+            "description": "❌ Payload tidak valid"
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/engineering-rec": {
       "get": {
-        "tags": ["⚙️ Step 4: Engineering Rec"],
+        "tags": [
+          "⚙️ Step 4: Engineering Rec"
+        ],
         "summary": "Ambil keputusan Engineering Recommendation",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ Engineering recommendation ditemukan" },
-          "404": { "description": "❌ Belum ada rekomendasi" }
+          "200": {
+            "description": "✅ Engineering recommendation ditemukan"
+          },
+          "404": {
+            "description": "❌ Belum ada rekomendasi"
+          }
         }
       },
       "post": {
-        "tags": ["⚙️ Step 4: Engineering Rec"],
+        "tags": [
+          "⚙️ Step 4: Engineering Rec"
+        ],
         "summary": "Simpan keputusan Engineering Recommendation",
         "description": "User memilih action: COMPLY, DEFER, atau NA beserta detail prioritas dan catatan teknis.",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -410,13 +814,36 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["recommendedAction"],
+                "required": [
+                  "recommendedAction"
+                ],
                 "properties": {
-                  "recommendedAction": { "type": "string", "enum": ["COMPLY", "DEFER", "NA"] },
-                  "priorityLevel": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"] },
-                  "engineeringNotes": { "type": "string" },
-                  "isDeferable": { "type": "boolean" },
-                  "egtMarginCheck": { "type": "boolean" }
+                  "recommendedAction": {
+                    "type": "string",
+                    "enum": [
+                      "COMPLY",
+                      "DEFER",
+                      "NA"
+                    ]
+                  },
+                  "priorityLevel": {
+                    "type": "string",
+                    "enum": [
+                      "CRITICAL",
+                      "HIGH",
+                      "MEDIUM",
+                      "LOW"
+                    ]
+                  },
+                  "engineeringNotes": {
+                    "type": "string"
+                  },
+                  "isDeferable": {
+                    "type": "boolean"
+                  },
+                  "egtMarginCheck": {
+                    "type": "boolean"
+                  }
                 }
               },
               "examples": {
@@ -455,17 +882,36 @@
           }
         },
         "responses": {
-          "200": { "description": "✅ Engineering recommendation berhasil disimpan" },
-          "400": { "description": "❌ recommendedAction tidak valid" },
-          "404": { "description": "❌ SB tidak ditemukan" }
+          "200": {
+            "description": "✅ Engineering recommendation berhasil disimpan"
+          },
+          "400": {
+            "description": "❌ recommendedAction tidak valid"
+          },
+          "404": {
+            "description": "❌ SB tidak ditemukan"
+          }
         }
       },
       "patch": {
-        "tags": ["⚙️ Step 4: Engineering Rec"],
+        "tags": [
+          "⚙️ Step 4: Engineering Rec"
+        ],
         "summary": "Update keputusan Engineering Recommendation",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -480,47 +926,114 @@
           }
         },
         "responses": {
-          "200": { "description": "✅ Engineering recommendation berhasil diupdate" }
+          "200": {
+            "description": "✅ Engineering recommendation berhasil diupdate"
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/generate-ees": {
       "post": {
-        "tags": ["📄 Step 5: Generate EES"],
+        "tags": [
+          "📄 Step 5: Generate EES"
+        ],
         "summary": "Generate EES Document dari hasil AI",
         "description": "Membuat record dokumen EES dari hasil analisis AI yang sudah divalidasi ke dalam Database. (PDF Document tidak lagi di-generate secara otomatis di sini untuk menghemat ruang, melainkan di-generate secara live saat dipanggil lewat endpoint Export)",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "201": { "description": "✅ EES Document berhasil dibuat" },
-          "404": { "description": "❌ SB tidak ditemukan" }
+          "201": {
+            "description": "✅ EES Document berhasil dibuat"
+          },
+          "404": {
+            "description": "❌ SB tidak ditemukan"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "eesNumber": {
+                    "type": "string",
+                    "description": "Manual EES Number override"
+                  },
+                  "aircraftType": {
+                    "type": "string",
+                    "description": "Manual Aircraft Type text"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/ees": {
       "get": {
-        "tags": ["📄 Step 5: Generate EES"],
+        "tags": [
+          "📄 Step 5: Generate EES"
+        ],
         "summary": "Ambil EES Document yang sudah di-generate",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ EES Document ditemukan" },
-          "404": { "description": "❌ Belum ada EES yang di-generate" }
+          "200": {
+            "description": "✅ EES Document ditemukan"
+          },
+          "404": {
+            "description": "❌ Belum ada EES yang di-generate"
+          }
         }
       },
       "patch": {
-        "tags": ["📄 Step 5: Generate EES"],
+        "tags": [
+          "📄 Step 5: Generate EES"
+        ],
         "summary": "Edit evaluation items EES sebelum export",
         "description": "User dapat mengedit hasil AI sebelum export. Kirimkan `validatedPayload`, sistem akan regenerate EES.",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -534,7 +1047,10 @@
                   "tittle": "ENGINE - FAN HUB FRAME ASSEMBLY [EDITED]",
                   "task_type": "REP",
                   "problem_evidence": [
-                    { "requirement_desc": "Edited description...", "remark": "Updated note" }
+                    {
+                      "requirement_desc": "Edited description...",
+                      "remark": "Updated note"
+                    }
                   ]
                 }
               }
@@ -542,93 +1058,208 @@
           }
         },
         "responses": {
-          "200": { "description": "✅ EES berhasil diupdate" }
+          "200": {
+            "description": "✅ EES berhasil diupdate"
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/export/garuda/pdf": {
       "get": {
-        "tags": ["⬇️ Step 6: Export"],
+        "tags": [
+          "⬇️ Step 6: Export"
+        ],
         "summary": "Preview EES — PDF Garuda Indonesia",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ PDF Garuda di-render", "content": { "application/pdf": { "schema": { "type": "string", "format": "binary" } } } }
+          "200": {
+            "description": "✅ PDF Garuda di-render",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/export/garuda/pdf/download": {
       "get": {
-        "tags": ["⬇️ Step 6: Export"],
+        "tags": [
+          "⬇️ Step 6: Export"
+        ],
         "summary": "Download EES — PDF Garuda Indonesia",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ PDF Garuda siap didownload", "content": { "application/pdf": { "schema": { "type": "string", "format": "binary" } } } }
+          "200": {
+            "description": "✅ PDF Garuda siap didownload",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/export/citilink/pdf": {
       "get": {
-        "tags": ["⬇️ Step 6: Export"],
+        "tags": [
+          "⬇️ Step 6: Export"
+        ],
         "summary": "Preview EES — PDF Citilink Indonesia",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ PDF Citilink di-render", "content": { "application/pdf": { "schema": { "type": "string", "format": "binary" } } } }
+          "200": {
+            "description": "✅ PDF Citilink di-render",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/export/citilink/pdf/download": {
       "get": {
-        "tags": ["⬇️ Step 6: Export"],
+        "tags": [
+          "⬇️ Step 6: Export"
+        ],
         "summary": "Download EES — PDF Citilink Indonesia",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ PDF Citilink siap didownload", "content": { "application/pdf": { "schema": { "type": "string", "format": "binary" } } } }
+          "200": {
+            "description": "✅ PDF Citilink siap didownload",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
         }
       }
     },
-
     "/api/service-bulletins/{id}/export/excel": {
       "get": {
-        "tags": ["⬇️ Step 6: Export"],
+        "tags": [
+          "⬇️ Step 6: Export"
+        ],
         "summary": "Download EES — Excel (.xlsx)",
         "description": "Export EES sebagai file Excel dengan kolom: No | Par | Requirement Desc | Task Type | Ref | App | Warranty | Affected Engine | Rep | Due At | Remark",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "✅ File Excel siap didownload", "content": { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { "schema": { "type": "string", "format": "binary" } } } }
+          "200": {
+            "description": "✅ File Excel siap didownload",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
         }
       }
     },
-
     "/api/webhooks/ees": {
       "post": {
         "summary": "Webhook — Terima hasil AI langsung (tanpa JWT)",
         "description": "Endpoint dipanggil langsung oleh AI Engine untuk membuat EES otomatis. **Tidak memerlukan token JWT.**",
-        "tags": ["🔗 EES Webhook"],
+        "tags": [
+          "🔗 EES Webhook"
+        ],
         "security": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/EesWebhookRequest" },
+              "schema": {
+                "$ref": "#/components/schemas/EesWebhookRequest"
+              },
               "examples": {
                 "GE90-100": {
                   "summary": "Payload AI — GE90-100 SB",
@@ -636,14 +1267,23 @@
                     "sb_code": "SB 72-0685 R06",
                     "compliance_category": 3,
                     "effected_type": "GE90-100",
-                    "effected_model": ["-110B1", "-115B"],
+                    "effected_model": [
+                      "-110B1",
+                      "-115B"
+                    ],
                     "tittle": "ENGINE - FAN HUB FRAME ASSEMBLY",
                     "task_type": "REP",
                     "problem_evidence": [
-                      { "requirement_desc": "Material change in TGB roller bearing inner race.", "remark": "Address potential issues." }
+                      {
+                        "requirement_desc": "Material change in TGB roller bearing inner race.",
+                        "remark": "Address potential issues."
+                      }
                     ],
                     "description": [
-                      { "requirement_desc": "Corrective actions include inspecting roller bearing.", "remark": "Updates TGB assembly." }
+                      {
+                        "requirement_desc": "Corrective actions include inspecting roller bearing.",
+                        "remark": "Updates TGB assembly."
+                      }
                     ],
                     "references": "GE90-100 Engine Manual (EM)"
                   }
@@ -653,8 +1293,30 @@
           }
         },
         "responses": {
-          "201": { "description": "✅ EES berhasil dibuat dari webhook" },
-          "400": { "description": "❌ SB tidak ditemukan / payload tidak valid" }
+          "201": {
+            "description": "✅ EES berhasil dibuat dari webhook"
+          },
+          "400": {
+            "description": "❌ SB tidak ditemukan / payload tidak valid"
+          }
+        }
+      }
+    },
+    "/api/aircraft": {
+      "get": {
+        "summary": "Get all aircraft (Pesawat Indonesia)",
+        "tags": [
+          "Master Data"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved aircraft list"
+          }
         }
       }
     }
