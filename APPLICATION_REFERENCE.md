@@ -313,18 +313,18 @@ AirworthinessDirective ──── (N) ComplianceTask
 
 ```json
 {
-  "filename": "document.pdf",
+  "filename": "XXXX.pdf",
   "mro_schema": {
-    "sb_code": "SB 72-0685 R06",
-    "tittle": "ENGINE - FAN HUB FRAME ASSEMBLY",
-    "effected_type": "GE90-100",
-    "effected_model": ["-110B1", "-115B"],
+    "sb_code": "....",
+    "tittle": "....",
+    "effected_type": "....",
+    "effected_model": [".....", "....."],
     "compliance_category": 3,
     "task_type": "REP",
-    "references": "GE90-100 Engine Manual",
+    "references": "......",
     "component_type": "COMPONENT",
     "compliance_time_type": "HOUR_CYCLE",
-    "compliance_period": "every 500 flight hours",
+    "compliance_period": ".....",
     "problem_evidence": [
       { "requirement_desc": "...", "remark": "..." }
     ],

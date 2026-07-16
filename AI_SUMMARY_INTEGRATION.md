@@ -29,38 +29,38 @@ Mengambil data hasil analisis AI asli (`rawPayload`) yang tersimpan setelah pros
 ```json
 {
   "data": {
-    "sbId": "SB-DOC-D07BA43D",
-    "sbNumber": "GE90-100 SB 72-0846 R2",
-    "draftStatus": "REVIEW_REQUIRED",
-    "ocrStatus": "EXTRACTED",
+    "sbId": ".....",
+    "sbNumber": "......",
+    "draftStatus": ".......",
+    "ocrStatus": ".......",
     "aiSummary": {
-      "bulletinNumber": "SB 72-0846",
-      "title": "ENGINE - COMPRESSOR MODULE ASSEMBLY (72-30-00) - MODULE LEVEL BSI OF HIGH PRESSURE COMPRESSOR STATOR STAGE 5",
-      "issuer": "GE90-100",
-      "task_type": "BOR",
-      "references": "- Boeing 777 Aircraft Maintenance Manual (AMM) Gek 109993 ge90-100\\n- Engine Manual (EM) ge90-100",
-      "effected_type": "GE90-100",
-      "effected_model": ["-110B1", "-115B"],
-      "compliance_category": 7,
-      "compliance_time_type": "ATTRITION",
-      "compliance_period": "one time",
-      "manufacturer": "GE",
-      "part_number": "362-097-052-0",
-      "note": "-",
+      "bulletinNumber": "SB XX-0000",
+      "title": "......",
+      "issuer": ".....",
+      "task_type": "....",
+      "references": ".....",
+      "effected_type": ".....",
+      "effected_model": [".....", "......"],
+      "compliance_category": ...,
+      "compliance_time_type": ".....",
+      "compliance_period": ".....",
+      "manufacturer": "....",
+      "part_number": ".....",
+      "note": "...",
       "warranty": false,
-      "warranty_due_date": null,
-      "warranty_note": null,
+      "warranty_due_date": "....",
+      "warranty_note": "....",
       "evaluations": [
         {
           "itemNo": "1",
-          "requirementDesc": "The root technical issue described is the vane sector pin condition of the High Pressure Compressor Stator Stage 5. This issue is identified through a module level borescope inspection (BSI) for engines visiting shop that are not planned for full HPC module overhaul.",
-          "remarks": "The operational impact...",
-          "taskType": "BOR",
-          "isApplicable": true
+          "requirementDesc": ".....",
+          "remarks": "...",
+          "taskType": "...",
+          "isApplicable": false
         }
       ]
     },
-    "extractedAt": "2026-07-13T02:22:23.756Z"
+    "extractedAt": "........."
   }
 }
 ```
@@ -78,29 +78,29 @@ Mengirimkan data yang telah divalidasi atau diedit oleh user dari frontend untuk
 ```json
 {
   "validatedPayload": {
-    "bulletinNumber": "SB 72-0846",
-    "title": "ENGINE - COMPRESSOR MODULE ASSEMBLY (72-30-00) - MODULE LEVEL BSI OF HIGH PRESSURE COMPRESSOR STATOR STAGE 5",
-    "issuer": "GE90-100",
-    "task_type": "BOR",
-    "references": "- Boeing 777 Aircraft Maintenance Manual (AMM) Gek 109993 ge90-100\\n- Engine Manual (EM) ge90-100",
-    "effected_type": "GE90-100",
-    "effected_model": ["-110B1", "-115B"],
-    "compliance_category": 7,
-    "compliance_time_type": "ATTRITION",
-    "compliance_period": "one time",
-    "manufacturer": "GE",
-    "part_number": "362-097-052-0",
-    "note": "-",
+    "bulletinNumber": ".....",
+    "title": "......",
+    "issuer": "....",
+    "task_type": "....",
+    "references": "....",
+    "effected_type": "....",
+    "effected_model": [".....", "...."],
+    "compliance_category": 8,
+    "compliance_time_type": ".....",
+    "compliance_period": ".....",
+    "manufacturer": "....",
+    "part_number": ".....",
+    "note": "....",
     "warranty": false,
-    "warranty_due_date": null,
-    "warranty_note": null,
+    "warranty_due_date": "....",
+    "warranty_note": "...",
     "evaluations": [
       {
         "itemNo": "1",
-        "requirementDesc": "The root technical issue described is the vane sector pin condition...",
-        "remarks": "The operational impact...",
-        "taskType": "BOR",
-        "isApplicable": true
+        "requirementDesc": "...",
+        "remarks": "...",
+        "taskType": "....",
+        "isApplicable": false
       }
     ]
   }
@@ -111,9 +111,9 @@ Mengirimkan data yang telah divalidasi atau diedit oleh user dari frontend untuk
 {
   "message": "AI summary reviewed and confirmed",
   "data": {
-    "id": "SB-DOC-D07BA43D",
-    "sbNumber": "SB 72-0846",
-    "title": "ENGINE - COMPRESSOR MODULE ASSEMBLY (72-30-00) - MODULE LEVEL BSI OF HIGH PRESSURE COMPRESSOR STATOR STAGE 5",
+    "id": "SB-DOC-XXXX",
+    "sbNumber": "SB XX-XXX",
+    "title": ".....",
     "status": "VALIDATED"
   }
 }
