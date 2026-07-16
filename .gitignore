@@ -13,3 +13,6 @@ api_integration_test.js
 *.test.js
 *.spec.js
 *.log
+
+# Docker local configurations
+docker-compose.yml
