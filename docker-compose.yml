@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Koneksi ke DB menggunakan nama container service 'db'
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/db_gmf?schema=public
+      - JWT_SECRET=${JWT_SECRET}
+      - AI_SERVICE_URL=${AI_SERVICE_URL}
+      - AI_SERVICE_API_KEY=${AI_SERVICE_API_KEY}
+      - SVR_AI_SERVICE_URL=${SVR_AI_SERVICE_URL}
+      - SVR_AI_SERVICE_API_KEY=${SVR_AI_SERVICE_API_KEY}
+    depends_on:
+      - db
+    volumes:
+      - uploads_data:/app/uploads
+
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=db_gmf
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+  uploads_data:

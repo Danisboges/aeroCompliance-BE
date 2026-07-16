@@ -1,0 +1,235 @@
+erDiagram
+    User {
+        string id PK
+        string email UK
+        string username UK
+        string password
+        Role role
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Aircraft {
+        string id PK
+        string registration UK
+        string msn UK
+        string aircraftType
+        string operator
+        boolean active
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Engine {
+        string id PK
+        string esn UK
+        string msn
+        string model
+        string position
+        string aircraftId FK
+        boolean active
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    AirworthinessDirective {
+        string id PK
+        string adNumber UK
+        string title
+        string issuer
+        datetime issueDate
+        datetime dueDate
+        DocumentStatus status
+        datetime createdAt
+    }
+
+    ServiceBulletin {
+        string id PK
+        string sbNumber UK
+        string title
+        string issuer
+        datetime issueDate
+        DocumentStatus status
+        SbType sbType
+        int complianceCategory
+        string effectivityType
+        string effectivityRange
+        string compliancePeriod
+        string originalFileName
+        string storedFileName
+        string createdById FK
+        string updatedById FK
+        datetime createdAt
+    }
+
+    OcrResult {
+        string id PK
+        string serviceBulletinId FK "UK"
+        OcrProcessingStatus ocrStatus
+        OcrDraftStatus draftStatus
+        json rawPayload
+        datetime extractedAt
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    EesDocument {
+        string id PK
+        string eesNumber UK
+        string sourceSbId FK "UK"
+        string taskType
+        string references
+        string effectedType
+        string effectedModel
+        string aircraftType
+        string esn
+        string storedGarudaPdfPath
+        string storedCitilinkPdfPath
+        string storedExcelPath
+        datetime createdAt
+    }
+
+    EesEvaluationItem {
+        string id PK
+        string eesDocumentId FK
+        string itemNo
+        string paragraph
+        string requirementDesc
+        string remarks
+        string taskType
+        string adRelated
+        boolean warranty
+        string rep
+        datetime dueAt
+        boolean isApplicable
+    }
+
+    EngineeringRecommendation {
+        string id PK
+        string sbId FK "UK"
+        EngRecAction recommendedAction
+        Priority priorityLevel
+        string engineeringNotes
+        boolean isDeferable
+        boolean egtMarginCheck
+        string createdById FK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    ShopVisitReport {
+        string id PK
+        string engineSerialNumber
+        string engineId FK
+        string engineType
+        string shopInDate
+        string shopOutDate
+        string reportDate
+        string reasonForShopVisit
+        string tsn
+        string csn
+        string tslv
+        string cslv
+        string authorizedReleaseStatus
+        string originalFileName
+        string storedFileName
+        json rawPayload
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    SvrConfigurationItem {
+        string id PK
+        string svrId FK
+        string engineSerialNumber
+        string engineId FK
+        string module
+        string partName
+        string inOut
+        string partNumber
+        string serial
+        string qty
+        string tsn
+        string csn
+        string tso
+        string cso
+        string workAccompl
+    }
+
+    SvrLlpStatus {
+        string id PK
+        string svrId FK
+        string engineSerialNumber
+        string engineId FK
+        string no
+        string description
+        string partNumber
+        string serialNumber
+        string totalHour
+        string totalCycle
+        json totalCyclesCategory
+        json lifeLimitCycles
+        json remainingCycles
+        string remark
+    }
+
+    SvrAdStatus {
+        string id PK
+        string svrId FK
+        string engineSerialNumber
+        string engineId FK
+        string adNumber
+        string notificationDateOfCompliance
+        string description
+        string referenceSb
+        string recurrInsp
+        string moduleApplicability
+        string methodOfCompliance
+        string remarks
+    }
+
+    ComplianceRecord {
+        string id PK
+        string engineId FK
+        string sbId FK
+        string adId FK
+        ComplianceStatus status
+        string complianceDate
+        string svrId FK
+        string remarks
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    %% --- RELATIONSHIPS ---
+    
+    %% Assets
+    Aircraft ||--o{ Engine : "has"
+    Engine ||--o{ ShopVisitReport : "has"
+    Engine ||--|{ ComplianceRecord : "has"
+    Engine ||--o{ SvrConfigurationItem : "installed_on"
+    Engine ||--o{ SvrLlpStatus : "status"
+    Engine ||--o{ SvrAdStatus : "status"
+
+    %% Airworthiness Directive
+    AirworthinessDirective ||--o{ ComplianceRecord : "referenced_in"
+
+    %% Service Bulletin Relations (OCR, EES, Rec, Compliance)
+    ServiceBulletin ||--o| OcrResult : "processed_to"
+    ServiceBulletin ||--o| EesDocument : "evaluated_in"
+    ServiceBulletin ||--o| EngineeringRecommendation : "recommended_by"
+    ServiceBulletin ||--o{ ComplianceRecord : "referenced_in"
+    
+    %% User Actions
+    User ||--o{ ServiceBulletin : "uploads (ServiceBulletinCreator)"
+    User ||--o{ ServiceBulletin : "updates (ServiceBulletinUpdater)"
+    User ||--o{ EngineeringRecommendation : "creates"
+
+    %% EES evaluations
+    EesDocument ||--|{ EesEvaluationItem : "contains"
+
+    %% SVR configurations & statuses
+    ShopVisitReport ||--|{ SvrConfigurationItem : "contains"
+    ShopVisitReport ||--|{ SvrLlpStatus : "contains"
+    ShopVisitReport ||--|{ SvrAdStatus : "contains"
+    ShopVisitReport ||--o{ ComplianceRecord : "recorded_in"

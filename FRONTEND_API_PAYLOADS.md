@@ -555,3 +555,195 @@ Dokumen ini berisi dokumentasi lengkap seluruh endpoint aktif di backend Complia
   }
 }
 ```
+
+---
+
+## 🛠️ 9. SHOP VISIT REPORTS (SVR)
+
+### `POST /api/shop-visit-reports/upload` (Upload PDF SVR Asli)
+* **Request Headers**:
+  - `Authorization: Bearer <JWT_TOKEN>`
+  - `Content-Type: application/pdf`
+  - `x-file-name`: `SVR_660235_2026.pdf`
+* **Request Body**: `Binary PDF Data`
+* **Response Body (JSON - Status 201)**:
+```json
+{
+  "message": "SVR PDF received and processed by SVR pipeline",
+  "data": {
+    "id": "b2883f3d-3762-4277-8b7a-153b9993359f",
+    "engineSerialNumber": "660235",
+    "engineType": "CFM56-7B26E",
+    "shopInDate": "12 February 2026",
+    "shopOutDate": "04 March 2026",
+    "reportDate": "04 March 2026",
+    "reasonForShopVisit": "HPT Blades RRT (SB 72-1082) and RDS Seal Replacement",
+    "tsn": "27,680:46",
+    "csn": "17,946",
+    "tslv": "15,907:12",
+    "cslv": "10,136",
+    "authorizedReleaseStatus": "DGCA form 21-18 And FAA form 8130-3",
+    "storedFileName": "svr-178392-xxxx.pdf"
+  }
+}
+```
+
+### `POST /api/webhooks/svr` (Ingest JSON SVR AI)
+* **Request Headers**:
+  - `Content-Type: application/json`
+* **Request Body (JSON)**:
+```json
+{
+  "filename": "SVR 660235 2026.pdf",
+  "svr_schema": {
+    "svr_schema": {
+      "engine_type": "CFM56-7B26E",
+      "engine_serial_number": "660235",
+      "shop_in_date": "12 February 2026",
+      "shop_out_date": "04 March 2026",
+      "report_date": "04 March 2026",
+      "reason_for_shop_visit": "HPT Blades RRT (SB 72-1082) and RDS Seal Replacement",
+      "tsn": "27,680:46",
+      "csn": "17,946",
+      "tslv": "15,907:12",
+      "cslv": "10,136",
+      "authorized_release_status": "DGCA form 21-18 And FAA form 8130-3",
+      "configuration_report": [
+        {
+          "module": "FAN MAJOR MODULE",
+          "part_name": "Inner Radial Drive Shaft",
+          "in_out": "OUT",
+          "part_number": null,
+          "serial": null,
+          "qty": null,
+          "tsn": null,
+          "csn": null,
+          "tso": null,
+          "cso": null,
+          "work_accompl": "REPAIRED"
+        }
+      ],
+      "life_limited_part_status": [
+        {
+          "no": "1",
+          "description": "HPT Blades",
+          "part_number": "2403M91P03",
+          "serial_number": "VX 1740"
+        }
+      ],
+      "airworthiness_directive_status": [
+        {
+          "ad_number": "CFM56-7B SB 72-1082",
+          "notification_date_of_compliance": "02.03.2026",
+          "description": "Recommended Removal Time",
+          "reference_sb": "72-1082",
+          "recurr_insp": "NO",
+          "module_applicability": "HPT Blades",
+          "method_of_compliance": "REPLACEMENT OF HPT BLADES",
+          "remarks": "COMPLIED"
+        }
+      ]
+    }
+  }
+}
+```
+* **Response Body (JSON - Status 201)**:
+*(Sama seperti response upload PDF)*
+
+### `GET /api/shop-visit-reports` (List SVR)
+* **Request Headers**:
+  - `Authorization: Bearer <JWT_TOKEN>`
+* **Query Parameters** *(Semua Opsional)*:
+  - `page`: Nomor halaman (Default: `1`)
+  - `limit`: Jumlah data per halaman (Default: `20`)
+  - `esn`: Filter berdasarkan Engine Serial Number (misal: `660235`)
+* **Response Body (JSON - Status 200)**:
+```json
+{
+  "data": [
+    {
+      "id": "b2883f3d-3762-4277-8b7a-153b9993359f",
+      "engineSerialNumber": "660235",
+      "engineId": "ENG-660235",
+      "engineType": "CFM56-7B26E",
+      "shopInDate": "12 February 2026",
+      "shopOutDate": "04 March 2026",
+      "reportDate": "04 March 2026",
+      "reasonForShopVisit": "HPT Blades RRT (SB 72-1082) and RDS Seal Replacement",
+      "tsn": "27,680:46",
+      "csn": "17,946",
+      "tslv": "15,907:12",
+      "cslv": "10,136",
+      "authorizedReleaseStatus": "DGCA form 21-18 And FAA form 8130-3",
+      "originalFileName": "SVR_660235_2026.pdf",
+      "storedFileName": "svr-178392-xxxx.pdf",
+      "createdAt": "2026-07-14T06:57:21.000Z",
+      "configurationReport": [
+        {
+          "id": "cfg-01",
+          "module": "FAN MAJOR MODULE",
+          "partName": "Inner Radial Drive Shaft",
+          "inOut": "OUT",
+          "partNumber": "",
+          "serial": "",
+          "qty": "",
+          "workAccompl": "REPAIRED"
+        }
+      ],
+      "llpStatus": [
+        {
+          "id": "llp-01",
+          "no": "1",
+          "description": "HPT Blades",
+          "partNumber": "2403M91P03",
+          "serialNumber": "VX 1740",
+          "remark": "Replaced with Superseded Part Number"
+        }
+      ],
+      "adStatus": [
+        {
+          "id": "ad-01",
+          "adNumber": "CFM56-7B SB 72-1082",
+          "notificationDateOfCompliance": "02.03.2026",
+          "description": "Recommended Removal Time",
+          "referenceSb": "72-1082",
+          "remarks": "COMPLIED"
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "total": 1,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 1
+  }
+}
+```
+
+### `GET /api/shop-visit-reports/:id` (Detail SVR)
+* **Request Headers**:
+  - `Authorization: Bearer <JWT_TOKEN>`
+* **Response Body (JSON - Status 200)**:
+*(Mengembalikan objek data SVR tunggal seperti elemen di dalam list di atas).*
+
+### `GET /api/shop-visit-reports/:id/view` (Preview SVR PDF)
+* **Request Headers**: `Authorization: Bearer <JWT_TOKEN>`
+* **Response**: `application/pdf` *(File Stream inline)*
+
+### `GET /api/shop-visit-reports/:id/download` (Download SVR PDF)
+* **Request Headers**: `Authorization: Bearer <JWT_TOKEN>`
+* **Response**: `application/pdf` *(File Stream attachment)*
+
+### `DELETE /api/shop-visit-reports/:id` (Hapus SVR & PDF)
+* **Request Headers**: `Authorization: Bearer <JWT_TOKEN>`
+* **Response Body (JSON - Status 200)**:
+```json
+{
+  "message": "ShopVisitReport deleted successfully",
+  "data": {
+    "id": "b2883f3d-3762-4277-8b7a-153b9993359f",
+    "engineSerialNumber": "660235"
+  }
+}
+```

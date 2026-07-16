@@ -119,6 +119,12 @@ model Engine {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+
+  shopVisitReports      ShopVisitReport[]
+  complianceRecords     ComplianceRecord[]
+  svrConfigurationItems SvrConfigurationItem[]
+  svrLlpStatuses        SvrLlpStatus[]
+  svrAdStatuses         SvrAdStatus[]
 }
 
 // --- DOCUMENTS (AD, SB, EES) ---
@@ -134,6 +140,7 @@ model AirworthinessDirective {
   status    DocumentStatus @default(ACTIVE)
 
   createdAt       DateTime         @default(now())
+  complianceRecords ComplianceRecord[]
 }
 
 // 2. Service Bulletin (SB) - Sumber dokumen untuk OCR & Unified Model
@@ -166,6 +173,7 @@ model ServiceBulletin {
   generatedEes   EesDocument?
   engineeringRec EngineeringRecommendation?
   createdAt      DateTime            @default(now())
+  complianceRecords ComplianceRecord[]
 }
 
 model OcrResult {
@@ -241,5 +249,112 @@ model EngineeringRecommendation {
 
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @default(now()) @updatedAt
+}
+
+// --- SHOP VISIT REPORTS (SVR) ---
+
+model ShopVisitReport {
+  id                       String                 @id @default(uuid())
+  engineSerialNumber       String
+  engineId                 String?
+  engine                   Engine?                @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  engineType               String?
+  shopInDate               String?                // Stored as string to keep exact format
+  shopOutDate              String?                // Stored as string to keep exact format
+  reportDate               String?                // Clarified field for SVR report date
+  reasonForShopVisit       String?                @db.Text
+  tsn                      String?
+  csn                      String?
+  tslv                     String?
+  cslv                     String?
+  authorizedReleaseStatus  String?
+  originalFileName         String?
+  storedFileName           String?
+  rawPayload               Json?
+  
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @default(now()) @updatedAt
+
+  configurationReport      SvrConfigurationItem[]
+  llpStatus                SvrLlpStatus[]
+  adStatus                 SvrAdStatus[]
+  complianceRecords        ComplianceRecord[]
+}
+
+model SvrConfigurationItem {
+  id                 String          @id @default(uuid())
+  svrId              String
+  svr                ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  engineSerialNumber String?         // Added for grouping by ESN
+  engineId           String?
+  engine             Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  module             String?
+  partName           String?
+  inOut              String?         // "IN" or "OUT"
+  partNumber         String?
+  serial             String?
+  qty                String?
+  tsn                String?
+  csn                String?
+  tso                String?
+  cso                String?
+  workAccompl        String?
+}
+
+model SvrLlpStatus {
+  id                  String          @id @default(uuid())
+  svrId               String
+  svr                 ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  engineSerialNumber  String?         // Added for grouping by ESN
+  engineId            String?
+  engine              Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  no                  String?
+  description         String?
+  partNumber          String?
+  serialNumber        String?
+  totalHour           String?
+  totalCycle          String?
+  totalCyclesCategory Json?           // Dynamic categories
+  lifeLimitCycles     Json?           // Dynamic categories
+  remainingCycles     Json?           // Dynamic categories
+  remark              String?
+}
+
+model SvrAdStatus {
+  id                            String          @id @default(uuid())
+  svrId                         String
+  svr                           ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  engineSerialNumber            String?         // Added for grouping by ESN
+  engineId                      String?
+  engine                        Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  adNumber                      String?
+  notificationDateOfCompliance  String?
+  description                   String?
+  referenceSb                   String?
+  recurrInsp                    String?
+  moduleApplicability           String?
+  methodOfCompliance            String?
+  remarks                       String?         @db.Text
+}
+
+model ComplianceRecord {
+  id             String           @id @default(uuid())
+  engineId       String
+  engine         Engine           @relation(fields: [engineId], references: [id], onDelete: Cascade)
+  sbId           String?
+  sb             ServiceBulletin? @relation(fields: [sbId], references: [id], onDelete: Cascade)
+  adId           String?
+  ad             AirworthinessDirective? @relation(fields: [adId], references: [id], onDelete: Cascade)
+  status         ComplianceStatus @default(OPEN)
+  complianceDate String?          // Stored as string to preserve format
+  svrId          String?
+  svr            ShopVisitReport? @relation(fields: [svrId], references: [id], onDelete: SetNull)
+  remarks        String?          @db.Text
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @default(now()) @updatedAt
+
+  @@unique([engineId, sbId])
+  @@unique([engineId, adId])
 }
 

@@ -511,13 +511,35 @@ Untuk memperjelas target pengembangan (roadmap) sistem kedepannya, berikut adala
 
 ---
 
-## 15. Riwayat Perubahan Dokumen
+## 15. Panduan Kontainerisasi Docker
+
+Aplikasi backend ini telah dikontainerisasi menggunakan **Docker** dan **Docker Compose** untuk memastikan kelancaran deployment (terutama dependency Puppeteer pada sistem operasi Linux).
+
+### A. Komponen Kontainer
+Sistem dibagi menjadi dua kontainer utama:
+1. **`app` (Node.js + Google Chrome):** Menjalankan server Express.js. Menggunakan image `node:20-slim` berbasis Debian untuk menginstal browser Chrome stabil yang digunakan oleh Puppeteer.
+2. **`db` (PostgreSQL 15):** Menjalankan database PostgreSQL Alpine. Data disimpan di volume persisten `pgdata`.
+
+### B. Konfigurasi File Docker
+* **[`Dockerfile`](file:///d:/GMF%20Intern/GMF-BE/Dockerfile):** Menginstal otomatis Google Chrome dan font pendukung legibilitas, lalu mengonfigurasi `PUPPETEER_EXECUTABLE_PATH`.
+* **[`docker-compose.yml`](file:///d:/GMF%20Intern/GMF-BE/docker-compose.yml):** Mengatur integrasi jaringan internal kedua kontainer, environment variables, port forwarding (3000 untuk backend, 5432 untuk database), dan mapping data volume (`pgdata` & `uploads_data`).
+* **[`.dockerignore`](file:///d:/GMF%20Intern/GMF-BE/.dockerignore):** Mengabaikan folder besar (`node_modules`), file log, database upload, dan berkas kredensial sensitif (`.env`) agar proses build cepat.
+
+### C. Alur Kerja (Development Hybrid)
+Untuk pengembangan aktif, direkomendasikan menjalankan database di Docker dan server Node.js secara lokal:
+1. Jalankan database kontainer: `docker compose up -d db`
+2. Jalankan aplikasi lokal: `npm run dev` (dengan port database terarah ke `localhost:5432`).
+
+---
+
+## 16. Riwayat Perubahan Dokumen
 
 | Tanggal | Versi | Perubahan |
 |---------|-------|-----------|
 | 2026-07-07 | 1.0 | Dokumen awal — mencakup arsitektur, alur 6 langkah, dua sumber SB, integrasi AI, dan aturan bisnis |
 | 2026-07-08 | 1.1 | Penambahan Section 14 mengenai Alur Pengerjaan Kedepannya (Future Workflow & Next Steps) |
 | 2026-07-13 | 1.2 | Perbaikan normalisasi data AI (unwrapping nested `mro_schema`), penyempurnaan layout Citilink (Portrait, page-break, 2-column checkbox, simbol silang X), pembersihan boilerplate referensi, dan optimasi visual border kolom titik dua. |
+| 2026-07-15 | 1.4 | Penambahan berkas `.env.example`. Penguatan backend (autentikasi JWT dengan validasi user DB aktif). Perbaikan seeder mesin GE90 & B777 untuk keakuratan EES. Perbaikan error tipe data (Int ke String) pada parser SVR. Integrasi Docker lengkap (Dockerfile, docker-compose.yml, .dockerignore). |
 
 ### Fitur Terbaru (2026-07-13)
 - **Unwrapping Nested Payload AI**: Backend secara dinamis membuka pembungkus ganda payload AI (`payload.mro_schema.mro_schema`) agar data aman diekstrak secara otomatis.
@@ -533,3 +555,17 @@ Untuk memperjelas target pengembangan (roadmap) sistem kedepannya, berikut adala
   - Menghilangkan pembatas border vertikal di sekitar kolom titik dua (`:`) agar tampilan form terlihat lebih menyatu.
   - Membuka pembatasan pemotongan halaman (`page-break-inside: auto`) pada baris tabel utama agar baris referensi yang sangat panjang terpotong alami ke Halaman 2 dan tidak menyisakan ruang kosong besar di Halaman 1.
   - Meningkatkan ukuran huruf dasar template dari `11px` ke `12px` untuk legibilitas cetak.
+
+### Fitur Terbaru (2026-07-15)
+- **Autentikasi JWT & Verifikasi Database**:
+  - Mengubah middleware autentikasi `verifyToken` menjadi asinkron untuk melakukan verifikasi keberadaan ID pengguna di database pada setiap permintaan API.
+  - Mencegah error database 500 (Foreign Key Constraint) saat pengguna menggunakan token sesi lama setelah database di-seed ulang. Mengembalikan respons `401 Unauthorized` secara aman.
+- **Seeder Mesin GE90 & Pesawat Boeing 777**:
+  - Memperbarui `prisma/seed.js` untuk memasukkan pesawat PK-GIE (B777-300ER) dan dua mesin GE90-115B (ESN 906101 & 906102).
+  - Memastikan pencocokan otomatis (Step 2) menghasilkan status *Applicable* untuk SB mesin GE90 sehingga kolom ESN pada hasil EES PDF terisi dengan benar.
+- **Normalisasi Tipe Data Parser SVR**:
+  - Mengubah pemetaan parsing JSON hasil OCR SVR di `svrService.js` dengan melakukan konversi eksplisit menggunakan fungsi `String()` pada variabel numerik (`tsn`, `csn`, `tso`, `cso`, `qty` pada konfigurasi report, serta `no` dan `totalCycle` pada status LLP).
+  - Mencegah error `PrismaClientValidationError` akibat tipe data integer yang dikirim oleh AI untuk field yang didefinisikan sebagai string opsional (`String?`) di database.
+- **Integrasi Docker & Docker Compose**:
+  - Membuat `Dockerfile`, `docker-compose.yml`, dan `.dockerignore` siap pakai di direktori root proyek untuk kemudahan deployment backend & database PostgreSQL 15 secara terisolasi.
+

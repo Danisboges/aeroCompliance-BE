@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const prisma = require('../db');
 
 // Definisikan Role agar bisa dibaca oleh middleware di bawahnya
 const Role = {
@@ -7,7 +8,7 @@ const Role = {
 };
 
 // Middleware to verify JWT token
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   
   if (!authHeader) {
@@ -25,6 +26,17 @@ const verifyToken = (req, res, next) => {
   try {
     const secret = process.env.JWT_SECRET || 'fallback_secret_key';
     const decoded = jwt.verify(token, secret);
+    
+    // Validasi keberadaan user di DB untuk mencegah FK constraint violation jika db di-seed ulang
+    const userExists = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true }
+    });
+    
+    if (!userExists) {
+      return res.status(401).json({ message: 'Unauthorized: User does not exist. Please log in again.' });
+    }
+
     req.user = decoded;
     next();
   } catch (error) {

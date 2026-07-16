@@ -3,7 +3,7 @@ const path = require('path');
 const prisma = require('../db');
 const fileStorageService = require('./fileStorageService');
 const serviceBulletinRepository = require('../repositories/serviceBulletinRepository');
-const ocrClient = require('./ocrClient');
+const ocrClient = require('../clients/ocrClient');
 const eesService = require('./eesService');
 const pdfGenerationService = require('./pdfGenerationService');
 const eesRepository = require('../repositories/eesRepository');
@@ -434,7 +434,7 @@ async function triggerAiAnalysis(sbId, updatedById = null) {
   }
 
   const buffer = require('fs').readFileSync(storagePath);
-  const ocrClient = require('./ocrClient');
+  const ocrClient = require('../clients/ocrClient');
   const aiResult = await ocrClient.analyzeDocument(buffer, sb.originalFileName || sb.sbNumber);
 
   return serviceBulletinRepository.updateServiceBulletin(sb.id, {

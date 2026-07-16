@@ -3,7 +3,7 @@
   "info": {
     "title": "GMF AD/SB Compliance API",
     "version": "3.0.0",
-    "description": "## 📖 Dokumentasi API — Sistem Pemantauan AD/SB Compliance GMF\n\n---\n\n### 🚀 Panduan Pengujian Cepat (6 Langkah)\n\n**LANGKAH 1 — Login & Authorize**\n> `POST /api/auth/login` → salin `token` → klik **Authorize 🔒** → paste token\n\n**LANGKAH 2 — Pilih SB**\n> `GET /api/service-bulletins` → pilih SB yang ingin dianalisis → salin `id`\n\n**LANGKAH 3 — Upload PDF ke SB**\n> `POST /api/service-bulletins/{id}/upload-pdf` → upload file PDF asli SB\n\n**LANGKAH 4 — Trigger AI Analisis**\n> `POST /api/service-bulletins/{id}/analyze` → AI menganalisis PDF\n> `GET /api/service-bulletins/{id}/ai-summary` → lihat hasil AI\n> `PATCH /api/service-bulletins/{id}/ai-summary` → konfirmasi/edit hasil AI\n\n**LANGKAH 5 — Engineering Recommendation**\n> `POST /api/service-bulletins/{id}/engineering-rec` → COMPLY / DEFER / NA\n\n**LANGKAH 6 — Generate & Export EES**\n> `POST /api/service-bulletins/{id}/generate-ees` → generate EES\n> `GET /api/service-bulletins/{id}/export/garuda/pdf` → preview PDF Garuda\n> `GET /api/service-bulletins/{id}/export/citilink/pdf` → preview PDF Citilink\n\n---\n\n### 🔑 Akun Sandbox\n| Role | Email | Password |\n|------|-------|----------|\n| **Admin** | admin@gmf.com | admin123 |\n| **Technician** | technician@gmf.com | tech123 |"
+    "description": "## 📖 Dokumentasi API — Sistem Pemantauan AD/SB Compliance GMF\n\n---\n\n### 🚀 Panduan Pengujian Cepat (6 Langkah)\n\n**LANGKAH 1 — Login & Authorize**\n> `POST /api/auth/login` → salin `token` → klik **Authorize 🔒** → paste token\n\n**LANGKAH 2 — Pilih SB**\n> `GET /api/service-bulletins` → pilih SB yang ingin dianalisis → salin `id`\n\n**LANGKAH 3 — Upload PDF ke SB**\n> `POST /api/service-bulletins/{id}/upload-pdf` → upload file PDF asli SB\n\n**LANGKAH 4 — Trigger AI Analisis**\n> `POST /api/service-bulletins/{id}/analyze` → AI menganalisis PDF\n> `GET /api/service-bulletins/{id}/ai-summary` → lihat hasil AI\n> `PATCH /api/service-bulletins/{id}/ai-summary` → konfirmasi/edit hasil AI\n\n**LANGKAH 5 — Engineering Recommendation**\n> `POST /api/service-bulletins/{id}/engineering-rec` → COMPLY / DEFER / NA\n\n**LANGKAH 6 — Generate & Export EES**\n> `POST /api/service-bulletins/{id}/generate-ees` → generate EES\n> `GET /api/service-bulletins/{id}/export/garuda/pdf` → preview PDF Garuda\n> `GET /api/service-bulletins/{id}/export/citilink/pdf` → preview PDF Citilink\n\n---\n\n### 🔑 Akun Sandbox\n| Role | Email | Password |\n|------|-------|----------|\n| **Admin** | admin@gmf.co.id | admin123 |\n| **Technician** | technician@gmf.co.id | tech123 |"
   },
   "servers": [
     {
@@ -59,7 +59,7 @@
           "email": {
             "type": "string",
             "format": "email",
-            "example": "admin@gmf.com"
+            "example": "admin@gmf.co.id"
           },
           "password": {
             "type": "string",
@@ -83,7 +83,7 @@
               },
               "email": {
                 "type": "string",
-                "example": "admin@gmf.com"
+                "example": "admin@gmf.co.id"
               },
               "role": {
                 "type": "string",
@@ -263,13 +263,13 @@
               "examples": {
                 "Admin": {
                   "value": {
-                    "email": "admin@gmf.com",
+                    "email": "admin@gmf.co.id",
                     "password": "admin123"
                   }
                 },
                 "Technician": {
                   "value": {
-                    "email": "technician@gmf.com",
+                    "email": "technician@gmf.co.id",
                     "password": "tech123"
                   }
                 }
@@ -1316,6 +1316,237 @@
         "responses": {
           "200": {
             "description": "Successfully retrieved aircraft list"
+          }
+        }
+      }
+    },
+    "/api/shop-visit-reports/upload": {
+      "post": {
+        "summary": "Upload PDF SVR asli (binary payload)",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-file-name",
+            "in": "header",
+            "required": true,
+            "description": "Nama file PDF asli (misal: SVR_660235_2026.pdf)",
+            "schema": {
+              "type": "string",
+              "example": "SVR_660235_2026.pdf"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "SVR PDF received and processed by SVR pipeline"
+          }
+        }
+      }
+    },
+    "/api/webhooks/svr": {
+      "post": {
+        "summary": "Webhook ingest JSON SVR mentah (hasil ekstraksi AI)",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "SVR JSON ingested successfully"
+          }
+        }
+      }
+    },
+    "/api/shop-visit-reports": {
+      "get": {
+        "summary": "List SVR dengan filter ESN & pagination",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "esn",
+            "in": "query",
+            "required": false,
+            "description": "Filter by Engine Serial Number (ESN)",
+            "schema": {
+              "type": "string",
+              "example": "660235"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved SVR list"
+          }
+        }
+      }
+    },
+    "/api/shop-visit-reports/{id}": {
+      "get": {
+        "summary": "Ambil detail SVR beserta item konfigurasi, LLP, dan AD status",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved SVR details"
+          },
+          "404": {
+            "description": "SVR not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Hapus dokumen SVR dan file PDF-nya dari disk",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SVR deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/shop-visit-reports/{id}/view": {
+      "get": {
+        "summary": "Preview SVR PDF inline",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF stream",
+            "content": {
+              "application/pdf": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/shop-visit-reports/{id}/download": {
+      "get": {
+        "summary": "Download SVR PDF",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF file",
+            "content": {
+              "application/pdf": {}
+            }
           }
         }
       }

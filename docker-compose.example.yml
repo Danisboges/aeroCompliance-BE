@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Database connection string using container database hostname 'db'
+      - DATABASE_URL=postgresql://your_db_user:your_db_password@db:5432/your_db_name?schema=public
+      - JWT_SECRET=your_jwt_secret_key
+      - AI_SERVICE_URL=https://your-sb-extractor.hf.space/api/extract
+      - AI_SERVICE_API_KEY=your_sb_api_key
+      - SVR_AI_SERVICE_URL=https://your-svr-extractor.hf.space/api/extract
+      - SVR_AI_SERVICE_API_KEY=your_svr_api_key
+    depends_on:
+      - db
+    volumes:
+      - uploads_data:/app/uploads
+
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=your_db_user
+      - POSTGRES_PASSWORD=your_db_password
+      - POSTGRES_DB=your_db_name
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+  uploads_data:
