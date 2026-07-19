@@ -8,7 +8,7 @@ const handleControllerError = (res, error) => {
     return res.status(404).json({ error: error.message });
   }
   console.error('[SBController]', error);
-  return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  return res.status(500).json({ error: 'Internal Server Error' });
 };
 
 /**
@@ -17,9 +17,26 @@ const handleControllerError = (res, error) => {
  */
 const listServiceBulletins = async (req, res) => {
   try {
-    const { search, sbType, status } = req.query;
-    const results = await serviceBulletinRepository.findAllWithFilter({ search, sbType, status });
-    return res.status(200).json({ data: results, total: results.length });
+    const { search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit } = req.query;
+    const filters = { search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit };
+
+    // Validasi & injeksi scope operator dari user login
+    if (req.user && req.user.operatorId) {
+      if (operatorId && operatorId !== req.user.operatorId) {
+        return res.status(403).json({ error: 'Forbidden: Cannot access data outside your operator scope' });
+      }
+      filters.operatorId = req.user.operatorId;
+    }
+
+    const results = await serviceBulletinRepository.findAllWithFilter(filters);
+    const total = await serviceBulletinRepository.countAllWithFilter(filters);
+    
+    return res.status(200).json({ 
+      data: results, 
+      total,
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined
+    });
   } catch (error) {
     return handleControllerError(res, error);
   }

@@ -235,6 +235,13 @@ lalu AI akan mengekstrak metadata (sb_code, title, dll).
 |--------|------|-----------|
 | POST | `/api/webhooks/ees` | Terima payload AI langsung (tanpa JWT) |
 
+### 📊 Dashboard & Approvals
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/api/dashboard/engineering-review/summary` | Dashboard metrics bulanan dan status Approval |
+| GET | `/api/approvals` | List approval tasks (untuk Engineer) |
+| POST | `/api/approvals/:eesId/review` | Eksekusi persetujuan (APPROVED/REJECTED/RETURNED) |
+
 ---
 
 ## 7. Model Database (ERD Ringkas)
@@ -256,13 +263,16 @@ AirworthinessDirective ──── (N) ComplianceTask
 
 | Model | Primary Key | Unique | Deskripsi |
 |-------|-------------|--------|-----------|
-| `User` | `id` (USR-xxx) | `email`, `username` | Pengguna sistem |
+| `Operator` | `id` (OP-xxx) | `code` | Induk organisasi (Garuda/Citilink) penyekat data |
+| `User` | `id` (USR-xxx) | `email`, `username` | Pengguna sistem (termasuk 1st/2nd Engineer) |
 | `Aircraft` | `id` | `registration`, `msn` | Pesawat di fleet |
 | `Engine` | `id` | `esn` | Mesin pesawat (terhubung via `msn` ke Aircraft) |
-| `ServiceBulletin` | `id` (SB-DOC-xxx) | `sbNumber` | Dokumen SB — tabel sentral |
+| `ServiceBulletin` | `id` (SB-DOC-xxx) | `sbNumber` | Dokumen SB — tabel sentral tersambung ke `Operator` |
 | `EesDocument` | `id` (EES-DOC-xxx) | `eesNumber`, `sourceSbId` | Hasil generate EES |
 | `EesEvaluationItem` | `id` | — | Baris evaluasi di EES |
 | `EngineeringRecommendation` | `id` | `sbId` | Keputusan COMPLY/DEFER/NA |
+| `Approval` | `id` | `eesId` | Workflow persetujuan EES aktif (PENDING/APPROVED) |
+| `ReviewAction` | `id` | — | Log historis immutable dari aksi persetujuan EES |
 | `ComplianceTask` | `id` | — | Task tracking pelaksanaan |
 
 ### Status Lifecycle ServiceBulletin
@@ -540,6 +550,31 @@ Untuk pengembangan aktif, direkomendasikan menjalankan database di Docker dan se
 | 2026-07-08 | 1.1 | Penambahan Section 14 mengenai Alur Pengerjaan Kedepannya (Future Workflow & Next Steps) |
 | 2026-07-13 | 1.2 | Perbaikan normalisasi data AI (unwrapping nested `mro_schema`), penyempurnaan layout Citilink (Portrait, page-break, 2-column checkbox, simbol silang X), pembersihan boilerplate referensi, dan optimasi visual border kolom titik dua. |
 | 2026-07-15 | 1.4 | Penambahan berkas `.env.example`. Penguatan backend (autentikasi JWT dengan validasi user DB aktif). Perbaikan seeder mesin GE90 & B777 untuk keakuratan EES. Perbaikan error tipe data (Int ke String) pada parser SVR. Integrasi Docker lengkap (Dockerfile, docker-compose.yml, .dockerignore). |
+| 2026-07-19 | 1.5 | Penyelarasan Backend dengan Kontrak Frontend & AI. Penambahan logika transaksi Prisma pada pembuatan EES. Penyesuaian pemetaan status dokumen untuk integrasi langkah 1-6 UI. Sinkronisasi data root SB dengan validasi payload AI. Penggunaan endpoint actual AI untuk OCR SVR. |
+| 2026-07-19 | 1.6 | **Major Update: Engineering Review Dashboard & Multi-Tenancy**. Implementasi tabel `Operator` untuk menyekat data Garuda dan Citilink. Penambahan `Role` baru (`FIRST_ENGINEER`, `SECOND_ENGINEER`). Penggantian struktur review dengan tabel Pivot (`Approval` dan `ReviewAction`) untuk menghindari redundansi data di `EesDocument`. Penambahan endpoint `/api/dashboard/engineering-review/summary` dan `/api/approvals`. |
+
+### Fitur Terbaru (2026-07-19 v1.6)
+- **Multi-Tenancy (Operator Isolation)**:
+  - Database telah diskalakan menggunakan `operatorId` di level `User`, `Aircraft`, dan `ServiceBulletin`. Data dashboard dan EES secara otomatis disekat sehingga seorang Engineer hanya dapat melihat SB dan data yang terhubung ke Operator mereka (Garuda / Citilink).
+- **Engineering Review Dashboard**:
+  - Penambahan layanan khusus `dashboardService.js` untuk menyajikan metrik jumlah SB baru/unread, aktivitas persetujuan EES, serta agregasi *monthly review* (Approved/Rejected/Returned) berdasar tipe kategori.
+- **Workflow Approvals Terpusat**:
+  - Implementasi tabel `Approval` (status proses saat ini) dan `ReviewAction` (riwayat absolut tak terhapuskan) untuk mengaudit secara aman tindakan dari *First Engineer* dan *Second Engineer*.
+  - Middleware otorisasi `authMiddleware.js` direfaktor untuk memastikan JWT token tidak menyuntikkan ID Operator palsu (divalidasi *real-time* ke DB).
+
+### Fitur Terbaru (2026-07-19)
+- **Penyelarasan Batas Kategori Manual (Compliance Category <= 3)**:
+  - Backend sekarang akan memblokir (skip) pembuatan otomatis `EesDocument` untuk SB dengan kategori manual (<= 3) atau bertipe Alert jika dipicu melalui EES webhook secara otomatis.
+  - Dokumentasi Swagger untuk `/api/webhooks/ees` telah diperbarui untuk mencerminkan logika ini.
+- **Integritas Transaksi (Prisma Transaction) EES**:
+  - Pembuatan dokumen EES (`eesRepository.js`) sekarang dibungkus dalam `prisma.$transaction` untuk memastikan integritas data antara operasi penghapusan EES lama dan pembuatan EES baru berserta evaluasi itemnya.
+- **Pemetaan Status Dokumen (Status Mapping)**:
+  - `serviceBulletinController.js` sekarang mengembalikan status draf OCR (`ocrResult.draftStatus`) pada rute utama SB untuk memastikan kelancaran UI alur kerja EES 6 langkah di sisi frontend.
+- **Sinkronisasi Metadata Service Bulletin**:
+  - Saat hasil ekstraksi AI divalidasi (`validateServiceBulletin`), data seperti `sbNumber`, `title`, `issuer`, `effectivityType`, dan `complianceCategory` akan langsung tersinkronisasi kembali ke field level akar (root) `ServiceBulletin`.
+- **Integrasi Penuh OCR Shop Visit Report (SVR)**:
+  - Mengganti penggunaan mock/dummy SVR OCR dengan endpoint AI SVR langsung: `https://dzakievgn-sb-extractor.hf.space/api/extract_svr` pada klien `svrClient.js`.
+  - Menambahkan penanganan error ekstraksi yang lebih ketat jika AI gagal atau memberikan format balasan yang tidak sesuai.
 
 ### Fitur Terbaru (2026-07-13)
 - **Unwrapping Nested Payload AI**: Backend secara dinamis membuka pembungkus ganda payload AI (`payload.mro_schema.mro_schema`) agar data aman diekstrak secara otomatis.

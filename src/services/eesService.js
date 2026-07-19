@@ -203,6 +203,11 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
     });
   }
 
+  if (normalized.requiresManualEes && !explicitSourceSbId) {
+    console.log(`[EesWebhook] Skipping automatic EES generation for manual category / alert SB: ${bulletinNumber}`);
+    return null; // Skip EES generation for manual category
+  }
+
   // Teruskan ke repository dengan sourceSbId yang sudah di-resolve
   return await eesRepository.createEesDocument(
     { eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, aircraftType, partNumber },

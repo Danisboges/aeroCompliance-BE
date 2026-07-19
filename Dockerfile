@@ -28,7 +28,11 @@ RUN npx prisma generate
 # Copy seluruh file source code
 COPY . .
 
+# Tambahkan entrypoint script
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 # Expose port backend
 EXPOSE 3000
 
-CMD ["node", "src/server.js"]
+CMD ["./docker-entrypoint.sh"]

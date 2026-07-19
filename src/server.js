@@ -11,6 +11,8 @@ const authRoutes = require('./routes/authRoutes');
 const serviceBulletinRoutes = require('./routes/serviceBulletinRoutes');
 const aircraftRoutes = require('./routes/aircraftRoutes');
 const svrRoutes = require('./routes/svrRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const approvalRoutes = require('./routes/approvalRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,9 +32,12 @@ app.use('/api', authRoutes);
 app.use('/api', serviceBulletinRoutes); // EES Generator workflow (6-step)
 app.use('/api', aircraftRoutes);
 app.use('/api', svrRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/approvals', approvalRoutes);
 
 // ... sisa kode server.js tetap sama
 app.listen(PORT, HOST, () => {
-  console.log(`Server running at http://${HOST}:${PORT}`);
-  console.log(`📑 Swagger Documentation available at http://${HOST}:${PORT}/api-docs`);
+  const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
+  console.log(`Server running at http://${displayHost}:${PORT}`);
+  console.log(`📑 Swagger Documentation available at http://${displayHost}:${PORT}/api-docs`);
 });

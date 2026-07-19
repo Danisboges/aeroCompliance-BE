@@ -313,6 +313,15 @@ const validateServiceBulletin = async (id, validatedPayload, updatedById = null)
   assertPayloadShape(payload);
 
   return serviceBulletinRepository.updateServiceBulletin(sb.id, {
+    sbNumber: payload.bulletinNumber || payload.sb_code || payload.sbNumber || sb.sbNumber,
+    title: payload.title || payload.tittle || sb.title,
+    issuer: payload.issuer || payload.manufacturer || payload.effected_type || sb.issuer,
+    complianceCategory: payload.compliance_category !== undefined && payload.compliance_category !== null ? parseInt(payload.compliance_category) : sb.complianceCategory,
+    effectivityType: payload.effected_type || sb.effectivityType,
+    effectivityRange: Array.isArray(payload.effected_model) 
+                        ? payload.effected_model.join(', ') 
+                        : (payload.effected_model || sb.effectivityRange),
+    compliancePeriod: payload.compliance_period || sb.compliancePeriod,
     rawPayload: payload,
     draftStatus: 'VALIDATED',
     updatedById: updatedById || undefined

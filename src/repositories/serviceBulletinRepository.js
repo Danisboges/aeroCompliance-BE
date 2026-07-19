@@ -139,13 +139,44 @@ module.exports = {
   findServiceBulletinBySbNumber,
   deleteServiceBulletinById,
   findAllWithFilter,
+  countAllWithFilter,
   checkApplicabilityForSb,
 };
 
 /**
  * Lists all SBs with optional text search and type/status filters (for Select SB step).
+ * Supports pagination, operator filter, and date ranges.
  */
-async function findAllWithFilter({ search, sbType, status } = {}) {
+async function findAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy = 'receivedAt', sortOrder = 'desc', page, limit } = {}) {
+  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo });
+  
+  const queryOptions = {
+    where,
+    orderBy: { [sortBy]: sortOrder },
+    include: includeRelations,
+  };
+
+  if (page !== undefined && limit !== undefined) {
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
+    queryOptions.skip = (pageNum - 1) * limitNum;
+    queryOptions.take = limitNum;
+  } else if (limit !== undefined) {
+    queryOptions.take = Math.min(100, Math.max(1, parseInt(limit, 10)));
+  }
+
+  return prisma.serviceBulletin.findMany(queryOptions);
+}
+
+/**
+ * Counts all SBs with optional filters (for pagination).
+ */
+async function countAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo } = {}) {
+  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo });
+  return prisma.serviceBulletin.count({ where });
+}
+
+function _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo }) {
   const where = {};
   if (search) {
     where.OR = [
@@ -156,12 +187,14 @@ async function findAllWithFilter({ search, sbType, status } = {}) {
   }
   if (sbType) where.sbType = sbType;
   if (status) where.status = status;
-
-  return prisma.serviceBulletin.findMany({
-    where,
-    orderBy: { issueDate: 'desc' },
-    include: includeRelations,
-  });
+  if (operatorId) where.operatorId = operatorId;
+  
+  if (receivedFrom || receivedTo) {
+    where.receivedAt = {};
+    if (receivedFrom) where.receivedAt.gte = new Date(receivedFrom);
+    if (receivedTo) where.receivedAt.lte = new Date(receivedTo);
+  }
+  return where;
 }
 
 /**

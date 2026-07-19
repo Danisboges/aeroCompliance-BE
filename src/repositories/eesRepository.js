@@ -7,52 +7,54 @@ const { generateId } = require('../utils/idGenerator');
 const createEesDocument = async (documentData, evaluations) => {
   const { eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, esn, aircraftType } = documentData;
 
-  // Hapus EesDocument lama jika sudah ada untuk menghindari kendala keunikan
-  await prisma.eesDocument.deleteMany({
-    where: { sourceSbId }
-  });
-
-  const existingByNumber = await prisma.eesDocument.findUnique({
-    where: { eesNumber },
-  });
-
-  if (existingByNumber) {
-    await prisma.eesDocument.delete({
-      where: { id: existingByNumber.id }
+  return await prisma.$transaction(async (tx) => {
+    // Hapus EesDocument lama jika sudah ada untuk menghindari kendala keunikan
+    await tx.eesDocument.deleteMany({
+      where: { sourceSbId }
     });
-  }
 
-  return await prisma.eesDocument.create({
-    data: {
-      id: generateId('EES-DOC'),
-      eesNumber,
-      sourceSbId,
-      taskType: taskType || null,
-      references: references || null,
-      effectedType: effectedType || null,
-      effectedModel: effectedModel || null,
-      esn: esn || null,
-      aircraftType: aircraftType || null,
-      evaluations: {
-        create: evaluations.map((item) => ({
-          id: generateId('ITEM'),
-          itemNo: String(item.itemNo ?? ''),
-          paragraph: item.paragraph ? String(item.paragraph) : null,
-          requirementDesc: String(item.requirementDesc ?? ''),
-          remarks: item.remarks ? String(item.remarks) : null,
-          taskType: item.taskType ? String(item.taskType) : null,
-          adRelated: item.adRelated ? String(item.adRelated) : null,
-          warranty: item.warranty !== undefined ? Boolean(item.warranty) : null,
-          rep: item.rep ? String(item.rep) : null,
-          dueAt: item.dueAt ? new Date(item.dueAt) : null,
-          isApplicable: item.isApplicable !== false, // default true
-        })),
+    const existingByNumber = await tx.eesDocument.findUnique({
+      where: { eesNumber },
+    });
+
+    if (existingByNumber) {
+      await tx.eesDocument.delete({
+        where: { id: existingByNumber.id }
+      });
+    }
+
+    return await tx.eesDocument.create({
+      data: {
+        id: generateId('EES-DOC'),
+        eesNumber,
+        sourceSbId,
+        taskType: taskType || null,
+        references: references || null,
+        effectedType: effectedType || null,
+        effectedModel: effectedModel || null,
+        esn: esn || null,
+        aircraftType: aircraftType || null,
+        evaluations: {
+          create: evaluations.map((item) => ({
+            id: generateId('ITEM'),
+            itemNo: String(item.itemNo ?? ''),
+            paragraph: item.paragraph ? String(item.paragraph) : null,
+            requirementDesc: String(item.requirementDesc ?? ''),
+            remarks: item.remarks ? String(item.remarks) : null,
+            taskType: item.taskType ? String(item.taskType) : null,
+            adRelated: item.adRelated ? String(item.adRelated) : null,
+            warranty: item.warranty !== undefined ? Boolean(item.warranty) : null,
+            rep: item.rep ? String(item.rep) : null,
+            dueAt: item.dueAt ? new Date(item.dueAt) : null,
+            isApplicable: item.isApplicable !== false, // default true
+          })),
+        },
       },
-    },
-    include: {
-      evaluations: true,
-      sourceSb: true,
-    },
+      include: {
+        evaluations: true,
+        sourceSb: true,
+      },
+    });
   });
 };
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "GMF AD/SB Compliance API",
     "version": "3.0.0",
-    "description": "## 📖 Dokumentasi API — Sistem Pemantauan AD/SB Compliance GMF\n\n---\n\n### 🚀 Panduan Pengujian Cepat (6 Langkah)\n\n**LANGKAH 1 — Login & Authorize**\n> `POST /api/auth/login` → salin `token` → klik **Authorize 🔒** → paste token\n\n**LANGKAH 2 — Pilih SB**\n> `GET /api/service-bulletins` → pilih SB yang ingin dianalisis → salin `id`\n\n**LANGKAH 3 — Upload PDF ke SB**\n> `POST /api/service-bulletins/{id}/upload-pdf` → upload file PDF asli SB\n\n**LANGKAH 4 — Trigger AI Analisis**\n> `POST /api/service-bulletins/{id}/analyze` → AI menganalisis PDF\n> `GET /api/service-bulletins/{id}/ai-summary` → lihat hasil AI\n> `PATCH /api/service-bulletins/{id}/ai-summary` → konfirmasi/edit hasil AI\n\n**LANGKAH 5 — Engineering Recommendation**\n> `POST /api/service-bulletins/{id}/engineering-rec` → COMPLY / DEFER / NA\n\n**LANGKAH 6 — Generate & Export EES**\n> `POST /api/service-bulletins/{id}/generate-ees` → generate EES\n> `GET /api/service-bulletins/{id}/export/garuda/pdf` → preview PDF Garuda\n> `GET /api/service-bulletins/{id}/export/citilink/pdf` → preview PDF Citilink\n\n---\n\n### 🔑 Akun Sandbox\n| Role | Email | Password |\n|------|-------|----------|\n| **Admin** | admin@gmf.co.id | admin123 |\n| **Technician** | technician@gmf.co.id | tech123 |"
+    "description": "## 📖 Dokumentasi API — Sistem Pemantauan AD/SB Compliance GMF\n\n---\n\n### 🚀 Panduan Pengujian Cepat (6 Langkah)\n\n**LANGKAH 1 — Login & Authorize**\n> `POST /api/auth/login` → salin `token` → klik **Authorize 🔒** → paste token\n\n**LANGKAH 2 — Pilih SB**\n> `GET /api/service-bulletins` → pilih SB yang ingin dianalisis → salin `id`\n\n**LANGKAH 3 — Upload PDF ke SB**\n> `POST /api/service-bulletins/{id}/upload-pdf` → upload file PDF asli SB\n\n**LANGKAH 4 — Trigger AI Analisis**\n> `POST /api/service-bulletins/{id}/analyze` → AI menganalisis PDF\n> `GET /api/service-bulletins/{id}/ai-summary` → lihat hasil AI\n> `PATCH /api/service-bulletins/{id}/ai-summary` → konfirmasi/edit hasil AI\n\n**LANGKAH 5 — Engineering Recommendation**\n> `POST /api/service-bulletins/{id}/engineering-rec` → COMPLY / DEFER / NA\n\n**LANGKAH 6 — Generate & Export EES**\n> `POST /api/service-bulletins/{id}/generate-ees` → generate EES\n> `GET /api/service-bulletins/{id}/export/garuda/pdf` → preview PDF Garuda\n> `GET /api/service-bulletins/{id}/export/citilink/pdf` → preview PDF Citilink\n\n---\n\n### 🔑 Akun Sandbox (Untuk Testing)\n| Role | Email | Password | Keterangan |\n|------|-------|----------|------------|\n| **1st Engineer** | firsteng@gmf.co.id | tech123 | (Garuda) Review Awal EES |\n| **2nd Engineer** | secondeng@gmf.co.id | tech123 | (Garuda) Final Approval EES |\n| **Technician** | technician@gmf.co.id | tech123 | (Garuda) Eksekusi Task |\n| **Admin** | admin@gmf.co.id | admin123 | Superuser (Semua Data) |"
   },
   "servers": [
     {
@@ -215,6 +215,14 @@
     {
       "name": "🧹 Cleanup",
       "description": "Hapus data SB untuk keperluan testing"
+    },
+    {
+      "name": "📊 Dashboard",
+      "description": "Dashboard Engineering Review (Summary, Approvals, Analytics)"
+    },
+    {
+      "name": "✅ Approvals",
+      "description": "Approval workflow untuk EES Document (First/Second Engineer)"
     }
   ],
   "paths": {
@@ -261,16 +269,22 @@
                 "$ref": "#/components/schemas/LoginRequest"
               },
               "examples": {
-                "Admin": {
+                "1st Engineer (Review EES)": {
+                  "value": {
+                    "email": "firsteng@gmf.co.id",
+                    "password": "tech123"
+                  }
+                },
+                "2nd Engineer (Approve EES)": {
+                  "value": {
+                    "email": "secondeng@gmf.co.id",
+                    "password": "tech123"
+                  }
+                },
+                "Admin (Superuser)": {
                   "value": {
                     "email": "admin@gmf.co.id",
                     "password": "admin123"
-                  }
-                },
-                "Technician": {
-                  "value": {
-                    "email": "technician@gmf.co.id",
-                    "password": "tech123"
                   }
                 }
               }
@@ -358,6 +372,27 @@
                 "SUPERSEDED",
                 "CANCELLED"
               ]
+            }
+          },
+          {
+            "name": "operatorId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
             }
           }
         ],
@@ -1267,7 +1302,7 @@
     "/api/webhooks/ees": {
       "post": {
         "summary": "Webhook — Terima hasil AI langsung (tanpa JWT)",
-        "description": "Endpoint dipanggil langsung oleh AI Engine untuk membuat EES otomatis. **Tidak memerlukan token JWT.**",
+        "description": "Endpoint dipanggil langsung oleh AI Engine untuk membuat EES otomatis. **Tidak memerlukan token JWT.**\n\nCatatan: Jika `compliance_category` <= 3 (Manual) atau bertipe Alert, backend hanya akan memproses metadata Service Bulletin dan menunda (skip) pembuatan draf EES secara otomatis.",
         "tags": [
           "🔗 EES Webhook"
         ],
@@ -1566,6 +1601,142 @@
             "content": {
               "application/pdf": {}
             }
+          }
+        }
+      }
+    },
+    "/api/dashboard/engineering-review/summary": {
+      "get": {
+        "tags": [
+          "📊 Dashboard"
+        ],
+        "summary": "Get Dashboard Engineering Review Summary",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Format YYYY-MM"
+          },
+          {
+            "name": "operatorId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by Operator ID (Admin only, as engineers are locked to their own operator)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Summary dashboard data retrieved successfully"
+          },
+          "400": {
+            "description": "Invalid parameters"
+          }
+        }
+      }
+    },
+    "/api/approvals": {
+      "get": {
+        "tags": [
+          "✅ Approvals"
+        ],
+        "summary": "Get list of approval requests",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of approvals retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/approvals/{eesId}/review": {
+      "post": {
+        "tags": [
+          "✅ Approvals"
+        ],
+        "summary": "Submit review action for EES Document",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eesId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "APPROVED",
+                      "REJECTED",
+                      "RETURNED"
+                    ]
+                  },
+                  "comment": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Review submitted successfully"
+          },
+          "400": {
+            "description": "Invalid action or approval state"
           }
         }
       }

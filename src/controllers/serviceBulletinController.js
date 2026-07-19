@@ -22,12 +22,10 @@ const handleControllerError = (res, error) => {
  */
 const formatSbResponse = (sb, originalUrl = '') => {
   if (!sb) return null;
-  const isOcrDraftRoute = originalUrl.includes('ocr-drafts');
-  
   // Convert prisma serializeable object to plain JSON to allow virtual properties
   const sbJson = JSON.parse(JSON.stringify(sb));
 
-  const status = isOcrDraftRoute ? sbJson.ocrResult?.draftStatus : sbJson.ocrResult?.ocrStatus;
+  const status = sbJson.ocrResult?.draftStatus || sbJson.status || 'DRAFT';
   
   const result = {
     ...sbJson,

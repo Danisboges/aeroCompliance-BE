@@ -1,18 +1,10 @@
 node_modules
-# Keep environment variables out of version control
 .env
-
 /generated/prisma
-
-# Jangan push file hasil upload & generated PDF
 uploads/
-
-# File testing dan script uji coba
 scratch/
 api_integration_test.js
 *.test.js
 *.spec.js
 *.log
-
-# Docker local configurations
 docker-compose.yml

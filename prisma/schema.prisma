@@ -13,6 +13,17 @@ datasource db {
 enum Role {
   ADMIN
   TECHNICIAN
+  FIRST_ENGINEER
+  SECOND_ENGINEER
+}
+
+model Operator {
+  id               String            @id @default(uuid())
+  code             String            @unique
+  name             String
+  users            User[]
+  aircrafts        Aircraft[]
+  serviceBulletins ServiceBulletin[]
 }
 
 enum DocumentStatus {
@@ -81,13 +92,15 @@ enum EngRecAction {
 
 // --- AUTH & USER ---
 model User {
-  id        String   @id
-  email     String   @unique
-  username  String   @unique
-  password  String
-  role      Role     @default(TECHNICIAN)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  id         String    @id
+  email      String    @unique
+  username   String    @unique
+  password   String
+  role       Role      @default(TECHNICIAN)
+  operatorId String?
+  operator   Operator? @relation(fields: [operatorId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
 
   uploadedServiceBulletins ServiceBulletin[]           @relation("ServiceBulletinCreator")
   updatedServiceBulletins  ServiceBulletin[]           @relation("ServiceBulletinUpdater")
@@ -100,7 +113,8 @@ model Aircraft {
   registration    String           @unique
   msn             String?          @unique
   aircraftType    String
-  operator        String?
+  operatorId      String?
+  operator        Operator?        @relation(fields: [operatorId], references: [id])
   active          Boolean          @default(true)
   engines         Engine[]
   createdAt       DateTime         @default(now())
@@ -145,35 +159,46 @@ model AirworthinessDirective {
 
 // 2. Service Bulletin (SB) - Sumber dokumen untuk OCR & Unified Model
 model ServiceBulletin {
-  id               String              @id
-  sbNumber         String              @unique
-  title            String
-  issuer           String
-  issueDate        DateTime
-  status           DocumentStatus      @default(ACTIVE)
+  id                 String              @id
+  sbNumber           String              @unique
+  revision           String?
+  title              String
+  issuer             String
+  issueDate          DateTime
+  receivedAt         DateTime            @default(now())
+  status             DocumentStatus      @default(ACTIVE)
 
   // Applicability / Classification fields (from company DB or AI)
-  sbType           SbType?
+  sbType             SbType?
   complianceCategory Int?
-  effectivityType  String?
-  effectivityRange String?
-  compliancePeriod String?
+  effectivityType    String?
+  effectivityRange   String?
+  compliancePeriod   String?
+  aircraftType       String?
+  impactType         String?
+
+  // Operator Context
+  operatorId         String?
+  operator           Operator?           @relation(fields: [operatorId], references: [id])
 
   // File Upload fields
-  originalFileName String?
-  storedFileName   String?
-  createdById      String?
-  createdBy        User?               @relation("ServiceBulletinCreator", fields: [createdById], references: [id])
+  originalFileName   String?
+  storedFileName     String?
+  createdById        String?
+  createdBy          User?               @relation("ServiceBulletinCreator", fields: [createdById], references: [id])
 
-  updatedById      String?
-  updatedBy        User?               @relation("ServiceBulletinUpdater", fields: [updatedById], references: [id])
+  updatedById        String?
+  updatedBy          User?               @relation("ServiceBulletinUpdater", fields: [updatedById], references: [id])
 
   // Relations
-  ocrResult      OcrResult?
-  generatedEes   EesDocument?
-  engineeringRec EngineeringRecommendation?
-  createdAt      DateTime            @default(now())
-  complianceRecords ComplianceRecord[]
+  ocrResult          OcrResult?
+  generatedEes       EesDocument?
+  engineeringRec     EngineeringRecommendation?
+  createdAt          DateTime            @default(now())
+  complianceRecords  ComplianceRecord[]
+
+  @@index([operatorId, receivedAt])
+  @@index([status, receivedAt])
 }
 
 model OcrResult {
@@ -212,6 +237,7 @@ model EesDocument {
   storedCitilinkPdfPath  String?
   storedExcelPath        String?
 
+  reviewStatus    ApprovalStatus      @default(PENDING)
   evaluations     EesEvaluationItem[]
   createdAt       DateTime            @default(now())
 }
@@ -356,5 +382,48 @@ model ComplianceRecord {
 
   @@unique([engineId, sbId])
   @@unique([engineId, adId])
+}
+
+// --- DASHBOARD TRACKING & APPROVAL ---
+
+model ServiceBulletinRead {
+  userId            String
+  serviceBulletinId String
+  readAt            DateTime @default(now())
+  @@id([userId, serviceBulletinId])
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+model Approval {
+  id            String         @id @default(uuid())
+  eesId         String         @unique
+  approvalLevel Int            @default(1)
+  status        ApprovalStatus @default(PENDING)
+  submittedById String
+  assignedToId  String?
+  submittedAt   DateTime       @default(now())
+  reviewedAt    DateTime?
+  comment       String?        @db.Text
+  
+  @@index([assignedToId, status, submittedAt])
+}
+
+model ReviewAction {
+  id          String         @id @default(uuid())
+  eesId       String
+  action      ApprovalStatus
+  actorId     String
+  actorRole   Role
+  createdAt   DateTime       @default(now())
+  comment     String?        @db.Text
+  
+  @@index([action, createdAt])
+  @@index([eesId, createdAt])
 }
 

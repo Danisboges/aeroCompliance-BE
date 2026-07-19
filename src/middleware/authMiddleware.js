@@ -4,7 +4,9 @@ const prisma = require('../db');
 // Definisikan Role agar bisa dibaca oleh middleware di bawahnya
 const Role = {
   ADMIN: 'ADMIN',
-  TECHNICIAN: 'TECHNICIAN'
+  TECHNICIAN: 'TECHNICIAN',
+  FIRST_ENGINEER: 'FIRST_ENGINEER',
+  SECOND_ENGINEER: 'SECOND_ENGINEER'
 };
 
 // Middleware to verify JWT token
@@ -24,20 +26,30 @@ const verifyToken = async (req, res, next) => {
   const token = parts[1];
 
   try {
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key';
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
+      return res.status(500).json({ message: 'Internal Server Error' });
+    }
+
     const decoded = jwt.verify(token, secret);
     
-    // Validasi keberadaan user di DB untuk mencegah FK constraint violation jika db di-seed ulang
+    // Validasi keberadaan user di DB dan ambil operatorId aktual
     const userExists = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true }
+      select: { id: true, role: true, operatorId: true }
     });
     
     if (!userExists) {
       return res.status(401).json({ message: 'Unauthorized: User does not exist. Please log in again.' });
     }
 
-    req.user = decoded;
+    // Timpa req.user dengan data otorisasi terpercaya dari database (menghindari parameter injeksi)
+    req.user = {
+      ...decoded,
+      role: userExists.role,
+      operatorId: userExists.operatorId
+    };
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid or expired token' });
@@ -89,6 +101,7 @@ const requireRole = (roles) => {
 
 // Export semua fungsi menggunakan format CommonJS
 module.exports = {
+  Role,
   verifyToken,
   requireAdmin,
   requireTechnician,

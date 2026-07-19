@@ -6,7 +6,9 @@ const handleEesWebhook = async (req, res) => {
     const result = await eesService.processEesWebhook(req.body);
     
     return res.status(201).json({
-      message: 'EesDocument and EesEvaluationItems successfully created',
+      message: result 
+        ? 'EesDocument and EesEvaluationItems successfully created'
+        : 'Webhook payload received. EES generation skipped for manual compliance category.',
       data: result
     });
   } catch (error) {
