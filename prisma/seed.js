@@ -7,18 +7,18 @@ const { generateId } = require('../src/utils/idGenerator');
 
 async function copySampleFiles() {
   const uploadDir = path.join(__dirname, '../uploads');
-  const ocrDir = path.join(uploadDir, 'ocr-documents');
+  const ocrDir = path.join(uploadDir, 'sb-documents');
   const svrDir = path.join(uploadDir, 'svr-documents');
   
   if (!fs.existsSync(ocrDir)) fs.mkdirSync(ocrDir, { recursive: true });
   if (!fs.existsSync(svrDir)) fs.mkdirSync(svrDir, { recursive: true });
 
-  const artifactDir = 'C:\\Users\\mdani\\.gemini\\antigravity\\brain\\eaec810c-d4f3-48a5-bc67-ab02edfb7641';
+  const artifactDir = path.join(__dirname, 'seed-data');
   
   const filesToCopy = [
-    { src: path.join(artifactDir, 'media__1784467874816.pdf'), dest: path.join(ocrDir, 'SB_GE90_72_0685.pdf') },
-    { src: path.join(artifactDir, 'media__1784467894153.pdf'), dest: path.join(ocrDir, 'SB_LEAP_1A_72_0449.pdf') },
-    { src: path.join(artifactDir, 'media__1784457039384.pdf'), dest: path.join(svrDir, 'SVR_660235_2026.pdf') }
+    { src: path.join(artifactDir, 'SB_GE90_72_0685.pdf'), dest: path.join(ocrDir, 'SB_GE90_72_0685.pdf') },
+    { src: path.join(artifactDir, 'SB_LEAP_1A_72_0449.pdf'), dest: path.join(ocrDir, 'SB_LEAP_1A_72_0449.pdf') },
+    { src: path.join(artifactDir, 'SVR_660235_2026.pdf'), dest: path.join(svrDir, 'SVR_660235_2026.pdf') }
   ];
 
   for (const file of filesToCopy) {
@@ -194,7 +194,7 @@ async function main() {
 
   // SCENARIO 3: SHOP VISIT REPORT
   console.log('🏭 Seeding Shop Visit Report...');
-  await prisma.shopVisitReport.create({
+  const svr1 = await prisma.shopVisitReport.create({
     data: {
       id: generateId('SVR'),
       engine: { connect: { id: engMap['660235'] } },
@@ -209,7 +209,36 @@ async function main() {
         "reason_for_shop_visit": "HPT Blades RRT (SB 72-1082)",
         "tsn": "27680",
         "csn": "17946"
-      })
+      }),
+      configurationReport: {
+        create: [
+          { engineSerialNumber: '660235', module: 'FAN', partName: 'FAN BLADE', inOut: 'IN', partNumber: '340-001-026-0', serial: 'FB12345' },
+          { engineSerialNumber: '660235', module: 'HPT', partName: 'HPT ROTOR', inOut: 'OUT', partNumber: '2083M12G01', serial: 'HPT9876' }
+        ]
+      },
+      llpStatus: {
+        create: [
+          { engineSerialNumber: '660235', no: '1', description: 'FAN DISK', partNumber: '340-123-01', serialNumber: 'FD555', totalCyclesCategory: JSON.stringify({ "A": 15000, "B": 20000 }), remainingCycles: JSON.stringify({ "A": 5000, "B": 10000 }) }
+        ]
+      },
+      adStatus: {
+        create: [
+          { engineSerialNumber: '660235', adNumber: '2020-0044', notificationDateOfCompliance: '01 JAN 2026', methodOfCompliance: 'INSPECTED PER SB' }
+        ]
+      }
+    }
+  });
+
+  console.log('🔗 Seeding Compliance Record...');
+  await prisma.complianceRecord.create({
+    data: {
+      id: generateId('CMP'),
+      engineId: engMap['660235'],
+      sbId: sb1.id,
+      svrId: svr1.id,
+      status: 'COMPLIED',
+      complianceDate: '04 MAR 2026',
+      remarks: 'Complied during Shop Visit'
     }
   });
 

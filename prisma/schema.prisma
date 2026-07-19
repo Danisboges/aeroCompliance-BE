@@ -105,20 +105,21 @@ model User {
   uploadedServiceBulletins ServiceBulletin[]           @relation("ServiceBulletinCreator")
   updatedServiceBulletins  ServiceBulletin[]           @relation("ServiceBulletinUpdater")
   engineeringRecs          EngineeringRecommendation[]
+  reviewActions            ReviewAction[]
 }
 
 // --- ASSETS ---
 model Aircraft {
-  id              String           @id
-  registration    String           @unique
-  msn             String?          @unique
-  aircraftType    String
-  operatorId      String?
-  operator        Operator?        @relation(fields: [operatorId], references: [id])
-  active          Boolean          @default(true)
-  engines         Engine[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @default(now()) @updatedAt
+  id           String    @id
+  registration String    @unique
+  msn          String?   @unique
+  aircraftType String
+  operatorId   String?
+  operator     Operator? @relation(fields: [operatorId], references: [id])
+  active       Boolean   @default(true)
+  engines      Engine[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
 }
 
 model Engine {
@@ -153,20 +154,20 @@ model AirworthinessDirective {
   dueDate   DateTime?
   status    DocumentStatus @default(ACTIVE)
 
-  createdAt       DateTime         @default(now())
+  createdAt         DateTime           @default(now())
   complianceRecords ComplianceRecord[]
 }
 
 // 2. Service Bulletin (SB) - Sumber dokumen untuk OCR & Unified Model
 model ServiceBulletin {
-  id                 String              @id
-  sbNumber           String              @unique
-  revision           String?
-  title              String
-  issuer             String
-  issueDate          DateTime
-  receivedAt         DateTime            @default(now())
-  status             DocumentStatus      @default(ACTIVE)
+  id         String         @id
+  sbNumber   String         @unique
+  revision   String?
+  title      String
+  issuer     String
+  issueDate  DateTime
+  receivedAt DateTime       @default(now())
+  status     DocumentStatus @default(ACTIVE)
 
   // Applicability / Classification fields (from company DB or AI)
   sbType             SbType?
@@ -178,41 +179,41 @@ model ServiceBulletin {
   impactType         String?
 
   // Operator Context
-  operatorId         String?
-  operator           Operator?           @relation(fields: [operatorId], references: [id])
+  operatorId String?
+  operator   Operator? @relation(fields: [operatorId], references: [id])
 
   // File Upload fields
-  originalFileName   String?
-  storedFileName     String?
-  createdById        String?
-  createdBy          User?               @relation("ServiceBulletinCreator", fields: [createdById], references: [id])
+  originalFileName String?
+  storedFileName   String?
+  createdById      String?
+  createdBy        User?   @relation("ServiceBulletinCreator", fields: [createdById], references: [id])
 
-  updatedById        String?
-  updatedBy          User?               @relation("ServiceBulletinUpdater", fields: [updatedById], references: [id])
+  updatedById String?
+  updatedBy   User?   @relation("ServiceBulletinUpdater", fields: [updatedById], references: [id])
 
   // Relations
-  ocrResult          OcrResult?
-  generatedEes       EesDocument?
-  engineeringRec     EngineeringRecommendation?
-  createdAt          DateTime            @default(now())
-  complianceRecords  ComplianceRecord[]
+  ocrResult         OcrResult?
+  generatedEes      EesDocument?
+  engineeringRec    EngineeringRecommendation?
+  createdAt         DateTime                   @default(now())
+  complianceRecords ComplianceRecord[]
 
   @@index([operatorId, receivedAt])
   @@index([status, receivedAt])
 }
 
 model OcrResult {
-  id                String              @id @default(uuid())
-  serviceBulletinId String              @unique
-  serviceBulletin   ServiceBulletin     @relation(fields: [serviceBulletinId], references: [id], onDelete: Cascade)
-  
-  ocrStatus         OcrProcessingStatus @default(UPLOADED)
-  draftStatus       OcrDraftStatus      @default(DRAFT)
-  rawPayload        Json?
-  extractedAt       DateTime?
+  id                String          @id @default(uuid())
+  serviceBulletinId String          @unique
+  serviceBulletin   ServiceBulletin @relation(fields: [serviceBulletinId], references: [id], onDelete: Cascade)
 
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @default(now()) @updatedAt
+  ocrStatus   OcrProcessingStatus @default(UPLOADED)
+  draftStatus OcrDraftStatus      @default(DRAFT)
+  rawPayload  Json?
+  extractedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 // 3. EES (Engineering Evaluation Sheet) - Hasil AI
@@ -224,22 +225,23 @@ model EesDocument {
   sourceSb   ServiceBulletin @relation(fields: [sourceSbId], references: [id], onDelete: Cascade)
 
   // Dokumen Global Fields
-  taskType       String?
-  references     String?
-  effectedType   String?
-  effectedModel  String?
-  
-  aircraftType   String?
-  
-  esn            String?
+  taskType      String?
+  references    String?
+  effectedType  String?
+  effectedModel String?
 
-  storedGarudaPdfPath    String?
-  storedCitilinkPdfPath  String?
-  storedExcelPath        String?
+  aircraftType String?
 
-  reviewStatus    ApprovalStatus      @default(PENDING)
-  evaluations     EesEvaluationItem[]
-  createdAt       DateTime            @default(now())
+  esn String?
+
+  storedGarudaPdfPath   String?
+  storedCitilinkPdfPath String?
+  storedExcelPath       String?
+
+  reviewStatus  ApprovalStatus      @default(PENDING)
+  evaluations   EesEvaluationItem[]
+  reviewActions ReviewAction[]
+  createdAt     DateTime            @default(now())
 }
 
 model EesEvaluationItem {
@@ -260,9 +262,9 @@ model EesEvaluationItem {
 
 // 4. Engineering Recommendation — Step 4 of EES Workflow (user input)
 model EngineeringRecommendation {
-  id                String       @id
-  sbId              String       @unique
-  sb                ServiceBulletin @relation(fields: [sbId], references: [id], onDelete: Cascade)
+  id   String          @id
+  sbId String          @unique
+  sb   ServiceBulletin @relation(fields: [sbId], references: [id], onDelete: Cascade)
 
   recommendedAction EngRecAction
   priorityLevel     Priority     @default(HIGH)
@@ -270,53 +272,53 @@ model EngineeringRecommendation {
   isDeferable       Boolean      @default(false)
   egtMarginCheck    Boolean      @default(false)
 
-  createdById       String?
-  createdBy         User?        @relation(fields: [createdById], references: [id])
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
 
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 // --- SHOP VISIT REPORTS (SVR) ---
 
 model ShopVisitReport {
-  id                       String                 @id @default(uuid())
-  engineSerialNumber       String
-  engineId                 String?
-  engine                   Engine?                @relation(fields: [engineId], references: [id], onDelete: SetNull)
-  engineType               String?
-  shopInDate               String?                // Stored as string to keep exact format
-  shopOutDate              String?                // Stored as string to keep exact format
-  reportDate               String?                // Clarified field for SVR report date
-  reasonForShopVisit       String?                @db.Text
-  tsn                      String?
-  csn                      String?
-  tslv                     String?
-  cslv                     String?
-  authorizedReleaseStatus  String?
-  originalFileName         String?
-  storedFileName           String?
-  rawPayload               Json?
-  
-  createdAt                DateTime               @default(now())
-  updatedAt                DateTime               @default(now()) @updatedAt
+  id                      String  @id @default(uuid())
+  engineSerialNumber      String
+  engineId                String?
+  engine                  Engine? @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  engineType              String?
+  shopInDate              String? // Stored as string to keep exact format
+  shopOutDate             String? // Stored as string to keep exact format
+  reportDate              String? // Clarified field for SVR report date
+  reasonForShopVisit      String? @db.Text
+  tsn                     String?
+  csn                     String?
+  tslv                    String?
+  cslv                    String?
+  authorizedReleaseStatus String?
+  originalFileName        String?
+  storedFileName          String?
+  rawPayload              Json?
 
-  configurationReport      SvrConfigurationItem[]
-  llpStatus                SvrLlpStatus[]
-  adStatus                 SvrAdStatus[]
-  complianceRecords        ComplianceRecord[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  configurationReport SvrConfigurationItem[]
+  llpStatus           SvrLlpStatus[]
+  adStatus            SvrAdStatus[]
+  complianceRecords   ComplianceRecord[]
 }
 
 model SvrConfigurationItem {
   id                 String          @id @default(uuid())
   svrId              String
   svr                ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  engineSerialNumber String?         // Added for grouping by ESN
+  engineSerialNumber String? // Added for grouping by ESN
   engineId           String?
   engine             Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
   module             String?
   partName           String?
-  inOut              String?         // "IN" or "OUT"
+  inOut              String? // "IN" or "OUT"
   partNumber         String?
   serial             String?
   qty                String?
@@ -331,7 +333,7 @@ model SvrLlpStatus {
   id                  String          @id @default(uuid())
   svrId               String
   svr                 ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  engineSerialNumber  String?         // Added for grouping by ESN
+  engineSerialNumber  String? // Added for grouping by ESN
   engineId            String?
   engine              Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
   no                  String?
@@ -340,45 +342,45 @@ model SvrLlpStatus {
   serialNumber        String?
   totalHour           String?
   totalCycle          String?
-  totalCyclesCategory Json?           // Dynamic categories
-  lifeLimitCycles     Json?           // Dynamic categories
-  remainingCycles     Json?           // Dynamic categories
+  totalCyclesCategory Json? // Dynamic categories
+  lifeLimitCycles     Json? // Dynamic categories
+  remainingCycles     Json? // Dynamic categories
   remark              String?
 }
 
 model SvrAdStatus {
-  id                            String          @id @default(uuid())
-  svrId                         String
-  svr                           ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  engineSerialNumber            String?         // Added for grouping by ESN
-  engineId                      String?
-  engine                        Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
-  adNumber                      String?
-  notificationDateOfCompliance  String?
-  description                   String?
-  referenceSb                   String?
-  recurrInsp                    String?
-  moduleApplicability           String?
-  methodOfCompliance            String?
-  remarks                       String?         @db.Text
+  id                           String          @id @default(uuid())
+  svrId                        String
+  svr                          ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  engineSerialNumber           String? // Added for grouping by ESN
+  engineId                     String?
+  engine                       Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  adNumber                     String?
+  notificationDateOfCompliance String?
+  description                  String?
+  referenceSb                  String?
+  recurrInsp                   String?
+  moduleApplicability          String?
+  methodOfCompliance           String?
+  remarks                      String?         @db.Text
 }
 
 model ComplianceRecord {
-  id             String           @id @default(uuid())
+  id             String                  @id @default(uuid())
   engineId       String
-  engine         Engine           @relation(fields: [engineId], references: [id], onDelete: Cascade)
+  engine         Engine                  @relation(fields: [engineId], references: [id], onDelete: Cascade)
   sbId           String?
-  sb             ServiceBulletin? @relation(fields: [sbId], references: [id], onDelete: Cascade)
+  sb             ServiceBulletin?        @relation(fields: [sbId], references: [id], onDelete: Cascade)
   adId           String?
   ad             AirworthinessDirective? @relation(fields: [adId], references: [id], onDelete: Cascade)
-  status         ComplianceStatus @default(OPEN)
-  complianceDate String?          // Stored as string to preserve format
+  status         ComplianceStatus        @default(OPEN)
+  complianceDate String? // Stored as string to preserve format
   svrId          String?
-  svr            ShopVisitReport? @relation(fields: [svrId], references: [id], onDelete: SetNull)
-  remarks        String?          @db.Text
+  svr            ShopVisitReport?        @relation(fields: [svrId], references: [id], onDelete: SetNull)
+  remarks        String?                 @db.Text
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@unique([engineId, sbId])
   @@unique([engineId, adId])
@@ -390,6 +392,7 @@ model ServiceBulletinRead {
   userId            String
   serviceBulletinId String
   readAt            DateTime @default(now())
+
   @@id([userId, serviceBulletinId])
 }
 
@@ -410,20 +413,21 @@ model Approval {
   submittedAt   DateTime       @default(now())
   reviewedAt    DateTime?
   comment       String?        @db.Text
-  
+
   @@index([assignedToId, status, submittedAt])
 }
 
 model ReviewAction {
-  id          String         @id @default(uuid())
-  eesId       String
-  action      ApprovalStatus
-  actorId     String
-  actorRole   Role
-  createdAt   DateTime       @default(now())
-  comment     String?        @db.Text
-  
+  id        String         @id @default(uuid())
+  eesId     String
+  ees       EesDocument    @relation(fields: [eesId], references: [id], onDelete: Cascade)
+  action    ApprovalStatus
+  actorId   String
+  actor     User           @relation(fields: [actorId], references: [id])
+  actorRole Role
+  createdAt DateTime       @default(now())
+  comment   String?        @db.Text
+
   @@index([action, createdAt])
   @@index([eesId, createdAt])
 }
-

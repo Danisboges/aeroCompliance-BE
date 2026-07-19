@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0'; 
 
 app.use(express.json());
-app.use('/storage/ocr-documents', express.static(fileStorageService.STORAGE_ROOT));
+app.use('/storage/sb-documents', express.static(fileStorageService.STORAGE_ROOT));
 app.use('/storage/ees-documents', express.static(fileStorageService.EES_STORAGE_ROOT));
 app.use('/storage/svr-documents', express.static(path.resolve(__dirname, '../uploads/svr-documents')));
 
