@@ -49,7 +49,27 @@ const login = async (req, res) => {
   }
 };
 
+// Handles user logout requests
+const logout = async (req, res) => {
+  try {
+    // Since JWT is stateless and we don't have a token blacklist in DB,
+    // logout is primarily handled on the client side by deleting the token.
+    // This endpoint serves as a confirmation and can be expanded later 
+    // if token blacklisting or refresh tokens are implemented.
+    return res.status(200).json({
+      message: 'Logout successful'
+    });
+  } catch (error) {
+    console.error('Error in user logout:', error);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      details: error.message
+    });
+  }
+};
+
 module.exports = {
   register,
-  login
+  login,
+  logout
 };

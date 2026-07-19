@@ -294,6 +294,25 @@
         }
       }
     },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Logout dari aplikasi",
+        "description": "Endpoint ini memberikan response sukses agar frontend dapat menghapus token di sisi client (stateless JWT).",
+        "tags": [
+          "🔐 Authentication"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "✅ Logout berhasil"
+          }
+        }
+      }
+    },
     "/api/service-bulletins": {
       "get": {
         "tags": [

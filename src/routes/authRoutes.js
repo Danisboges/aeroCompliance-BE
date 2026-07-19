@@ -5,6 +5,7 @@ const { verifyToken, requireAdmin, requireTechnician } = require('../middleware/
 
 router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
+router.post('/auth/logout', authController.logout);
 
 router.get('/admin-only', verifyToken, requireAdmin, (req, res) => {
   res.status(200).json({ message: 'Welcome ADMIN!', user: req.user });
