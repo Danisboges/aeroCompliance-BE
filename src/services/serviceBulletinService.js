@@ -8,6 +8,7 @@ const eesService = require('./eesService');
 const pdfGenerationService = require('./pdfGenerationService');
 const eesRepository = require('../repositories/eesRepository');
 const { normalizeOcrPayload } = require('./eesService');
+const { notifyAll } = require('../socket');
 
 const PDF_SIGNATURE = '%PDF';
 
@@ -195,6 +196,9 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
       });
       aiError = aiErr.message;
     }
+
+    // Notify all clients that a new SB was uploaded/processed
+    notifyAll('dashboard_updated', { trigger: 'new_sb' });
 
     return {
       upload: finalSb,

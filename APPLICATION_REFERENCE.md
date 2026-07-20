@@ -552,6 +552,19 @@ Untuk pengembangan aktif, direkomendasikan menjalankan database di Docker dan se
 | 2026-07-15 | 1.4 | Penambahan berkas `.env.example`. Penguatan backend (autentikasi JWT dengan validasi user DB aktif). Perbaikan seeder mesin GE90 & B777 untuk keakuratan EES. Perbaikan error tipe data (Int ke String) pada parser SVR. Integrasi Docker lengkap (Dockerfile, docker-compose.yml, .dockerignore). |
 | 2026-07-19 | 1.5 | Penyelarasan Backend dengan Kontrak Frontend & AI. Penambahan logika transaksi Prisma pada pembuatan EES. Penyesuaian pemetaan status dokumen untuk integrasi langkah 1-6 UI. Sinkronisasi data root SB dengan validasi payload AI. Penggunaan endpoint actual AI untuk OCR SVR. |
 | 2026-07-19 | 1.6 | **Major Update: Engineering Review Dashboard & Multi-Tenancy**. Implementasi tabel `Operator` untuk menyekat data Garuda dan Citilink. Penambahan `Role` baru (`FIRST_ENGINEER`, `SECOND_ENGINEER`). Penggantian struktur review dengan tabel Pivot (`Approval` dan `ReviewAction`) untuk menghindari redundansi data di `EesDocument`. Penambahan endpoint `/api/dashboard/engineering-review/summary` dan `/api/approvals`. |
+| 2026-07-20 | 1.7 | Pembaruan adaptasi struktur JSON AI terbaru (preservasi seluruh data mro_schema, penyesuaian nama key `issued_date`). Implementasi fitur Notifikasi Real-time berbasis WebSocket (`socket.io`) untuk update otomatis *Unread SB* dan *Pending Approvals* di Dashboard. |
+
+### Fitur Terbaru (2026-07-20 v1.7)
+- **Adaptasi Struktur JSON AI Baru (OCR Client)**:
+  - File `ocrClient.js` telah dimodifikasi agar menyebarkan (*spread*) seluruh field dari payload `mro_schema` bawaan AI, sehingga atribut-atribut baru seperti `due_at`, `warranty`, `compliance_time_type`, dan `note` tidak akan terbuang/hilang dan tetap tersimpan di dalam database (`rawPayload`).
+  - Pemetaan *(mapping)* khusus ditambahkan untuk atribut tanggal terbit karena AI mengirimkannya sebagai `issued_date`, sedangkan backend sebelumnya mengharapkan `issueDate`. Atribut `compliance_period` juga telah di-map secara eksplisit.
+- **Notifikasi Real-time Dashboard (WebSockets)**:
+  - Diimplementasikan library `socket.io` pada backend (terpusat di `src/socket.js`) yang terintegrasi secara *native* dengan autentikasi JWT.
+  - Setiap pengguna yang terhubung akan dimasukkan ke dalam *room* socket unik (`user_<userId>`) dan *room* berdasarkan perannya (`role_<role>`).
+  - Event WebSocket `dashboard_updated` akan dikirimkan (*emitted*) sebagai *trigger* bagi *frontend* untuk menyegarkan data Dashboard pada tiga kondisi:
+    1. Saat dokumen SB baru sukses diunggah dan diekstrak AI (Dikirim ke semua *user* agar notifikasi "SB Baru" bertambah).
+    2. Saat sebuah detail SB dibuka/dibaca oleh *user* (Fungsi `markServiceBulletinAsRead` akan mencatat ke tabel `ServiceBulletinRead` dan mengirim event khusus ke *user* tersebut agar notifikasi "Unread SB" berkurang).
+    3. Saat tindakan *Approval* (Approve/Reject/Return) dieksekusi oleh *Second Engineer* (Dikirim ke semua *user* relevan agar notifikasi "Pending Approvals" ter-update).
 
 ### Fitur Terbaru (2026-07-19 v1.6)
 - **Multi-Tenancy (Operator Isolation)**:

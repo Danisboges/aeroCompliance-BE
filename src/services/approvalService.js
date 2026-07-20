@@ -80,6 +80,9 @@ const submitReview = async ({ eesId, action, comment, actorId, actorRole }) => {
     return { approval: updatedApproval, reviewAction };
   });
 
+  const { notifyAll } = require('../socket');
+  notifyAll('dashboard_updated', { trigger: 'approval_action' });
+
   return result;
 };
 

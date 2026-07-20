@@ -141,7 +141,35 @@ module.exports = {
   findAllWithFilter,
   countAllWithFilter,
   checkApplicabilityForSb,
+  markServiceBulletinAsRead,
 };
+
+const { notifyUser } = require('../socket');
+
+/**
+ * Marks a ServiceBulletin as read by a user.
+ */
+async function markServiceBulletinAsRead(sbId, userId) {
+  const result = await prisma.serviceBulletinRead.upsert({
+    where: {
+      userId_serviceBulletinId: {
+        userId,
+        serviceBulletinId: sbId
+      }
+    },
+    update: { readAt: new Date() },
+    create: {
+      userId,
+      serviceBulletinId: sbId,
+      readAt: new Date()
+    }
+  });
+
+  // Notify the user via WebSocket that their dashboard (unread count) has updated
+  notifyUser(userId, 'dashboard_updated', { trigger: 'sb_read' });
+
+  return result;
+}
 
 /**
  * Lists all SBs with optional text search and type/status filters (for Select SB step).

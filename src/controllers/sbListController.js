@@ -52,6 +52,13 @@ const getServiceBulletin = async (req, res) => {
     if (!sb) {
       return res.status(404).json({ error: 'Not Found: ServiceBulletin not found' });
     }
+
+    // Mark as read in the background if the user is authenticated
+    if (req.user && req.user.id) {
+      serviceBulletinRepository.markServiceBulletinAsRead(sb.id, req.user.id)
+        .catch(err => console.error('[SBController] Failed to mark SB as read', err));
+    }
+
     return res.status(200).json({ data: sb });
   } catch (error) {
     return handleControllerError(res, error);

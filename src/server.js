@@ -35,9 +35,13 @@ app.use('/api', svrRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/approvals', approvalRoutes);
 
-// ... sisa kode server.js tetap sama
-app.listen(PORT, HOST, () => {
+const { initSocket } = require('./socket');
+
+const server = app.listen(PORT, HOST, () => {
   const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
   console.log(`Server running at http://${displayHost}:${PORT}`);
   console.log(`📑 Swagger Documentation available at http://${displayHost}:${PORT}/api-docs`);
 });
+
+// Attach Socket.io to the server
+initSocket(server);
