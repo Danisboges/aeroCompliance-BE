@@ -111,6 +111,7 @@ const analyzePdf = async ({ fileName, checksum, buffer, storagePath }) => {
     const defaultSbCode = fileName ? fileName.replace(/\.[^/.]+$/, '').toUpperCase() : `UNIDENTIFIED-${Date.now()}`;
 
     const payload = {
+      ...schema,
       sb_code: schema.sb_code || schema.bulletinNumber || defaultSbCode,
       compliance_category: schema.compliance_category || routing.compliance_category || 3,
       effected_type: schema.effected_type || '',
@@ -118,6 +119,8 @@ const analyzePdf = async ({ fileName, checksum, buffer, storagePath }) => {
       title: schema.tittle || schema.title || 'Untitled Service Bulletin',
       manufacturer: schema.manufacturer || '',
       part_number: schema.part_number || '',
+      issueDate: schema.issued_date || schema.issueDate || '',
+      compliance_period: schema.compliance_period || '',
       isMod: false,
       task_type: schema.task_type || routing.workflow_action || '',
       references: schema.references || '',
