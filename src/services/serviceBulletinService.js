@@ -68,8 +68,17 @@ const parsePagination = ({ page = 1, limit = 20, ocrStatus, draftStatus } = {}) 
 /**
  * Upload PDF → Save to DB (TEMP) → Store physically → Run AI → Resolve and Save/Merge SB.
  */
-const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', createdById = null }) => {
+const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', createdById = null, aircraftType = null, existingSbId = null }) => {
   assertPdfBuffer(buffer);
+
+  if (aircraftType) {
+    const validAircraft = await prisma.aircraft.findFirst({
+      where: { aircraftType }
+    });
+    if (!validAircraft) {
+      throw new Error(`Validation Error: Aircraft type '${aircraftType}' is not registered in the system. Please choose a valid aircraft type.`);
+    }
+  }
 
   const originalFileName = normalizeFileName(fileName);
   const checksum = crypto.createHash('sha256').update(buffer).digest('hex');
@@ -85,6 +94,7 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
     originalFileName,
     storedFileName: 'PENDING',
     ocrStatus: 'UPLOADED',
+    aircraftType,
     createdById: createdById ?? null
   });
 
@@ -130,6 +140,7 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
         finalSb = await serviceBulletinRepository.updateServiceBulletin(existingSb.id, {
           originalFileName,
           storedFileName: storedFile.storedFileName,
+          ...(aircraftType && { aircraftType }),
           
           // Map AI extracted payload to root SB fields if they are available
           complianceCategory: aiResult.payload.compliance_category ? parseInt(aiResult.payload.compliance_category) : existingSb.complianceCategory,
@@ -157,6 +168,7 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
           issueDate: aiResult.payload.issueDate ? new Date(aiResult.payload.issueDate) : new Date(),
           
           // Map AI extracted payload to root SB fields
+          ...(aircraftType && { aircraftType }),
           complianceCategory: aiResult.payload.compliance_category ? parseInt(aiResult.payload.compliance_category) : null,
           effectivityType: aiResult.payload.effected_type || null,
           effectivityRange: Array.isArray(aiResult.payload.effected_model) 
@@ -372,10 +384,15 @@ const generateEes = async (id, updatedById = null, customData = {}) => {
     console.error('Error in generateEes:', error);
   }
 
-  return serviceBulletinRepository.updateServiceBulletin(sb.id, {
+  const updateData = {
     draftStatus: 'GENERATED',
     updatedById: updatedById || undefined
-  });
+  };
+  if (customData.aircraftType) {
+    updateData.aircraftType = customData.aircraftType;
+  }
+
+  return serviceBulletinRepository.updateServiceBulletin(sb.id, updateData);
 };
 
 /**

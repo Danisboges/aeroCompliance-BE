@@ -51,11 +51,13 @@ const formatSbResponse = (sb, originalUrl = '') => {
 const uploadPdf = async (req, res) => {
   try {
     const fileName = req.headers['x-file-name'];
+    const aircraftType = req.headers['x-aircraft-type'] || req.query.aircraftType;
     const result = await serviceBulletinService.processPdf({
       buffer: req.body,
       fileName,
       mimeType: req.headers['content-type'] || 'application/pdf',
-      createdById: req.user?.id ?? null
+      createdById: req.user?.id ?? null,
+      aircraftType
     });
 
     return res.status(201).json({
@@ -239,12 +241,14 @@ async function uploadPdfToExistingSb(req, res) {
   try {
     const sb = await serviceBulletinService.getServiceBulletinById(req.params.id);
     const fileName = req.headers['x-file-name'] || `${sb.sbNumber}.pdf`;
+    const aircraftType = req.headers['x-aircraft-type'] || req.query.aircraftType;
     const result = await serviceBulletinService.processPdf({
       buffer: req.body,
       fileName,
       mimeType: req.headers['content-type'] || 'application/pdf',
       createdById: req.user?.id ?? null,
       existingSbId: sb.id,
+      aircraftType
     });
     return res.status(200).json({
       message: 'PDF uploaded to existing SB',
@@ -365,11 +369,13 @@ async function updateEesDocument(req, res) {
 async function uploadNewSb(req, res) {
   try {
     const fileName = req.headers['x-file-name'];
+    const aircraftType = req.headers['x-aircraft-type'] || req.query.aircraftType;
     const result = await serviceBulletinService.processPdf({
       buffer: req.body,
       fileName,
       mimeType: req.headers['content-type'] || 'application/pdf',
-      createdById: req.user?.id ?? null
+      createdById: req.user?.id ?? null,
+      aircraftType
     });
 
     return res.status(201).json({
