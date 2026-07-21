@@ -1339,7 +1339,56 @@
         ],
         "responses": {
           "200": {
-            "description": "Berhasil mendapatkan daftar EES"
+            "description": "Berhasil mendapatkan daftar EES",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "eesNumber": { "type": "string" },
+                          "reviewStatus": { "type": "string" },
+                          "taskType": { "type": "string" },
+                          "createdAt": { "type": "string", "format": "date-time" },
+                          "sourceSb": {
+                            "type": "object",
+                            "properties": {
+                              "id": { "type": "string" },
+                              "sbNumber": { "type": "string" },
+                              "title": { "type": "string" },
+                              "operator": { "type": "object" },
+                              "createdBy": {
+                                "type": "object",
+                                "properties": {
+                                  "id": { "type": "string" },
+                                  "username": { "type": "string" },
+                                  "email": { "type": "string" },
+                                  "role": { "type": "string" }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": { "type": "integer" },
+                        "limit": { "type": "integer" },
+                        "total": { "type": "integer" },
+                        "totalPages": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

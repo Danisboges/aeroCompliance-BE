@@ -551,7 +551,7 @@ Untuk pengembangan aktif, direkomendasikan menjalankan database di Docker dan se
 | 2026-07-19 | 1.5 | Penyelarasan Backend dengan Kontrak Frontend & AI. Penambahan logika transaksi Prisma pada pembuatan EES. Penyesuaian pemetaan status dokumen untuk integrasi langkah 1-6 UI. Sinkronisasi data root SB dengan validasi payload AI. Penggunaan endpoint actual AI untuk OCR SVR. |
 | 2026-07-19 | 1.6 | **Major Update: Engineering Review Dashboard & Multi-Tenancy**. Implementasi tabel `Operator` untuk menyekat data Garuda dan Citilink. Penambahan `Role` baru (`FIRST_ENGINEER`, `SECOND_ENGINEER`). Penggantian struktur review dengan tabel Pivot (`Approval` dan `ReviewAction`) untuk menghindari redundansi data di `EesDocument`. Penambahan endpoint `/api/dashboard/engineering-review/summary` dan `/api/approvals`. |
 | 2026-07-20 | 1.7 | Pembaruan adaptasi struktur JSON AI terbaru (preservasi seluruh data mro_schema, penyesuaian nama key `issued_date`). Implementasi fitur Notifikasi Real-time berbasis WebSocket (`socket.io`) untuk update otomatis *Unread SB* dan *Pending Approvals* di Dashboard. |
-| 2026-07-21 | 1.8 | **Sistem Persetujuan Multi-Tier & Manajemen Tanda Tangan**. Menambahkan endpoint untuk *Submit* dan *Review* EES berbasis ID dengan dukungan *upload multipart* untuk menyertakan gambar tanda tangan digital khusus Garuda. Implementasi pemusnahan otomatis gambar tanda tangan sementara pasca pembuatan PDF Final untuk memastikan keamanan data pribadi. |
+| 2026-07-21 | 1.8 | **Sistem Persetujuan Multi-Tier, Manajemen Tanda Tangan, & Optimasi API**. Menambahkan endpoint *Submit* dan *Review* EES berbasis ID dengan upload multipart gambar tanda tangan. Implementasi pemusnahan otomatis gambar tanda tangan sementara pasca pembuatan PDF Final. Optimasi drastis pada `GET /api/service-bulletins` (Lightweight DTO) menggunakan Prisma Select, serta penambahan endpoint baru `GET /api/ees`. |
 
 ### Fitur Terbaru (2026-07-21 v1.8)
 - **Sistem Approval Bertingkat & Penyematan Tanda Tangan**:
@@ -560,6 +560,12 @@ Untuk pengembangan aktif, direkomendasikan menjalankan database di Docker dan se
 - **Pemusnahan Gambar Tanda Tangan (*Transient Signatures*)**:
   - File gambar (`.png`/`.jpg`) tanda tangan disimpan sementara di `uploads/signatures`.
   - Setelah semua Approval terpenuhi dan `finalizeGarudaPdf` menyematkan ketiga tanda tangan ke dalam `EES_FINAL_*.pdf`, backend secara otomatis **memusnahkan file gambar asli tanda tangan dari disk server (`fs.unlinkSync`)** untuk mematuhi regulasi privasi data.
+- **Optimasi List API & Lightweight DTO**:
+  - `GET /api/service-bulletins`: Mengalami refactoring drastis (Prisma Select) agar tidak lagi memuat relasi berat seperti `rawPayload`, `evaluations`, dan `engineeringRec`. Endpoint ini murni mereturn DTO ringan dan object `pagination`.
+  - Frontend kini wajib melakukan *fetching* `GET /api/service-bulletins/{id}` untuk mendapatkan detail dokumen.
+- **Penyajian Daftar EES (`GET /api/ees`)**:
+  - Endpoint baru yang mendedikasikan daftar seluruh dokumen EES secara ringan berserta pagination.
+  - Melakukan *join* ke tabel `ServiceBulletin` dan memuat relasi `createdBy` sehingga Frontend dapat menampilkan data Pembuat/Creator EES secara langsung.
 
 ### Fitur Terbaru (2026-07-20 v1.7)
 - **Adaptasi Struktur JSON AI Baru (OCR Client)**:
