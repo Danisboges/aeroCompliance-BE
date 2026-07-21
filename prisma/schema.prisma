@@ -241,6 +241,7 @@ model EesDocument {
   reviewStatus  ApprovalStatus      @default(PENDING)
   evaluations   EesEvaluationItem[]
   reviewActions ReviewAction[]
+  approval      Approval?
   createdAt     DateTime            @default(now())
 }
 
@@ -407,6 +408,7 @@ enum ApprovalStatus {
 model Approval {
   id            String         @id @default(uuid())
   eesId         String         @unique
+  eesDocument   EesDocument    @relation(fields: [eesId], references: [id], onDelete: Cascade)
   approvalLevel Int            @default(1)
   status        ApprovalStatus @default(PENDING)
   submittedById String

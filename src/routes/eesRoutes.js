@@ -17,6 +17,6 @@ const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 router.post('/webhooks/ees', handleEesWebhook);
 
 // GET /api/ees (Get all EES documents)
-router.get('/', verifyToken, eesController.listEesDocuments);
+router.get('/ees', verifyToken, eesController.listEesDocuments);
 
 module.exports = router;

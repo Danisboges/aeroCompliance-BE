@@ -27,9 +27,25 @@ const listApprovals = async ({ status, assigneeId, operatorId, skip = 0, take = 
   return { data, total };
 };
 
+const getPendingSecondEngineer = async (operatorId, skip = 0, take = 20) => {
+  // Second Engineer (hanya di Garuda) menunggu status PENDING
+  return await listApprovals({ status: 'PENDING', operatorId, skip, take });
+};
+
+const getPendingManager = async (operatorId, skip = 0, take = 20) => {
+  let targetStatus = 'PARTIALLY_APPROVED';
+  if (operatorId) {
+    const op = await prisma.operator.findUnique({ where: { id: operatorId } });
+    if (op && op.code !== 'GA') {
+      targetStatus = 'PENDING'; // Citilink Manager menunggu PENDING
+    }
+  }
+  return await listApprovals({ status: targetStatus, operatorId, skip, take });
+};
+
 const getApprovalByEesId = async (eesId, operatorId) => {
   const approval = await prisma.approval.findUnique({
-    where: { eesId: parseInt(eesId, 10) },
+    where: { eesId },
     include: {
       eesDocument: {
         include: { sourceSb: true }
@@ -47,7 +63,7 @@ const getApprovalByEesId = async (eesId, operatorId) => {
 
   // Also fetch review action history
   const history = await prisma.reviewAction.findMany({
-    where: { eesId: parseInt(eesId, 10) },
+    where: { eesId },
     orderBy: { createdAt: 'asc' },
     include: {
       actor: { select: { id: true, username: true, role: true } }
@@ -113,13 +129,20 @@ const submitReview = async ({ eesId, action, comment, nextAssignedToId, actorId,
   let nextLevel = approval.approvalLevel;
   let newAssignedTo = approval.assignedToId;
 
+  const complianceCategory = approval.eesDocument.sourceSb.complianceCategory || 0;
+
   if (action === 'APPROVED') {
     if (isGaruda) {
       if (approval.approvalLevel === 1) {
-        if (!nextAssignedToId) throw new Error('nextAssignedToId is required for Level 1 Garuda approval');
-        finalStatus = 'PARTIALLY_APPROVED';
-        nextLevel = 2;
-        newAssignedTo = nextAssignedToId;
+        if (complianceCategory < 4) {
+          if (!nextAssignedToId) throw new Error('nextAssignedToId is required for Level 1 Garuda approval (Category < 4 requires Manager)');
+          finalStatus = 'PARTIALLY_APPROVED';
+          nextLevel = 2;
+          newAssignedTo = nextAssignedToId;
+        } else {
+          // Kategori >= 4 tidak butuh Manager, langsung APPROVED
+          finalStatus = 'APPROVED';
+        }
       } else {
         finalStatus = 'APPROVED';
       }
@@ -176,6 +199,8 @@ const submitReview = async ({ eesId, action, comment, nextAssignedToId, actorId,
 
 module.exports = {
   listApprovals,
+  getPendingSecondEngineer,
+  getPendingManager,
   getApprovalByEesId,
   submitForApproval,
   submitReview

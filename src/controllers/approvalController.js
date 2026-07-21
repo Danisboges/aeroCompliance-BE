@@ -10,8 +10,13 @@ const getApprovals = async (req, res) => {
     // Scoping to current operator
     const operatorId = req.user?.operatorId;
 
-    const skip = (Math.max(1, parseInt(page, 10)) - 1) * Math.min(100, Math.max(1, parseInt(limit, 10)));
-    const take = Math.min(100, Math.max(1, parseInt(limit, 10)));
+    const p = parseInt(page, 10);
+    const l = parseInt(limit, 10);
+    const validPage = isNaN(p) ? 1 : Math.max(1, p);
+    const validLimit = isNaN(l) ? 20 : Math.min(100, Math.max(1, l));
+
+    const skip = (validPage - 1) * validLimit;
+    const take = validLimit;
 
     const result = await approvalService.listApprovals({
       status,
@@ -24,7 +29,7 @@ const getApprovals = async (req, res) => {
     return res.status(200).json({
       data: result.data,
       total: result.total,
-      page: parseInt(page, 10),
+      page: validPage,
       limit: take
     });
   } catch (error) {
@@ -120,9 +125,68 @@ const submitForApproval = async (req, res) => {
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+/**
+ * GET /api/approvals/pending-second-engineer
+ */
+const getPendingSecondEngineer = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const operatorId = req.user?.operatorId;
+
+    const p = parseInt(page, 10);
+    const l = parseInt(limit, 10);
+    const validPage = isNaN(p) ? 1 : Math.max(1, p);
+    const validLimit = isNaN(l) ? 20 : Math.min(100, Math.max(1, l));
+    const skip = (validPage - 1) * validLimit;
+    const take = validLimit;
+
+    const result = await approvalService.getPendingSecondEngineer(operatorId, skip, take);
+
+    return res.status(200).json({
+      data: result.data,
+      total: result.total,
+      page: validPage,
+      limit: take
+    });
+  } catch (error) {
+    console.error('[ApprovalController]', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+/**
+ * GET /api/approvals/pending-manager
+ */
+const getPendingManager = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const operatorId = req.user?.operatorId;
+
+    const p = parseInt(page, 10);
+    const l = parseInt(limit, 10);
+    const validPage = isNaN(p) ? 1 : Math.max(1, p);
+    const validLimit = isNaN(l) ? 20 : Math.min(100, Math.max(1, l));
+    const skip = (validPage - 1) * validLimit;
+    const take = validLimit;
+
+    const result = await approvalService.getPendingManager(operatorId, skip, take);
+
+    return res.status(200).json({
+      data: result.data,
+      total: result.total,
+      page: validPage,
+      limit: take
+    });
+  } catch (error) {
+    console.error('[ApprovalController]', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
 
 module.exports = {
   getApprovals,
+  getPendingSecondEngineer,
+  getPendingManager,
   getApprovalByEesId,
   postReview,
   submitForApproval
