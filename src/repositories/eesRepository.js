@@ -75,8 +75,35 @@ const updateEesDocumentPdfPath = async (id, storedPdfPath) => {
   });
 };
 
+const listEesDocuments = async ({ skip = 0, take = 20 } = {}) => {
+  return await prisma.eesDocument.findMany({
+    skip: parseInt(skip, 10),
+    take: parseInt(take, 10),
+    orderBy: { createdAt: 'desc' },
+    include: {
+      sourceSb: {
+        select: { 
+          id: true, 
+          sbNumber: true, 
+          title: true, 
+          operator: true,
+          createdBy: {
+            select: { id: true, username: true, role: true, email: true }
+          }
+        }
+      }
+    }
+  });
+};
+
+const countEesDocuments = async () => {
+  return await prisma.eesDocument.count();
+};
+
 module.exports = {
   createEesDocument,
   getEesDocumentBySbId,
-  updateEesDocumentPdfPath
+  updateEesDocumentPdfPath,
+  listEesDocuments,
+  countEesDocuments
 };

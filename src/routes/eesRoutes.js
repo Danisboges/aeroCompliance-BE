@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { handleEesWebhook } = require('../controllers/eesController');
+const eesController = require('../controllers/eesController');
+const { handleEesWebhook } = eesController;
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 
 /**
@@ -14,5 +15,8 @@ const { verifyToken, requireRole } = require('../middleware/authMiddleware');
  * router.post('/webhooks/ees', verifyToken, requireRole(['ADMIN']), handleEesWebhook);
  */
 router.post('/webhooks/ees', handleEesWebhook);
+
+// GET /api/ees (Get all EES documents)
+router.get('/', verifyToken, eesController.listEesDocuments);
 
 module.exports = router;

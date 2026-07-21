@@ -1307,6 +1307,43 @@
         }
       }
     },
+    "/api/ees": {
+      "get": {
+        "tags": [
+          "📜 EES Documents"
+        ],
+        "summary": "Get all EES Documents",
+        "description": "Mengembalikan daftar semua dokumen EES (Engineering Evaluation Sheet) yang pernah dibuat.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil mendapatkan daftar EES"
+          }
+        }
+      }
+    },
     "/api/webhooks/ees": {
       "post": {
         "summary": "Webhook — Terima hasil AI langsung (tanpa JWT)",

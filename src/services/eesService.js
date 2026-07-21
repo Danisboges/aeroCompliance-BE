@@ -215,7 +215,29 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
   );
 };
 
+const listEesDocuments = async (query = {}) => {
+  const page = Math.max(Number(query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+  const skip = (page - 1) * limit;
+
+  const [items, total] = await Promise.all([
+    eesRepository.listEesDocuments({ skip, take: limit }),
+    eesRepository.countEesDocuments()
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1
+    }
+  };
+};
+
 module.exports = {
   processEesWebhook,
   normalizeOcrPayload,
+  listEesDocuments
 };

@@ -25,6 +25,20 @@ const handleEesWebhook = async (req, res) => {
   }
 };
 
+const listEesDocuments = async (req, res) => {
+  try {
+    const result = await eesService.listEesDocuments(req.query);
+    return res.status(200).json({
+      data: result.items,
+      pagination: result.pagination
+    });
+  } catch (error) {
+    console.error('Error listing EES:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
-  handleEesWebhook
+  handleEesWebhook,
+  listEesDocuments
 };
