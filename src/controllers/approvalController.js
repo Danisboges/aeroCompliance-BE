@@ -34,12 +34,34 @@ const getApprovals = async (req, res) => {
 };
 
 /**
+ * GET /api/approvals/:eesId
+ */
+const getApprovalByEesId = async (req, res) => {
+  try {
+    const { eesId } = req.params;
+    const operatorId = req.user?.operatorId;
+
+    const result = await approvalService.getApprovalByEesId(eesId, operatorId);
+
+    return res.status(200).json({
+      data: result
+    });
+  } catch (error) {
+    console.error('[ApprovalController]', error);
+    if (error.message.includes('not found') || error.message.includes('Unauthorized')) {
+      return res.status(404).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+/**
  * POST /api/approvals/:eesId/review
  */
 const postReview = async (req, res) => {
   try {
     const { eesId } = req.params;
-    const { action, comment } = req.body;
+    const { action, comment, nextAssignedToId } = req.body;
 
     if (!action) {
       return res.status(400).json({ error: 'Action is required (APPROVED, REJECTED, RETURNED)' });
@@ -49,8 +71,10 @@ const postReview = async (req, res) => {
       eesId,
       action,
       comment,
+      nextAssignedToId,
       actorId: req.user.id,
-      actorRole: req.user.role
+      actorRole: req.user.role,
+      signatureFile: req.file
     });
 
     return res.status(200).json({
@@ -66,7 +90,40 @@ const postReview = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/approvals/:eesId/submit
+ */
+const submitForApproval = async (req, res) => {
+  try {
+    const { eesId } = req.params;
+    const { assignedToId } = req.body;
+
+    if (!assignedToId) {
+      return res.status(400).json({ error: 'assignedToId is required' });
+    }
+
+    const result = await approvalService.submitForApproval({
+      eesId,
+      assignedToId,
+      submitterId: req.user.id
+    });
+
+    return res.status(200).json({
+      message: 'Approval process initiated successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('[ApprovalController]', error);
+    if (error.message.includes('already') || error.message.includes('found')) {
+      return res.status(400).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   getApprovals,
-  postReview
+  getApprovalByEesId,
+  postReview,
+  submitForApproval
 };

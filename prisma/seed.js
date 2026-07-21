@@ -64,11 +64,11 @@ async function main() {
   const adminPass = await bcrypt.hash('admin123', 10);
   
   const userAdmin = await prisma.user.create({ data: { id: generateId('USR'), email: 'admin@gmf.co.id', username: 'admin', password: adminPass, role: 'ADMIN' } });
-  const firstEng = await prisma.user.create({ data: { id: generateId('USR'), email: 'firsteng@gmf.co.id', username: 'first_engineer', password: pass, role: 'FIRST_ENGINEER', operatorId: opGaruda.id } });
-  const secondEng = await prisma.user.create({ data: { id: generateId('USR'), email: 'secondeng@gmf.co.id', username: 'second_engineer', password: pass, role: 'SECOND_ENGINEER', operatorId: opGaruda.id } });
+  const firstEng = await prisma.user.create({ data: { id: generateId('USR'), email: 'firsteng@gmf.co.id', username: 'first_engineer', password: pass, role: 'ENGINEER', operatorId: opGaruda.id } });
+  const secondEng = await prisma.user.create({ data: { id: generateId('USR'), email: 'secondeng@gmf.co.id', username: 'second_engineer', password: pass, role: 'MANAGER', operatorId: opGaruda.id } });
   const tech = await prisma.user.create({ data: { id: generateId('USR'), email: 'technician@gmf.co.id', username: 'technician', password: pass, role: 'TECHNICIAN', operatorId: opGaruda.id } });
 
-  const firstEngCiti = await prisma.user.create({ data: { id: generateId('USR'), email: 'firsteng.citilink@gmf.co.id', username: 'first_eng_citi', password: pass, role: 'FIRST_ENGINEER', operatorId: opCitilink.id } });
+  const firstEngCiti = await prisma.user.create({ data: { id: generateId('USR'), email: 'firsteng.citilink@gmf.co.id', username: 'first_eng_citi', password: pass, role: 'ENGINEER', operatorId: opCitilink.id } });
 
   console.log('✈️ Seeding Aircraft Fleet...');
   const aircrafts = [
@@ -149,7 +149,7 @@ async function main() {
   });
   
   await prisma.reviewAction.create({
-    data: { id: generateId('REV'), eesId: ees1.id, action: 'APPROVED', actorId: secondEng.id, actorRole: 'SECOND_ENGINEER', comment: 'Looks good' }
+    data: { id: generateId('REV'), eesId: ees1.id, action: 'APPROVED', actorId: secondEng.id, actorRole: 'MANAGER', comment: 'Looks good' }
   });
 
   // SCENARIO 2: NEW / DRAFT (LEAP-1A)

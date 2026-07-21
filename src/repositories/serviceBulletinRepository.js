@@ -15,6 +15,24 @@ const includeRelations = {
   engineeringRec: true
 };
 
+const listSelect = {
+  id: true,
+  sbNumber: true,
+  revision: true,
+  title: true,
+  issuer: true,
+  issueDate: true,
+  receivedAt: true,
+  status: true,
+  complianceCategory: true,
+  impactType: true,
+  aircraftType: true,
+  effectivityType: true,
+  operatorId: true,
+  ocrResult: { select: { ocrStatus: true, draftStatus: true } },
+  generatedEes: { select: { id: true, eesNumber: true, reviewStatus: true, createdAt: true } }
+};
+
 /**
  * Creates a new ServiceBulletin record.
  */
@@ -82,7 +100,7 @@ const listServiceBulletins = async ({ skip = 0, take = 20, ocrStatus, draftStatu
     orderBy: {
       createdAt: 'desc'
     },
-    include: includeRelations
+    select: listSelect
   });
 };
 
@@ -181,7 +199,7 @@ async function findAllWithFilter({ search, sbType, status, operatorId, receivedF
   const queryOptions = {
     where,
     orderBy: { [sortBy]: sortOrder },
-    include: includeRelations,
+    select: listSelect,
   };
 
   if (page !== undefined && limit !== undefined) {

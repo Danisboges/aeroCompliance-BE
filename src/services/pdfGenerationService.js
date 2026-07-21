@@ -3,6 +3,7 @@ const path = require('path');
 const puppeteer = require('puppeteer');
 const { normalizeOcrPayload } = require('./eesService');
 const serviceBulletinRepository = require('../repositories/serviceBulletinRepository');
+const prisma = require('../db');
 
 const getPayloadData = (sb) => {
   let payload = sb.ocrResult?.rawPayload || sb.rawPayload || {};
@@ -99,6 +100,7 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     : 'eesGarudaTemplate.html';
   
   const templatePath = path.join(__dirname, '../templates', templateFileName);
+
   if (!fs.existsSync(templatePath)) {
     throw new Error(`Validation Error: Template file for ${templateType} was not found`);
   }
@@ -118,6 +120,39 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     }
   } catch (err) {
     console.error('Failed to encode logo to base64:', err);
+  }
+
+  // Handle Signatures for Garuda
+  let preparedBySigBase64 = '';
+  let checkedBySigBase64 = '';
+  let approvedBySigBase64 = '';
+
+  if (templateType.toUpperCase() !== 'CITILINK') {
+    const uploadDir = path.join(__dirname, '../../uploads/signatures');
+    const getSigBase64 = (fileName) => {
+      if (!fileName) return '';
+      const p = path.join(uploadDir, fileName);
+      if (fs.existsSync(p)) {
+        const b = fs.readFileSync(p);
+        return `data:image/png;base64,${b.toString('base64')}`;
+      }
+      return '';
+    };
+
+    const eesId = sb.generatedEes?.id;
+    if (eesId) {
+      preparedBySigBase64 = getSigBase64(`prepared_by_${eesId}.png`);
+      
+      const reviews = await prisma.reviewAction.findMany({
+        where: { eesId, action: 'APPROVED' }
+      });
+      
+      const checkedReview = reviews.find(r => r.actorRole === 'ENGINEER' && r.signaturePath);
+      if (checkedReview) checkedBySigBase64 = getSigBase64(checkedReview.signaturePath);
+      
+      const approvedReview = reviews.find(r => r.actorRole === 'MANAGER' && r.signaturePath);
+      if (approvedReview) approvedBySigBase64 = getSigBase64(approvedReview.signaturePath);
+    }
   }
 
   // Expand items based on \n\n in desc to split long paragraphs
@@ -307,7 +342,10 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       .replace(/\{\{sbNumber\}\}/g, sbNumber)
       .replace(/\{\{logoBase64\}\}/g, logoBase64)
       .replace(/\{\{evaluationDate\}\}/g, today)
-      .replace(/\{\{tableRows\}\}/g, tableRowsHtml);
+      .replace(/\{\{tableRows\}\}/g, tableRowsHtml)
+      .replace(/\{\{preparedBySigBase64\}\}/g, preparedBySigBase64 ? `<img src="${preparedBySigBase64}" style="max-height: 50px; max-width: 150px;"/>` : '')
+      .replace(/\{\{checkedBySigBase64\}\}/g, checkedBySigBase64 ? `<img src="${checkedBySigBase64}" style="max-height: 50px; max-width: 150px;"/>` : '')
+      .replace(/\{\{approvedBySigBase64\}\}/g, approvedBySigBase64 ? `<img src="${approvedBySigBase64}" style="max-height: 50px; max-width: 150px;"/>` : '');
   }
 
   // Launch Puppeteer headless browser
@@ -341,7 +379,46 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
   }
 };
 
+const finalizeGarudaPdf = async (eesId) => {
+  const eesDocument = await prisma.eesDocument.findUnique({
+    where: { id: eesId },
+    include: { sourceSb: true }
+  });
+
+  if (!eesDocument) return;
+
+  const pdfBuffer = await generateEesPdf({ sb: { ...eesDocument.sourceSb, generatedEes: eesDocument }, templateType: 'GARUDA' });
+  
+  const uploadDir = path.join(__dirname, '../../uploads/ees-documents');
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+  const finalPdfName = `EES_FINAL_${eesId}.pdf`;
+  const finalPdfPath = path.join(uploadDir, finalPdfName);
+  
+  fs.writeFileSync(finalPdfPath, pdfBuffer);
+
+  await prisma.eesDocument.update({
+    where: { id: eesId },
+    data: { storedGarudaPdfPath: finalPdfName }
+  });
+
+  // Delete signatures
+  const sigDir = path.join(__dirname, '../../uploads/signatures');
+  const filesToDelete = [
+    path.join(sigDir, `prepared_by_${eesId}.png`),
+    path.join(sigDir, `checked_by_${eesId}.png`),
+    path.join(sigDir, `approved_by_${eesId}.png`)
+  ];
+
+  for (const f of filesToDelete) {
+    if (fs.existsSync(f)) {
+      fs.unlinkSync(f);
+    }
+  }
+};
+
 module.exports = {
   generateEesPdf,
   extractPdfItems,
+  finalizeGarudaPdf
 };

@@ -59,6 +59,15 @@ const exportGarudaPdf = async (req, res) => {
     const sb = await getSbOrFail(req.params.id, res);
     if (!sb) return;
 
+    if (sb.generatedEes?.storedGarudaPdfPath) {
+      const filePath = path.join(__dirname, '../..', sb.generatedEes.storedGarudaPdfPath);
+      if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${path.basename(filePath)}"`);
+        return fs.createReadStream(filePath).pipe(res);
+      }
+    }
+
     const pdfBuffer = await pdfGenerationService.generateEesPdf({ 
       sb, 
       templateType: 'GARUDA',
@@ -85,6 +94,15 @@ const downloadGarudaPdf = async (req, res) => {
   try {
     const sb = await getSbOrFail(req.params.id, res);
     if (!sb) return;
+
+    if (sb.generatedEes?.storedGarudaPdfPath) {
+      const filePath = path.join(__dirname, '../..', sb.generatedEes.storedGarudaPdfPath);
+      if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath)}"`);
+        return fs.createReadStream(filePath).pipe(res);
+      }
+    }
 
     const pdfBuffer = await pdfGenerationService.generateEesPdf({ 
       sb, 

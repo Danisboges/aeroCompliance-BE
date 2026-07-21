@@ -5,8 +5,8 @@ const prisma = require('../db');
 const Role = {
   ADMIN: 'ADMIN',
   TECHNICIAN: 'TECHNICIAN',
-  FIRST_ENGINEER: 'FIRST_ENGINEER',
-  SECOND_ENGINEER: 'SECOND_ENGINEER'
+  ENGINEER: 'ENGINEER',
+  MANAGER: 'MANAGER'
 };
 
 // Middleware to verify JWT token

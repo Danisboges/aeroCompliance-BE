@@ -511,13 +511,11 @@ Untuk memperjelas target pengembangan (roadmap) sistem kedepannya, berikut adala
 - Backend harus menembak API/Database internal GMF untuk menarik **Daftar Engine Serial Number (ESN)** yang valid berdasarkan model pesawat (`effected_model`) yang terdampak.
 - Nilai ESN asli ini nantinya akan diinjeksi secara langsung pada saat proses `Generate PDF EES` (pada baris *Affected A/C Engine*).
 
-### C. Finalisasi Alur Approval & Tanda Tangan (Tim Backend & Frontend)
-- Pada bagian bawah PDF EES terdapat kolom *Management Approval* (seperti WQR, DE, Evaluated By).
-- Kedepannya perlu dibuatkan sistem otorisasi pengguna (*Role-Based Access Control / RBAC*) agar *user* dengan level Supervisor bisa melakukan Approval secara sistem, yang kemudian akan menanamkan tanda tangan digital atau nama mereka langsung ke dalam cetakan PDF.
-
-### D. Penyempurnaan Template UI & UX (Tim Frontend)
+### C. Penyempurnaan Template UI & UX (Tim Frontend)
 - Menggabungkan *form* interaktif *review* EES dengan fitur *live-preview* (pratinjau PDF di layar) agar teknisi dapat melihat hasil cetakan PDF Garuda/Citilink secara aktual sebelum menekan tombol Generate.
 - Menyiapkan mekanisme pengetikan manual untuk *Evaluation Result* di *form* UI khusus untuk melengkapi dokumen Citilink.
+
+
 
 ---
 
@@ -553,6 +551,15 @@ Untuk pengembangan aktif, direkomendasikan menjalankan database di Docker dan se
 | 2026-07-19 | 1.5 | Penyelarasan Backend dengan Kontrak Frontend & AI. Penambahan logika transaksi Prisma pada pembuatan EES. Penyesuaian pemetaan status dokumen untuk integrasi langkah 1-6 UI. Sinkronisasi data root SB dengan validasi payload AI. Penggunaan endpoint actual AI untuk OCR SVR. |
 | 2026-07-19 | 1.6 | **Major Update: Engineering Review Dashboard & Multi-Tenancy**. Implementasi tabel `Operator` untuk menyekat data Garuda dan Citilink. Penambahan `Role` baru (`FIRST_ENGINEER`, `SECOND_ENGINEER`). Penggantian struktur review dengan tabel Pivot (`Approval` dan `ReviewAction`) untuk menghindari redundansi data di `EesDocument`. Penambahan endpoint `/api/dashboard/engineering-review/summary` dan `/api/approvals`. |
 | 2026-07-20 | 1.7 | Pembaruan adaptasi struktur JSON AI terbaru (preservasi seluruh data mro_schema, penyesuaian nama key `issued_date`). Implementasi fitur Notifikasi Real-time berbasis WebSocket (`socket.io`) untuk update otomatis *Unread SB* dan *Pending Approvals* di Dashboard. |
+| 2026-07-21 | 1.8 | **Sistem Persetujuan Multi-Tier & Manajemen Tanda Tangan**. Menambahkan endpoint untuk *Submit* dan *Review* EES berbasis ID dengan dukungan *upload multipart* untuk menyertakan gambar tanda tangan digital khusus Garuda. Implementasi pemusnahan otomatis gambar tanda tangan sementara pasca pembuatan PDF Final untuk memastikan keamanan data pribadi. |
+
+### Fitur Terbaru (2026-07-21 v1.8)
+- **Sistem Approval Bertingkat & Penyematan Tanda Tangan**:
+  - `POST /api/approvals/:eesId/submit`: First Engineer dapat mensubmit EES untuk diproses dengan melampirkan tanda tangan "Prepared by".
+  - `POST /api/approvals/:eesId/review`: Mendukung multi-tier (Manager untuk Citilink, Second Engineer -> Manager untuk Garuda) dengan kewajiban melampirkan gambar tanda tangan.
+- **Pemusnahan Gambar Tanda Tangan (*Transient Signatures*)**:
+  - File gambar (`.png`/`.jpg`) tanda tangan disimpan sementara di `uploads/signatures`.
+  - Setelah semua Approval terpenuhi dan `finalizeGarudaPdf` menyematkan ketiga tanda tangan ke dalam `EES_FINAL_*.pdf`, backend secara otomatis **memusnahkan file gambar asli tanda tangan dari disk server (`fs.unlinkSync`)** untuk mematuhi regulasi privasi data.
 
 ### Fitur Terbaru (2026-07-20 v1.7)
 - **Adaptasi Struktur JSON AI Baru (OCR Client)**:

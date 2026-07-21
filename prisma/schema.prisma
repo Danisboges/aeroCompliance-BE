@@ -13,8 +13,8 @@ datasource db {
 enum Role {
   ADMIN
   TECHNICIAN
-  FIRST_ENGINEER
-  SECOND_ENGINEER
+  ENGINEER
+  MANAGER
 }
 
 model Operator {
@@ -398,6 +398,7 @@ model ServiceBulletinRead {
 
 enum ApprovalStatus {
   PENDING
+  PARTIALLY_APPROVED
   APPROVED
   REJECTED
   RETURNED
@@ -427,6 +428,7 @@ model ReviewAction {
   actorRole Role
   createdAt DateTime       @default(now())
   comment   String?        @db.Text
+  signaturePath String?
 
   @@index([action, createdAt])
   @@index([eesId, createdAt])

@@ -48,6 +48,31 @@ const formatSbResponse = (sb, originalUrl = '') => {
   return result;
 };
 
+/**
+ * Format lightweight DTO for list response
+ */
+const formatSbListResponse = (sb) => {
+  if (!sb) return null;
+  const sbJson = JSON.parse(JSON.stringify(sb));
+  
+  const result = {
+    ...sbJson,
+    ocrStatus: sbJson.ocrResult?.ocrStatus || 'UPLOADED',
+    draftStatus: sbJson.ocrResult?.draftStatus || sbJson.status || 'DRAFT',
+    ees: sbJson.generatedEes ? {
+      id: sbJson.generatedEes.id,
+      eesNumber: sbJson.generatedEes.eesNumber,
+      reviewStatus: sbJson.generatedEes.reviewStatus,
+      createdAt: sbJson.generatedEes.createdAt
+    } : null
+  };
+  
+  delete result.ocrResult;
+  delete result.generatedEes;
+  
+  return result;
+};
+
 const uploadPdf = async (req, res) => {
   try {
     const fileName = req.headers['x-file-name'];
@@ -92,8 +117,16 @@ const createDraft = async (req, res) => {
 const listServiceBulletins = async (req, res) => {
   try {
     const result = await serviceBulletinService.listServiceBulletins(req.query);
-    const formattedItems = result.items.map(item => formatSbResponse(item, req.originalUrl));
-    return res.status(200).json({ data: formattedItems, meta: result.meta });
+    const formattedItems = result.items.map(item => formatSbListResponse(item));
+    return res.status(200).json({ 
+      data: formattedItems, 
+      pagination: {
+        page: result.meta.page,
+        limit: result.meta.limit,
+        total: result.meta.total,
+        totalPages: Math.ceil(result.meta.total / result.meta.limit) || 1
+      }
+    });
   } catch (error) {
     return handleControllerError(res, error);
   }
@@ -138,6 +171,8 @@ const validateServiceBulletin = async (req, res) => {
   }
 };
 
+const path = require('path');
+
 const generateEes = async (req, res) => {
   try {
     const customData = {
@@ -145,6 +180,27 @@ const generateEes = async (req, res) => {
       aircraftType: req.body?.aircraftType
     };
     const result = await serviceBulletinService.generateEes(req.params.id, req.user?.id, customData);
+    
+    // Handle Creator Signature
+    if (req.file) {
+      const eesId = result.generatedEes?.id;
+      // We need to check if operator is Garuda.
+      // EesDocument might not return operator directly, so we can fetch it, OR we can just save it for all and the Citilink template just ignores it.
+      // But the rule says: "Jika Citilink, abaikan file (atau tidak wajib). Jika Garuda, simpan". Let's save it for Garuda only.
+      // Result should include operator from SB. Let's assume result.operatorId or result.operator.code exists.
+      const sbInfo = await serviceBulletinService.getServiceBulletinById(req.params.id);
+      const isGaruda = sbInfo.operator?.code === 'GA';
+      
+      if (isGaruda && eesId) {
+        const uploadDir = path.join(__dirname, '../../uploads/signatures');
+        const newPath = path.join(uploadDir, `prepared_by_${eesId}.png`);
+        fs.renameSync(req.file.path, newPath);
+      } else {
+        // Delete if not Garuda or eesId missing
+        fs.unlinkSync(req.file.path);
+      }
+    }
+
     return res.status(201).json({
       message: 'EES document generated from validated Service Bulletin draft',
       data: formatSbResponse(result, req.originalUrl)

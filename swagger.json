@@ -7,8 +7,16 @@
   },
   "servers": [
     {
+      "url": "/",
+      "description": "Current Server (Local/Docker)"
+    },
+    {
       "url": "http://localhost:3000",
-      "description": "Local Development Server"
+      "description": "Local Development (Port 3000)"
+    },
+    {
+      "url": "http://localhost:3001",
+      "description": "Local Development (Port 3001)"
     }
   ],
   "components": {
@@ -1687,12 +1695,45 @@
         }
       }
     },
-    "/api/approvals/{eesId}/review": {
+    "/api/approvals/{eesId}": {
+      "get": {
+        "tags": [
+          "✅ Approvals"
+        ],
+        "summary": "Get specific approval status & history",
+        "description": "Mengambil status persetujuan saat ini beserta riwayat tindakan persetujuan untuk dokumen EES tertentu.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eesId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approval data and history retrieved successfully"
+          },
+          "404": {
+            "description": "Approval not found"
+          }
+        }
+      }
+    },
+    "/api/approvals/{eesId}/submit": {
       "post": {
         "tags": [
           "✅ Approvals"
         ],
-        "summary": "Submit review action for EES Document",
+        "summary": "Submit EES for Approval (Creator)",
+        "description": "Mengirimkan EES untuk disetujui. Untuk Garuda, wajib mengirimkan gambar tanda tangan pembuat (Prepared by).",
         "security": [
           {
             "bearerAuth": []
@@ -1711,7 +1752,57 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "assignedToId": {
+                    "type": "integer",
+                    "description": "User ID untuk Second Engineer atau Manager yang dituju"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File gambar tanda tangan (Wajib untuk Garuda)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil submit untuk approval"
+          }
+        }
+      }
+    },
+    "/api/approvals/{eesId}/review": {
+      "post": {
+        "tags": [
+          "✅ Approvals"
+        ],
+        "summary": "Submit review action for EES Document",
+        "description": "Mengirimkan persetujuan atau penolakan. Jika Approved dan EES adalah Garuda, wajib menyertakan gambar tanda tangan.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eesId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
@@ -1724,7 +1815,17 @@
                     ]
                   },
                   "comment": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Wajib jika REJECTED"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File gambar tanda tangan (Wajib untuk Garuda jika APPROVED)"
+                  },
+                  "nextAssignedToId": {
+                    "type": "integer",
+                    "description": "User ID Manager tujuan (Khusus Garuda jika reviewer saat ini adalah Second Engineer)"
                   }
                 }
               }
@@ -1736,7 +1837,7 @@
             "description": "Review submitted successfully"
           },
           "400": {
-            "description": "Invalid action or approval state"
+            "description": "Invalid action or missing signature"
           }
         }
       }

@@ -6,6 +6,7 @@ const applicabilityController = require('../controllers/applicabilityController'
 const engineeringRecController = require('../controllers/engineeringRecController');
 const exportController = require('../controllers/exportController');
 const serviceBulletinController = require('../controllers/serviceBulletinController');
+const { uploadSignature } = require('../middleware/uploadMiddleware');
 
 // Raw body parser untuk endpoint yang menerima binary PDF langsung
 const pdfBodyParser = express.raw({ type: 'application/pdf', limit: '100mb' });
@@ -43,7 +44,7 @@ router.patch('/service-bulletins/:id/engineering-rec', verifyToken, engineeringR
 
 // ── Step 5: Generate EES ──────────────────────────────────────────────────────
 // Generate EES document from AI results
-router.post('/service-bulletins/:id/generate-ees', verifyToken, serviceBulletinController.generateEes);
+router.post('/service-bulletins/:id/generate-ees', verifyToken, uploadSignature.single('signature'), serviceBulletinController.generateEes);
 // Get the generated EES document
 router.get('/service-bulletins/:id/ees', verifyToken, serviceBulletinController.getEesDocument);
 // Edit EES evaluation items before export
