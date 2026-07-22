@@ -322,6 +322,18 @@ const parseAiSbRelations = async (sourceSbId, sbRelations, supersedesObj) => {
           }
         });
       }
+
+      if (relType === 'TERMINATES') {
+        const targetSbInDb = await prisma.serviceBulletin.findUnique({
+          where: { sbNumber: fullTargetSb }
+        });
+        if (targetSbInDb) {
+          await prisma.serviceBulletin.update({
+            where: { id: targetSbInDb.id },
+            data: { status: 'TERMINATED' }
+          });
+        }
+      }
     }
   }
 
