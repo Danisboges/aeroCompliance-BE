@@ -28,8 +28,10 @@ model Operator {
 
 enum DocumentStatus {
   DRAFT
+  OPEN
   ACTIVE
   SUPERSEDED
+  TERMINATED
   CANCELLED
   CLOSED
 }
@@ -37,10 +39,33 @@ enum DocumentStatus {
 enum ComplianceStatus {
   NOT_APPLICABLE
   OPEN
+  PENDING
   IN_PROGRESS
   COMPLIED
+  NOT_REQUIRED
   DEFERRED
   OVERDUE
+}
+
+enum SbRelationType {
+  CONCURRENT
+  SUPERSEDES
+  TERMINATES
+}
+
+enum FulfillmentRule {
+  ANY_OF
+  ALL_OF
+  AT_LEAST_N
+  SEQUENCE
+}
+
+enum FulfillmentStatus {
+  OPEN
+  PARTIALLY_SATISFIED
+  SATISFIED
+  EXPIRED
+  CANCELLED
 }
 
 enum Priority {
@@ -106,6 +131,7 @@ model User {
   updatedServiceBulletins  ServiceBulletin[]           @relation("ServiceBulletinUpdater")
   engineeringRecs          EngineeringRecommendation[]
   reviewActions            ReviewAction[]
+  sbComplianceAudits       SbComplianceAudit[]
 }
 
 // --- ASSETS ---
@@ -140,6 +166,7 @@ model Engine {
   svrConfigurationItems SvrConfigurationItem[]
   svrLlpStatuses        SvrLlpStatus[]
   svrAdStatuses         SvrAdStatus[]
+  groupResults          SbGroupResult[]
 }
 
 // --- DOCUMENTS (AD, SB, EES) ---
@@ -197,6 +224,7 @@ model ServiceBulletin {
   engineeringRec    EngineeringRecommendation?
   createdAt         DateTime                   @default(now())
   complianceRecords ComplianceRecord[]
+  relations         SbRelation[]
 
   @@index([operatorId, receivedAt])
   @@index([status, receivedAt])
@@ -380,11 +408,99 @@ model ComplianceRecord {
   svr            ShopVisitReport?        @relation(fields: [svrId], references: [id], onDelete: SetNull)
   remarks        String?                 @db.Text
 
+  resolutionReason          String?
+  resolvedByComplianceId    String?
+  resolvedByCompliance      ComplianceRecord?    @relation("ComplianceResolution", fields: [resolvedByComplianceId], references: [id], onDelete: SetNull)
+  resolvesComplianceRecords ComplianceRecord[]   @relation("ComplianceResolution")
+  audits                    SbComplianceAudit[]
+  satisfiedGroupResults     SbGroupResult[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
   @@unique([engineId, sbId])
   @@unique([engineId, adId])
+}
+
+// --- RELATIONS & REQUIREMENT GROUPS ---
+
+model SbRelation {
+  id             String          @id @default(uuid())
+  sourceSbId     String
+  sourceSb       ServiceBulletin @relation(fields: [sourceSbId], references: [id], onDelete: Cascade)
+  targetSbNumber String
+  relationType   SbRelationType
+  conditionType  String?         // "PRE", "POST", "NONE"
+  effectiveDate  DateTime?
+  isActive       Boolean         @default(true)
+  remarks        String?         @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([sourceSbId, relationType])
+  @@index([targetSbNumber])
+}
+
+model SbRequirementGroup {
+  id              String                @id @default(uuid())
+  groupCode       String                @unique
+  groupName       String
+  fulfillmentRule FulfillmentRule
+  minimumRequired Int                   @default(1)
+  description     String?               @db.Text
+  isActive        Boolean               @default(true)
+  members         SbRequirementMember[]
+  results         SbGroupResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model SbRequirementMember {
+  id                 String               @id @default(uuid())
+  requirementGroupId String
+  requirementGroup   SbRequirementGroup   @relation(fields: [requirementGroupId], references: [id], onDelete: Cascade)
+  targetSbNumber     String
+  sequenceNumber     Int?
+  isActive           Boolean              @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@unique([requirementGroupId, targetSbNumber])
+}
+
+model SbGroupResult {
+  id                        String             @id @default(uuid())
+  requirementGroupId        String
+  requirementGroup          SbRequirementGroup @relation(fields: [requirementGroupId], references: [id], onDelete: Cascade)
+  engineId                  String
+  engine                    Engine             @relation(fields: [engineId], references: [id], onDelete: Cascade)
+  fulfillmentStatus         FulfillmentStatus  @default(OPEN)
+  satisfiedByComplianceId   String?
+  satisfiedByCompliance     ComplianceRecord?  @relation(fields: [satisfiedByComplianceId], references: [id], onDelete: SetNull)
+  satisfiedAt               DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([requirementGroupId, engineId])
+}
+
+model SbComplianceAudit {
+  id                       String            @id @default(uuid())
+  complianceRecordId       String
+  complianceRecord         ComplianceRecord  @relation(fields: [complianceRecordId], references: [id], onDelete: Cascade)
+  previousStatus           ComplianceStatus?
+  newStatus                ComplianceStatus
+  changeSource             String            // "SYSTEM" or "USER"
+  changeReason             String?           @db.Text
+  triggeredByComplianceId String?
+  changedById              String?
+  changedBy                User?             @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt                DateTime          @default(now())
+
+  @@index([complianceRecordId, changedAt])
 }
 
 // --- DASHBOARD TRACKING & APPROVAL ---

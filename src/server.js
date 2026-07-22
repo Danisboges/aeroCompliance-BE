@@ -13,6 +13,7 @@ const aircraftRoutes = require('./routes/aircraftRoutes');
 const svrRoutes = require('./routes/svrRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const approvalRoutes = require('./routes/approvalRoutes');
+const sbRelationRoutes = require('./routes/sbRelationRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +35,7 @@ app.use('/api', aircraftRoutes);
 app.use('/api', svrRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/approvals', approvalRoutes);
+app.use('/api', sbRelationRoutes);
 
 const { initSocket } = require('./socket');
 

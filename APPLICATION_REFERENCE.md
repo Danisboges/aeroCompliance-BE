@@ -498,22 +498,24 @@ AI_SERVICE_API_KEY="hf_xxxxx"
 
 ---
 
-## 14. Alur Pengerjaan Kedepannya (Future Workflow & Next Steps)
+## 14. Alur Pengerjaan & Perancangan Kedepan (Future Architecture & Roadmap)
 
-Untuk memperjelas target pengembangan (roadmap) sistem kedepannya, berikut adalah tahapan pekerjaan yang perlu difokuskan oleh tim:
+Dokumen ini mencatat arah perancangan masa depan (*Future Roadmap*) dan pengembangan tingkat lanjut arsitektur `GMF-BE` agar siap menghadapi skalabilitas tinggi serta kompleksitas operasional penerbangan:
 
-### A. Penyesuaian AI Service (Tim AI)
-- Tim AI harus menyesuaikan *output* JSON LLM agar 100% mematuhi panduan skema terbaru (v2.1).
-- Fokus utama adalah mengeluarkan 3 variabel baru khusus (`component_type`, `compliance_time_type`, `compliance_period`) untuk mengendalikan otomatisasi PDF Citilink.
-- Backend sudah diprogram untuk menangani variabel tersebut secara aman, baik untuk template Garuda maupun Citilink.
+### A. Graph Lineage & Engine Relasi Multi-Tier SB (`SbRelation`)
+- **Visualisasi Pohon Silsilah (Graph Visualizer)**: Tim Frontend akan mengintegrasikan library visualisasi grafis (seperti React Flow / D3.js) yang mengonsumsi API `GET /api/service-bulletins/:id/lineage`. Engineer dapat melihat diagram rantai penggantian dokumen multi-tier (`SB W -> SB Y -> SB X`) secara interaktif.
+- **Transitive Supersession Propagation**: Backend akan terus menyempurnakan otomatisasi pengalihan antrean pengerjaan pada armada Engine ketika SB versi baru masuk, sehingga dokumen berantai secara otomatis mewarisi (*inherit*) posisi di dalam `SbRequirementGroup`.
 
-### B. Integrasi Database Maskapai Internal (Tim Backend)
-- Backend harus menembak API/Database internal GMF untuk menarik **Daftar Engine Serial Number (ESN)** yang valid berdasarkan model pesawat (`effected_model`) yang terdampak.
-- Nilai ESN asli ini nantinya akan diinjeksi secara langsung pada saat proses `Generate PDF EES` (pada baris *Affected A/C Engine*).
+### B. Otomatisasi Compliance Engine & Evaluasi Disjungtif (Kombinasi OR / AND)
+- **Ekspresi Logika Prerequisite Kompleks**: Mendukung evaluasi kombinasi aturan prasyarat seperti `(Post-SB A OR Post-SB B) AND Pre-SB C`.
+- **Eksekusi Aturan Alternatif (`ANY_OF`) & Audit Trail**: Memastikan setiap kali sebuah SB ditandai `COMPLIED`, SB alternatif pada engine yang sama otomatis diubah menjadi `NOT_REQUIRED` dengan `resolutionReason = 'ALTERNATIVE_SB_COMPLIED'` dan bukti fisik `resolvedByComplianceId` (tersambung ke SVR).
 
-### C. Penyempurnaan Template UI & UX (Tim Frontend)
-- Menggabungkan *form* interaktif *review* EES dengan fitur *live-preview* (pratinjau PDF di layar) agar teknisi dapat melihat hasil cetakan PDF Garuda/Citilink secara aktual sebelum menekan tombol Generate.
-- Menyiapkan mekanisme pengetikan manual untuk *Evaluation Result* di *form* UI khusus untuk melengkapi dokumen Citilink.
+### C. Wildcard & RegEx Pattern Matching ESN
+- **Pencocokan Pola Abjad ESN AI**: AI mengirimkan aturan wildcard (seperti `89Y887` di mana `Y = 2 atau 3`), dan Backend secara otomatis mencocokkan pattern Regex (`89[23]887`) terhadap armada `Engine` di database GMF.
+
+### D. Integrasi Database Maskapai & Live PDF Preview
+- **Integrasi SVR & EES Real-time**: Menyinkronkan bukti kelayakan Shop Visit di dokumen SVR secara *real-time* ke antrean `ComplianceRecord` EES.
+- **Fitur Live-Preview PDF**: Menampilkan pratinjau instan dokumen EES Garuda/Citilink di sisi UI sebelum tombol Generate ditekan.
 
 
 
@@ -551,7 +553,21 @@ Untuk pengembangan aktif, direkomendasikan menjalankan database di Docker dan se
 | 2026-07-19 | 1.5 | Penyelarasan Backend dengan Kontrak Frontend & AI. Penambahan logika transaksi Prisma pada pembuatan EES. Penyesuaian pemetaan status dokumen untuk integrasi langkah 1-6 UI. Sinkronisasi data root SB dengan validasi payload AI. Penggunaan endpoint actual AI untuk OCR SVR. |
 | 2026-07-19 | 1.6 | **Major Update: Engineering Review Dashboard & Multi-Tenancy**. Implementasi tabel `Operator` untuk menyekat data Garuda dan Citilink. Penambahan `Role` baru (`FIRST_ENGINEER`, `SECOND_ENGINEER`). Penggantian struktur review dengan tabel Pivot (`Approval` dan `ReviewAction`) untuk menghindari redundansi data di `EesDocument`. Penambahan endpoint `/api/dashboard/engineering-review/summary` dan `/api/approvals`. |
 | 2026-07-20 | 1.7 | Pembaruan adaptasi struktur JSON AI terbaru (preservasi seluruh data mro_schema, penyesuaian nama key `issued_date`). Implementasi fitur Notifikasi Real-time berbasis WebSocket (`socket.io`) untuk update otomatis *Unread SB* dan *Pending Approvals* di Dashboard. |
-| 2026-07-21 | 1.8 | **Sistem Persetujuan Multi-Tier, Manajemen Tanda Tangan, & Optimasi API**. Menambahkan endpoint *Submit* dan *Review* EES berbasis ID dengan upload multipart gambar tanda tangan. Implementasi pemusnahan otomatis gambar tanda tangan sementara pasca pembuatan PDF Final. Optimasi drastis pada `GET /api/service-bulletins` (Lightweight DTO) menggunakan Prisma Select, serta penambahan endpoint baru `GET /api/ees`. |
+| 2026-07-21 | 1.8 | **Sistem Persetujuan Multi-Tier, Manajemen Tanda Tangan, & Optimasi API**. Menambahkan endpoint *Submit* dan *Review* EES berbasis ID dengan upload multipart gambar tanda tangan. Pemusnahan otomatis gambar tanda tangan sementara pasca pembuatan PDF Final. Optimasi drastis pada `GET /api/service-bulletins` (Lightweight DTO) menggunakan Prisma Select, serta penambahan endpoint baru `GET /api/ees`. |
+| 2026-07-22 | 1.9 | **Sistem Relasi SB, Group Pemenuhan (ANY_OF/ALL_OF), & Compliance Engine Per-Engine**. Implementasi model `SbRelation` (`CONCURRENT`, `SUPERSEDES`, `TERMINATES`), `SbRequirementGroup`, `SbRequirementMember`, `SbGroupResult`, dan `SbComplianceAudit`. Parsing otomatis `mro_schema.sb_relations` dari Webhook AI. Penambahan endpoint pohon silsilah (`GET /api/service-bulletins/:id/lineage`) dan ringkasan pemenuhan engine (`GET /api/engines/:engineId/compliance-summary`). |
+
+### Fitur Terbaru (2026-07-22 v1.9)
+- **Model Relasi Multi-Tier & Graph Silsilah SB**:
+  - Penambahan tabel `SbRelation` untuk mencatat hubungan `CONCURRENT`, `SUPERSEDES`, dan `TERMINATES` antar Service Bulletin.
+  - Endpoint `GET /api/service-bulletins/:id/lineage` menelusuri rantai penggantian dokumen secara rekursif (multi-tier `SB X -> SB Y -> SB W`) untuk visualisasi diagram pohon di Frontend.
+- **Group Pemenuhan & Aturan Alternatif (`ANY_OF` / `ALL_OF`)**:
+  - Penambahan tabel `SbRequirementGroup` dan `SbRequirementMember` untuk mendukung aturan `ANY_OF` (cukup salah satu SB dikerjakan) dan `ALL_OF` (seluruh SB wajib dikerjakan).
+  - Webhook AI (`POST /api/webhooks/ees`) secara otomatis memindai `mro_schema.sb_relations` (`post` dan `pre` condition) dan membentuk grup pemenuhan secara *real-time*.
+- **Compliance Engine & Audit Per-Engine**:
+  - Penambahan modul `sbFulfillmentService.js`. Saat sebuah SB ditandai `COMPLIED` pada suatu engine, sistem secara otomatis mengevaluasi grup pemenuhan:
+    - Untuk aturan `ANY_OF`, SB alternatif lainnya pada engine tersebut otomatis diubah statusnya menjadi **`NOT_REQUIRED`** (`resolutionReason = 'ALTERNATIVE_SB_COMPLIED'`) dengan menautkan `resolvedByComplianceId`.
+    - Jika status `COMPLIED` dibatalkan, sistem secara otomatis mengembalikan status SB alternatif menjadi `PENDING`.
+  - Seluruh jejak perubahan status otomatis ini dicatat di tabel `SbComplianceAudit`.
 
 ### Fitur Terbaru (2026-07-21 v1.8)
 - **Sistem Approval Bertingkat & Penyematan Tanda Tangan**:

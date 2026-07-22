@@ -203,6 +203,12 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
     });
   }
 
+  // Parse & Store AI SB Relations & Requirement Groups
+  const rawData = payload?.mro_schema?.mro_schema ? payload.mro_schema.mro_schema : (payload?.mro_schema || payload);
+  if (rawData) {
+    await parseAiSbRelations(sourceSbId, rawData.sb_relations, rawData.supersedes);
+  }
+
   if (normalized.requiresManualEes && !explicitSourceSbId) {
     console.log(`[EesWebhook] Skipping automatic EES generation for manual category / alert SB: ${bulletinNumber}`);
     return null; // Skip EES generation for manual category
@@ -236,8 +242,127 @@ const listEesDocuments = async (query = {}) => {
   };
 };
 
+const parseAiSbRelations = async (sourceSbId, sbRelations, supersedesObj) => {
+  if (!sourceSbId) return;
+
+  const sourceSb = await prisma.serviceBulletin.findUnique({
+    where: { id: sourceSbId },
+    select: { sbNumber: true }
+  });
+
+  if (!sourceSb) return;
+
+  // 1. Process "post" relations (Disjunctive OR / ANY_OF)
+  if (sbRelations && sbRelations.post && Array.isArray(sbRelations.post.sb) && sbRelations.post.sb.length > 0) {
+    const rule = sbRelations.post.operator === 'ONE OF' ? 'ANY_OF' : 'ALL_OF';
+    const groupCode = `POST-GRP-${sourceSbId.slice(0, 8)}`;
+
+    const reqGroup = await prisma.sbRequirementGroup.upsert({
+      where: { groupCode },
+      create: {
+        groupCode,
+        groupName: `Post-condition Prerequisite Group for ${sourceSb.sbNumber}`,
+        fulfillmentRule: rule,
+        minimumRequired: rule === 'ANY_OF' ? 1 : sbRelations.post.sb.length
+      },
+      update: {
+        fulfillmentRule: rule,
+        minimumRequired: rule === 'ANY_OF' ? 1 : sbRelations.post.sb.length
+      }
+    });
+
+    for (const targetSbNum of sbRelations.post.sb) {
+      const fullTargetSb = targetSbNum.includes('S/B') || targetSbNum.includes('SB') ? targetSbNum : `CFM56-7B S/B ${targetSbNum}`;
+      
+      const existingRel = await prisma.sbRelation.findFirst({
+        where: { sourceSbId, targetSbNumber: fullTargetSb, relationType: 'CONCURRENT', conditionType: 'POST' }
+      });
+
+      if (!existingRel) {
+        await prisma.sbRelation.create({
+          data: {
+            sourceSbId,
+            targetSbNumber: fullTargetSb,
+            relationType: 'CONCURRENT',
+            conditionType: 'POST'
+          }
+        });
+      }
+
+      await prisma.sbRequirementMember.upsert({
+        where: {
+          requirementGroupId_targetSbNumber: {
+            requirementGroupId: reqGroup.id,
+            targetSbNumber: fullTargetSb
+          }
+        },
+        create: { requirementGroupId: reqGroup.id, targetSbNumber: fullTargetSb },
+        update: {}
+      });
+    }
+  }
+
+  // 2. Process "pre" relations (Termination Boundary)
+  if (sbRelations && sbRelations.pre && Array.isArray(sbRelations.pre.sb) && sbRelations.pre.sb.length > 0) {
+    for (const targetSbNum of sbRelations.pre.sb) {
+      const fullTargetSb = targetSbNum.includes('S/B') || targetSbNum.includes('SB') ? targetSbNum : `CFM56-7B S/B ${targetSbNum}`;
+      const relType = sbRelations.pre.status === 'TERMINATE' ? 'TERMINATES' : 'CONCURRENT';
+
+      const existingRel = await prisma.sbRelation.findFirst({
+        where: { sourceSbId, targetSbNumber: fullTargetSb, relationType: relType, conditionType: 'PRE' }
+      });
+
+      if (!existingRel) {
+        await prisma.sbRelation.create({
+          data: {
+            sourceSbId,
+            targetSbNumber: fullTargetSb,
+            relationType: relType,
+            conditionType: 'PRE'
+          }
+        });
+      }
+    }
+  }
+
+  // 3. Process "supersedes"
+  if (supersedesObj && supersedesObj.status && supersedesObj.sb) {
+    const sbs = Array.isArray(supersedesObj.sb) ? supersedesObj.sb : [supersedesObj.sb];
+    for (const targetSbNum of sbs) {
+      const fullTargetSb = targetSbNum.includes('S/B') || targetSbNum.includes('SB') ? targetSbNum : `CFM56-7B S/B ${targetSbNum}`;
+
+      const existingRel = await prisma.sbRelation.findFirst({
+        where: { sourceSbId, targetSbNumber: fullTargetSb, relationType: 'SUPERSEDES' }
+      });
+
+      if (!existingRel) {
+        await prisma.sbRelation.create({
+          data: {
+            sourceSbId,
+            targetSbNumber: fullTargetSb,
+            relationType: 'SUPERSEDES',
+            conditionType: 'NONE'
+          }
+        });
+      }
+
+      const targetSbInDb = await prisma.serviceBulletin.findUnique({
+        where: { sbNumber: fullTargetSb }
+      });
+      if (targetSbInDb) {
+        await prisma.serviceBulletin.update({
+          where: { id: targetSbInDb.id },
+          data: { status: 'SUPERSEDED' }
+        });
+      }
+    }
+  }
+};
+
 module.exports = {
   processEesWebhook,
   normalizeOcrPayload,
-  listEesDocuments
+  listEesDocuments,
+  parseAiSbRelations
 };
+
