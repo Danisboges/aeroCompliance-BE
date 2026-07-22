@@ -1927,6 +1927,214 @@
           }
         }
       }
+    },
+    "/api/approvals/pending-second-engineer": {
+      "get": {
+        "tags": [
+          "✅ Approvals"
+        ],
+        "summary": "Get pending approvals for Second Engineer (Garuda)",
+        "description": "Mengembalikan daftar EES yang berstatus PENDING untuk ditinjau oleh Second Engineer.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of pending approvals retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/approvals/pending-manager": {
+      "get": {
+        "tags": [
+          "✅ Approvals"
+        ],
+        "summary": "Get pending approvals for Manager (Garuda/Citilink)",
+        "description": "Mengembalikan daftar EES yang berstatus PARTIALLY_APPROVED (Garuda) atau PENDING (Citilink) untuk ditinjau oleh Manager.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of pending approvals retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/service-bulletins/{id}/relations": {
+      "get": {
+        "tags": [
+          "🔗 SB Relations"
+        ],
+        "summary": "Get direct SB relations",
+        "description": "Mengembalikan daftar relasi langsung (CONCURRENT, SUPERSEDES, TERMINATES) dari Service Bulletin.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SB relations retrieved successfully"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "🔗 SB Relations"
+        ],
+        "summary": "Create a new SB relation manually",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["targetSbNumber", "relationType"],
+                "properties": {
+                  "targetSbNumber": { "type": "string", "example": "CFM56-7B S/B 72-0581" },
+                  "relationType": { "type": "string", "enum": ["CONCURRENT", "SUPERSEDES", "TERMINATES"], "example": "CONCURRENT" },
+                  "conditionType": { "type": "string", "enum": ["PRE", "POST", "NONE"], "example": "POST" },
+                  "remarks": { "type": "string", "example": "Prerequisite relation" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Relation created successfully"
+          }
+        }
+      }
+    },
+    "/api/service-bulletins/{id}/lineage": {
+      "get": {
+        "tags": [
+          "🔗 SB Relations"
+        ],
+        "summary": "Get full multi-tier lineage graph for an SB",
+        "description": "Mengembalikan silsilah pohon rekursif (SB W -> SB Y -> SB X) untuk visualisasi diagram graph di Frontend.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lineage tree graph retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/engines/{engineId}/compliance-summary": {
+      "get": {
+        "tags": [
+          "⚙️ Compliance Engine"
+        ],
+        "summary": "Get engine compliance summary and requirement group results",
+        "description": "Mengembalikan ringkasan status pengerjaan SB pada suatu Engine beserta evaluasi grup pemenuhannya.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "engineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Engine compliance summary retrieved successfully"
+          }
+        }
+      }
     }
   }
 }
