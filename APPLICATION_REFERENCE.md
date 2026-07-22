@@ -1,548 +1,169 @@
 # 📘 GMF AD/SB Compliance System — Application Reference Guide
 
-> **Dokumen ini adalah satu-satunya sumber kebenaran (Single Source of Truth) untuk arsitektur,
-> alur kerja, dan aturan bisnis aplikasi.**
->
-> Setiap penambahan fitur atau perubahan kode **WAJIB** mengacu pada dokumen ini.
-> Jika terdapat konflik antara kode dan dokumen ini, **dokumen ini yang berlaku**.
+> **Dokumen ini adalah satu-satunya sumber kebenaran (Single Source of Truth) untuk arsitektur, alur kerja, API, dan aturan bisnis aplikasi GMF-BE.**
 
 ---
 
-## 1. Deskripsi Aplikasi
+## 1. Executive Summary & System Core
 
-Sistem backend untuk mengelola proses evaluasi **Service Bulletin (SB)** dan **Airworthiness Directive (AD)** pada mesin pesawat di lingkungan MRO (Maintenance, Repair, and Overhaul) GMF AeroAsia.
+Sistem backend untuk mengelola proses evaluasi **Service Bulletin (SB)** dan **Airworthiness Directive (AD)** pada mesin pesawat di lingkungan MRO (Maintenance, Repair, and Overhaul) **GMF AeroAsia**.
 
-**Tujuan Utama:**
-- Menerima dokumen SB dalam format PDF
-- Menganalisis isi dokumen menggunakan AI Extractor
-- Mencocokkan applicability terhadap fleet engine
-- Menghasilkan dokumen **Engineering Evaluation Sheet (EES)** dalam format PDF (template Garuda / Citilink) dan Excel
-
----
-
-## 2. Tech Stack
+### 🛠️ Tech Stack Utama
 
 | Komponen | Teknologi |
 |----------|-----------|
-| Runtime | Node.js (CommonJS) |
-| Framework | Express.js v5 |
-| Database | PostgreSQL |
-| ORM | Prisma |
-| AI Extractor | Hugging Face Space (FastAPI) |
-| PDF Generator | Puppeteer (HTML → PDF) |
-| Excel Generator | ExcelJS |
-| Auth | JWT (jsonwebtoken + bcryptjs) |
-| API Docs | Swagger UI (swagger.json) |
+| **Runtime & Framework** | Node.js (CommonJS) + Express.js v5 |
+| **Database & ORM** | PostgreSQL 15 + Prisma ORM |
+| **AI Extractor** | Hugging Face Space (FastAPI OCR / Extraction) |
+| **PDF & Excel Generator** | Puppeteer (HTML → PDF) + ExcelJS |
+| **Realtime & Auth** | Socket.io + JWT (`jsonwebtoken` + `bcryptjs`) |
+| **API Docs** | Swagger UI (`/api-docs` via `swagger.json`) |
 
 ---
 
-## 3. Struktur Proyek
+## 2. Struktur Proyek
 
 ```
 GMF-BE/
 ├── prisma/
-│   ├── schema.prisma          # Skema database
-│   ├── seed.js                # Seeder data dasar (user, SB, AD)
-│   └── seedEngines.js         # Seeder fleet (aircraft + engine)
+│   ├── schema.prisma          # Skema database terintegrasi
+│   ├── seed.js                # Seeder user, SB, AD, & fleet
+│   └── seedEngines.js         # Seeder pesawat (Aircraft & Engine)
 ├── src/
-│   ├── controllers/           # HTTP handler (request → response)
-│   ├── services/              # Business logic layer
-│   ├── repositories/          # Data access layer (Prisma queries)
-│   ├── routes/                # Express route definitions
-│   ├── middleware/             # Auth middleware (JWT verify, RBAC)
-│   ├── templates/             # HTML templates untuk PDF (Garuda, Citilink)
-│   ├── db/                    # Prisma client instance
-│   └── server.js              # Entry point aplikasi
+│   ├── controllers/           # HTTP Handlers (sb, approval, relation, ees, dll)
+│   ├── services/              # Business Logic (sbRelationService, sbFulfillmentService, dll)
+│   ├── repositories/          # Data Access Layer (Prisma Queries)
+│   ├── routes/                # Route definitions Express
+│   ├── middleware/             # Auth JWT, RBAC Role, Upload Multipart
+│   ├── templates/             # HTML Templates untuk PDF Garuda & Citilink
+│   ├── db/                    # Client Instance Prisma
+│   ├── socket.js              # Realtime Socket.io Notification Handler
+│   └── server.js              # Application Entry Point
 ├── uploads/
-│   ├── ocr-documents/         # Storage file PDF SB asli yang diupload
-│   └── ees-documents/         # Storage file PDF EES yang di-generate
-├── swagger.json               # Dokumentasi API (Swagger/OpenAPI 3.0)
-├── .env                       # Environment variables (AI URL, token, DB)
+│   ├── ocr-documents/         # PDF SB Asli
+│   ├── ees-documents/         # Generated PDF/Excel EES
+│   └── signatures/            # Transient Signature Images (Auto-deleted post-PDF)
 └── APPLICATION_REFERENCE.md   # 📌 DOKUMEN INI
 ```
 
 ---
 
-## 4. Sumber Data Service Bulletin (SB)
+## 3. Alur Kerja Utama Sistem (Core Architecture)
 
-> [!IMPORTANT]
-> Terdapat **DUA sumber** SB yang masuk ke sistem. Kedua sumber ini menghasilkan
-> record `ServiceBulletin` yang identik di database dan mengikuti alur yang sama
-> setelah langkah awal.
+### 3.1 Alur Ingest SB (Dua Sumber Input)
+1. **Sumber A (Database Existing)**: SB sudah ada di DB $\rightarrow$ User upload PDF SB $\rightarrow$ Trigger AI Extraction.
+2. **Sumber B (Upload Manual)**: User upload PDF SB baru $\rightarrow$ Auto-create SB Temp $\rightarrow$ AI Extract $\rightarrow$ Merge ke SB asli atau Simpan SB Baru.
 
-### Sumber A: Database Perusahaan (Seeder / Pre-existing)
-
-SB yang sudah ada di database perusahaan sebelum user melakukan apapun.
-Data ini berasal dari seeder atau sistem eksternal.
+### 3.2 Alur 6-Langkah EES Generator Flow
 
 ```
-[Database Perusahaan] → GET /api/service-bulletins → User pilih SB
-                        → POST /:id/upload-pdf → Upload file PDF ke SB tersebut
-                        → Lanjut ke Step 2...
+[1. Select/Upload SB] ──▶ [2. Check Applicability] ──▶ [3. AI Summary & Confirm]
+                                                               │
+[6. Export PDF/Excel] ◀─── [5. Generate & Edit EES] ◀── [4. Engineering Rec]
 ```
 
-**Karakteristik:**
-- SB sudah memiliki `sbNumber`, `title`, `issuer` dari awal
-- Field `sbType`, `effectivityType`, `effectivityRange` sudah terisi
-- User **hanya mengupload PDF** untuk melengkapi dan di-analisis AI
-- Endpoint: `POST /api/service-bulletins/:id/upload-pdf`
+### 3.3 Alur Persetujuan Multi-Tier & Multi-Tenancy (Garuda vs Citilink)
+- **Multi-Tenancy**: Data disekat ketat berdasarkan `operatorId` di JWT (Garuda vs Citilink).
+- **Persetujuan Garuda**: `First Engineer` (Prepared) $\rightarrow$ `Second Engineer` (Checked) $\rightarrow$ `Manager` (Approved).
+  - *Aturan Kategori*: SB Kategori $< 4$ **wajib** persetujuan Manager. SB Kategori $\ge 4$ **langsung APPROVED** begitu disetujui *Second Engineer*.
+- **Persetujuan Citilink**: `First Engineer` $\rightarrow$ `Manager`.
+- **Transient Signatures**: Gambar tanda tangan (`.png`) diunggah sementara, disematkan ke PDF EES Final, lalu **langsung dihapus dari server (`fs.unlinkSync`)**.
 
-### Sumber B: Upload Manual oleh User (SB Baru)
+### 3.4 Engine Relasi Multi-Tier SB (`SbRelation` & Graph Lineage)
+- Mencatat 3 jenis hubungan di tabel `SbRelation`:
+  1. `CONCURRENT`: Harus dikerjakan bersamaan / alternatif.
+  2. `SUPERSEDES`: Menggantikan dokumen SB lama secara total.
+  3. `TERMINATES`: Menghentikan pengerjaan inspeksi SB lain.
+- **Pohon Silsilah (Lineage Tree)**: Endpoint `GET /api/service-bulletins/:id/lineage` menelusuri rantai `SB W -> SB Y -> SB X` secara rekursif.
 
-User mengupload file PDF SB yang **belum ada** di database.
-Sistem membuat record SB baru secara otomatis berdasarkan nama file,
-lalu AI akan mengekstrak metadata (sb_code, title, dll).
-
-```
-[User Upload PDF Baru] → POST /api/documents/ocr/pdf → Sistem buat SB baru
-                         → AI menganalisis PDF → Metadata SB terisi otomatis
-                         → Lanjut ke Step 2...
-```
-
-**Karakteristik:**
-- Record SB dibuat secara otomatis dengan ID temporary
-- Jika AI berhasil mengekstrak `sb_code`:
-  - Jika SB dengan nomor tersebut sudah ada → **merge** ke SB existing
-  - Jika belum ada → update record temp menjadi SB asli
-- Jika AI gagal → SB ditandai `FAILED-{id}` untuk review manual
-- Endpoint: `POST /api/service-bulletins/upload-new`
-
-### Perbandingan Dua Sumber
-
-| Aspek | Sumber A (Database) | Sumber B (Upload Manual) |
-|-------|-------------------|------------------------|
-| SB sudah ada di DB? | ✅ Ya | ❌ Tidak |
-| Metadata awal | Lengkap | Kosong (diisi AI) |
-| Upload PDF | Ke SB existing | Buat SB baru |
-| AI wajib? | Opsional (sudah ada metadata) | Wajib (satu-satunya sumber metadata) |
-| Merge logic | Tidak perlu | Ya (jika sb_code cocok) |
+### 3.5 Compliance Engine & Penautan Bukti SVR (Shop Visit Report)
+- **Evaluasi Group (`ANY_OF` / `ALL_OF`)**:
+  - `ANY_OF`: Jika SB-A diselesaikan (`COMPLIED`), SB-B alternatif pada engine yang sama otomatis berubah menjadi **`NOT_REQUIRED`** dengan `resolutionReason = 'ALTERNATIVE_SB_COMPLIED'`.
+  - Jika status `COMPLIED` dibatalkan, status SB-B otomatis kembali menjadi **`PENDING`**.
+- **Integritas Bukti SVR**: Status `COMPLIED` dari Shop Visit menautkan `resolvedByComplianceId` dan `svrId` sebagai bukti fisik otentik audit penerbangan.
 
 ---
 
-## 5. Alur Kerja Utama (6 Langkah EES Generator)
+## 4. Map API Endpoint Utama
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    ALUR KERJA EES GENERATOR                  │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌──────────┐     ┌──────────┐                              │
-│  │ Database  │     │  Upload  │                              │
-│  │   SB      │     │  Manual  │                              │
-│  └────┬─────┘     └────┬─────┘                              │
-│       │                │                                     │
-│       └───────┬────────┘                                     │
-│               ▼                                              │
-│  ╔══════════════════════════════╗                             │
-│  ║  STEP 1: SELECT / INPUT SB  ║                             │
-│  ║  - List SB dari database    ║                             │
-│  ║  - Upload PDF baru          ║                             │
-│  ╚══════════════╤═══════════════╝                             │
-│                 ▼                                             │
-│  ╔══════════════════════════════╗                             │
-│  ║  STEP 2: APPLICABILITY      ║                             │
-│  ║  - Cocokkan SB vs fleet     ║                             │
-│  ║  - engine.model = SB.type   ║                             │
-│  ╚══════════════╤═══════════════╝                             │
-│                 ▼                                             │
-│  ╔══════════════════════════════╗                             │
-│  ║  STEP 3: AI SUMMARY         ║                             │
-│  ║  - AI otomatis saat upload  ║                             │
-│  ║  - Review & edit hasil AI   ║                             │
-│  ║  - Konfirmasi → VALIDATED   ║                             │
-│  ╚══════════════╤═══════════════╝                             │
-│                 ▼                                             │
-│  ╔══════════════════════════════╗                             │
-│  ║  STEP 4: ENGINEERING REC    ║                             │
-│  ║  - COMPLY / DEFER / NA      ║                             │
-│  ║  - Priority + Notes         ║                             │
-│  ╚══════════════╤═══════════════╝                             │
-│                 ▼                                             │
-│  ╔══════════════════════════════╗                             │
-│  ║  STEP 5: GENERATE EES       ║                             │
-│  ║  - Buat EesDocument + Items ║                             │
-│  ║  - Edit sebelum export      ║                             │
-│  ╚══════════════╤═══════════════╝                             │
-│                 ▼                                             │
-│  ╔══════════════════════════════╗                             │
-│  ║  STEP 6: EXPORT             ║                             │
-│  ║  - PDF Garuda / Citilink    ║                             │
-│  ║  - Excel (.xlsx)            ║                             │
-│  ╚══════════════════════════════╝                             │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+| Kategori | Method | Endpoint Path | Deskripsi |
+|---|---|---|---|
+| **Auth** | POST | `/api/auth/login` | Login user & dapatkan Token JWT |
+| **Service Bulletin** | GET | `/api/service-bulletins` | List SB (Lightweight DTO + Pagination) |
+| | GET | `/api/service-bulletins/:id` | Detail lengkap SB & OCR Result |
+| | POST | `/api/service-bulletins/upload-new` | Upload SB Baru + Trigger AI OCR |
+| **EES Generator** | GET | `/api/service-bulletins/:id/applicability` | Check engine terdampak di fleet |
+| | POST | `/api/service-bulletins/:id/generate-ees` | Generate EesDocument & Items |
+| | GET | `/api/ees` | List dokumen EES & Creator |
+| **Approvals** | GET | `/api/approvals` | List persetujuan general (Admin/All) |
+| | GET | `/api/approvals/pending-second-engineer` | List pending khusus Second Engineer (Garuda) |
+| | GET | `/api/approvals/pending-manager` | List pending khusus Manager (Garuda/Citilink) |
+| | POST | `/api/approvals/:eesId/submit` | Submit EES + Gambar Tanda Tangan 1st Eng |
+| | POST | `/api/approvals/:eesId/review` | Action Approve/Reject/Return + Tanda Tangan |
+| **SB Relations** | GET | `/api/service-bulletins/:id/relations` | Ambil relasi langsung SB |
+| | GET | `/api/service-bulletins/:id/lineage` | Ambil pohon silsilah penggantian berantai |
+| | POST | `/api/service-bulletins/:id/relations` | Tambah relasi SB manual |
+| | GET | `/api/engines/:engineId/compliance-summary` | Summary pemenuhan SB & Group Result per Engine |
+| **Export** | GET | `/api/service-bulletins/:id/export/garuda/pdf` | Export PDF EES Template Garuda |
+| | GET | `/api/service-bulletins/:id/export/citilink/pdf` | Export PDF EES Template Citilink |
+| **Webhook** | POST | `/api/webhooks/ees` | Webhook AI (Terima payload JSON `mro_schema`) |
 
 ---
 
-## 6. API Endpoint Map
+## 5. Ringkasan Model Database Utama (Prisma)
 
-### 🔐 Authentication
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| POST | `/api/auth/register` | Daftar user baru |
-| POST | `/api/auth/login` | Login → JWT token |
+```
+[Operator] ── (1:N) ── [User]
+    │                    │ (uploaded/updated)
+    ├── (1:N) ─────────▶ [ServiceBulletin] ── (1:1) ── [EesDocument] ── (1:N) ── [EesEvaluationItem]
+    │                          │                           │
+    └── (1:N) ── [Aircraft]    ├── (1:N) ── [SbRelation]   └── (1:1) ── [Approval]
+                      │        │                                           │
+                      └── (N) ───▶ [Engine] ── (1:N) ── [ComplianceRecord] ─── (1:N) ── [SbComplianceAudit]
+                                     ▲                         ▲
+                                     └────── [ShopVisitReport] ┘
+```
 
-### 🗂️ Step 1: Select / Input SB
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/service-bulletins` | List semua SB (search, filter) |
-| GET | `/api/service-bulletins/:id` | Detail satu SB |
-| POST | `/api/service-bulletins/:id/upload-pdf` | Upload PDF ke SB existing |
-| POST | `/api/service-bulletins/upload-new` | Upload PDF baru → buat SB baru + AI |
-| GET | `/api/service-bulletins/:id/view` | Preview PDF asli di browser |
-| GET | `/api/service-bulletins/:id/download` | Download PDF asli |
-| DELETE | `/api/service-bulletins/:id` | Hapus SB (cleanup/testing) |
-
-### ✈️ Step 2: Applicability
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/service-bulletins/:id/applicability` | Cek engine terdampak |
-
-### 🤖 Step 3: AI Summary
-> AI analisis dijalankan **otomatis** saat upload PDF di Step 1. Step ini hanya untuk review & konfirmasi.
-
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/service-bulletins/:id/ai-summary` | Ambil hasil AI |
-| PATCH | `/api/service-bulletins/:id/ai-summary` | Edit & konfirmasi hasil AI |
-
-### ⚙️ Step 4: Engineering Recommendation
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/service-bulletins/:id/engineering-rec` | Ambil rekomendasi |
-| POST | `/api/service-bulletins/:id/engineering-rec` | Simpan rekomendasi |
-| PATCH | `/api/service-bulletins/:id/engineering-rec` | Update rekomendasi |
-
-### 📄 Step 5: Generate EES
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| POST | `/api/service-bulletins/:id/generate-ees` | Generate EES document |
-| GET | `/api/service-bulletins/:id/ees` | Ambil EES yang sudah di-generate |
-| PATCH | `/api/service-bulletins/:id/ees` | Edit evaluation items |
-
-### ⬇️ Step 6: Export
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/service-bulletins/:id/export/garuda/pdf` | Preview PDF Garuda |
-| GET | `/api/service-bulletins/:id/export/garuda/pdf/download` | Download PDF Garuda |
-| GET | `/api/service-bulletins/:id/export/citilink/pdf` | Preview PDF Citilink |
-| GET | `/api/service-bulletins/:id/export/citilink/pdf/download` | Download PDF Citilink |
-| GET | `/api/service-bulletins/:id/export/excel` | Download Excel |
-
-### 🔗 Webhook
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| POST | `/api/webhooks/ees` | Terima payload AI langsung (tanpa JWT) |
-
-### 📊 Dashboard & Approvals
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/dashboard/engineering-review/summary` | Dashboard metrics bulanan dan status Approval |
-| GET | `/api/approvals` | List approval tasks (untuk Engineer) |
-| POST | `/api/approvals/:eesId/review` | Eksekusi persetujuan (APPROVED/REJECTED/RETURNED) |
+| Model | Key | Deskripsi Singkat |
+|---|---|---|
+| `Operator` | `id` | Penyekat multi-tenant data (Garuda vs Citilink) |
+| `User` | `id`, `email` | Pengguna sistem (Technician, Engineer, 2nd Engineer, Manager) |
+| `ServiceBulletin` | `id`, `sbNumber` | Dokumen SB utama (terhubung ke AI OCR Result & EES) |
+| `EesDocument` | `id`, `eesNumber` | Dokumen EES hasil generate |
+| `Approval` | `id`, `eesId` | Status alur persetujuan EES saat ini |
+| `ReviewAction` | `id` | Riwayat transaksi persetujuan tak terhapuskan (Immutable Audit) |
+| `SbRelation` | `id` | Relasi antar-SB (`CONCURRENT`, `SUPERSEDES`, `TERMINATES`) |
+| `SbRequirementGroup` | `id`, `groupCode` | Aturan kelompok pemenuhan (`ANY_OF`, `ALL_OF`, `SEQUENCE`) |
+| `SbGroupResult` | `id` | Hasil status kelompok pemenuhan per-Engine |
+| `ShopVisitReport` | `id` | Dokumen laporan pengerjaan fisik mesin di bengkel GMF |
+| `ComplianceRecord` | `id` | Status pengerjaan SB per Engine (dengan `svrId` & `resolvedByComplianceId`) |
+| `SbComplianceAudit` | `id` | Riwayat audit jejak perubahan status pengerjaan SB |
 
 ---
 
-## 7. Model Database (ERD Ringkas)
+## 6. Aturan Bisnis Penting (Business Rules Summary)
 
-```
-User (1) ──── (N) ServiceBulletin ──── (1) EesDocument ──── (N) EesEvaluationItem
-                        │                      │
-                        ├── (1) EngineeringRec  ├── (N) ComplianceTask
-                        └── (N) ComplianceTask
-                        
-Aircraft (1) ──── (N) Engine
-    │                    │
-    └── ComplianceTask   └── ComplianceTask
-
-AirworthinessDirective ──── (N) ComplianceTask
-```
-
-### Tabel Utama
-
-| Model | Primary Key | Unique | Deskripsi |
-|-------|-------------|--------|-----------|
-| `Operator` | `id` (OP-xxx) | `code` | Induk organisasi (Garuda/Citilink) penyekat data |
-| `User` | `id` (USR-xxx) | `email`, `username` | Pengguna sistem (termasuk 1st/2nd Engineer) |
-| `Aircraft` | `id` | `registration`, `msn` | Pesawat di fleet |
-| `Engine` | `id` | `esn` | Mesin pesawat (terhubung via `msn` ke Aircraft) |
-| `ServiceBulletin` | `id` (SB-DOC-xxx) | `sbNumber` | Dokumen SB — tabel sentral tersambung ke `Operator` |
-| `EesDocument` | `id` (EES-DOC-xxx) | `eesNumber`, `sourceSbId` | Hasil generate EES |
-| `EesEvaluationItem` | `id` | — | Baris evaluasi di EES |
-| `EngineeringRecommendation` | `id` | `sbId` | Keputusan COMPLY/DEFER/NA |
-| `Approval` | `id` | `eesId` | Workflow persetujuan EES aktif (PENDING/APPROVED) |
-| `ReviewAction` | `id` | — | Log historis immutable dari aksi persetujuan EES |
-| `ComplianceTask` | `id` | — | Task tracking pelaksanaan |
-
-### Status Lifecycle ServiceBulletin
-
-```
-                                    ┌─────────────┐
- SB dibuat (dari seeder/upload) ──▶ │  ocrStatus:  │
-                                    │  UPLOADED    │
-                                    └──────┬──────┘
-                                           ▼
-                              ┌─────────────────────┐
-   PDF diupload & diproses ──▶│  ocrStatus:          │
-                              │  PROCESSING          │
-                              └──────┬──────────────┘
-                                     ▼
-                         ┌──────────────────────┐
-  AI berhasil extract ──▶│  ocrStatus: EXTRACTED │
-                         │  draftStatus: DRAFT   │
-                         └──────┬───────────────┘
-                                ▼
-                    ┌───────────────────────────┐
- User review AI ──▶ │  draftStatus:              │
-                    │  REVIEW_REQUIRED           │
-                    └──────┬────────────────────┘
-                           ▼
-              ┌────────────────────────────┐
- User OK ──▶  │  draftStatus: VALIDATED     │
-              └──────┬─────────────────────┘
-                     ▼
-         ┌─────────────────────────────┐
- Gen ──▶ │  draftStatus: GENERATED      │
-  EES    │  + EesDocument dibuat        │
-         └─────────────────────────────┘
-```
+1. **R1 - Unique Identifier**: `sbNumber` bersifat `@unique`. Upload PDF dengan nomor sama akan di-*merge* ke SB existing.
+2. **R2 - EES 1:1**: Tiap SB hanya memiliki 1 `EesDocument`. Generate ulang akan menggantikan EES lama secara *cascade*.
+3. **R3 - Operator Isolation**: Seluruh query data (Dashboard, SB, EES, Approvals) wajib disekat berdasarkan `operatorId` pengguna.
+4. **R4 - Compliance Category & Manager Bypass**:
+   - SB Kategori $< 4$: **Wajib** persetujuan Manager.
+   - SB Kategori $\ge 4$: Bypasses Manager; otomatis **APPROVED** setelah disetujui *Second Engineer*.
+5. **R5 - Transient Signatures**: Gambar tanda tangan di-upload ke `uploads/signatures`, disematkan ke PDF, lalu **langsung dimusnahkan dari server (`fs.unlinkSync`)**.
+6. **R6 - Any-Of Fulfillment & Auto Not-Required**: Ketika SB-A `COMPLIED`, SB-B alternatif pada engine yang sama otomatis diubah statusnya menjadi `NOT_REQUIRED` dengan tautan `resolvedByComplianceId`.
 
 ---
 
-## 8. Integrasi AI Extractor
+## 7. Alur Pengerjaan Kedepan (Future Roadmap)
 
-### Endpoint AI
-- **URL**: Dikonfigurasi via `.env` → `AI_SERVICE_URL`
-- **Token**: Dikonfigurasi via `.env` → `AI_SERVICE_API_KEY`
-- **Metode**: `POST` dengan `multipart/form-data` (field: `file`)
-- **Library**: `axios` + `form-data`
-- **Timeout**: Tidak ada (disabled) — proses AI bisa lama
-
-### Struktur Response AI (Terbaru v2.1)
-
-```json
-{
-  "filename": "XXXX.pdf",
-  "mro_schema": {
-    "sb_code": "....",
-    "tittle": "....",
-    "effected_type": "....",
-    "effected_model": [".....", "....."],
-    "compliance_category": 3,
-    "task_type": "REP",
-    "references": "......",
-    "component_type": "COMPONENT",
-    "compliance_time_type": "HOUR_CYCLE",
-    "compliance_period": ".....",
-    "problem_evidence": [
-      { "requirement_desc": "...", "remark": "..." }
-    ],
-    "description": [
-      { "requirement_desc": "...", "remark": "..." }
-    ]
-  },
-  "routing_directive": {
-    "workflow_action": "REP",
-    "compliance_category": 3
-  }
-}
-```
-
-
-### Normalisasi di Backend (`ocrClient.js`)
-
-AI response di-unwrap dari `mro_schema` dan dinormalisasi:
-
-1. **Data ada di `result.mro_schema`**, bukan di root level
-2. **`problem_evidence[]`** dan **`description[]`** yang tipe-nya sama di-**merge** jadi satu baris (digabung `\n\n`)
-3. **`tittle`** (typo dari AI) dipetakan ke `title`
-4. **`sb_code`** fallback: `mro_schema.sb_code` → `fileName` → `UNIDENTIFIED-{timestamp}`
-5. Response string (markdown-wrapped JSON) otomatis di-sanitize
+1. **Frontend Graph Visualizer**: Integrasi library grafis UI (React Flow) yang memanfaatkan API `/api/service-bulletins/:id/lineage` untuk menampilkan diagram pohon silsilah SB interaktif.
+2. **Dynamic Boolean Evaluator**: Mendukung parsing otomatis kombinasi prasyarat rumit dari AI seperti `(Post-A OR Post-B) AND Pre-C`.
+3. **Wildcard RegEx ESN Matching**: Mengotomatiskan pencocokan ESN bermotif wildcard (seperti `89Y887` di mana $Y \in \{2, 3\}$) langsung ke armada Engine.
+4. **Realtime SVR Sync & Live PDF Preview**: Menyinkronkan status pengerjaan SVR secara *real-time* dan menyediakan fitur pratinjau instan EES PDF di layar sebelum di-export.
 
 ---
 
-## 9. Template PDF EES
-
-### Template Garuda Indonesia
-- **File**: `src/templates/eesGarudaTemplate.html`
-- **Logo**: `public/image/logo_garuda-removebg-preview.png` (di-encode base64)
-- **Kolom tabel**: No | Par | Requirement Desc | Task Type | Ref | AD Related | App (Y/N) | Warranty (Y/N) | Affected A/C or Engine (ESN) | Rep (Y/N) | Due At | Remarks
-- **Logic Mapping Khusus**: Semua field di tabel adalah turunan langsung dari JSON AI, sisanya dikalkulasi di backend berdasar ketersediaan ESN.
-
-### Template Citilink Indonesia
-- **File**: `src/templates/eesCitilinkTemplate.html`
-- **Logo**: `public/image/citilink logo.png` (di-encode base64)
-- **Format**: Form CT-3-18.1 dengan checkbox pengisian berupa simbol silang (**X**)
-- **Logika Ceklis & Desain**:
-  1. **Unit Concern**: Otomatis tersilang **TEA-2**. Layout checkbox disusun dalam **2 kolom vertikal** di bawah label:
-     - Kolom Kiri: **TEA-1**, **TEA-2**, **TEA-3**
-     - Kolom Kanan: **TEA-4**, **TEA-5**, **TEA-6**
-  2. **Aircraft Type**: Berdasarkan AI `component_type` (COMPONENT / TOOL / PART).
-  3. **Reason of Evaluation**: Jika kategori `ALERT` → Safety & Improve Reliability disilang.
-  4. **Maintenance Level**: Berdasarkan AI `compliance_time_type` (DATE / HOUR_CYCLE / SCHEDULED / ATTRITION).
-  5. **Consequence**: Affected jika *Engineering Action* = COMPLY/DEFER, Not Affected jika NA.
-  6. **Accomplishment Method**: Berdasarkan AI `task_type` (INSP → Inspection, MOD/REP → Modification).
-  7. **Inspection Type**: Berdasarkan teks `compliance_period` AI (jika ada kata "every" → Recurring, selebihnya One Time).
-  8. **Evaluation Result**: Sengaja dibiarkan **KOSONG** agar *Technician* dapat mengisi/memvalidasi secara manual di UI.
-  9. **Pemisah Kolom Titik Dua (`:`)**: Garis batas/border vertikal di sekitar kolom titik dua disembunyikan menggunakan `border-right: hidden !important` dan `border-left: hidden !important` agar terlihat melebur rapi ke layout form.
-  10. **Pemotongan Halaman Alami**: Aturan CSS `.form-table > tbody > tr { page-break-inside: auto; }` diterapkan agar baris referensi yang sangat panjang (`Other Ref.`) dapat terpotong secara alami ke halaman berikutnya tanpa menyisakan ruang kosong besar di Halaman 1.
-  11. **Ukuran Tulisan**: Base font size diset ke **`12px`** untuk meningkatkan legibilitas, dan ukuran tanda silang diset ke `12px` di dalam kotak `11px x 11px` agar tanda silang memenuhi kotak checkbox.
-
-### Rendering
-- Engine: **Puppeteer** (headless Chrome)
-- Logo diinject sebagai **base64 inline** (`data:image/png;base64,...`) karena Puppeteer sandbox tidak bisa akses `file://` URL
-- Field "Evaluated by:" diambil dari `req.user.username` (`JWT` payload)
-- Tanda pengisian checkbox menggunakan karakter silang **`X`** (diubah dari sebelumnya centang `✓`).
-
----
-
-## 10. Matching Logic: ESN ↔ MSN
-
-```
-Engine.esn = Engine Serial Number (unik per mesin)
-Engine.msn = MSN aircraft tempat mesin terpasang
-Aircraft.msn = Manufacture Serial Number pesawat
-
-Match condition: Engine.msn === Aircraft.msn
-```
-
-Mesin spare/shop memiliki `msn = null` dan `aircraftId = null`.
-
-### Applicability Check (Step 2)
-```
-SB.effectivityType   vs   Engine.model
-SB.effectivityRange  vs   Engine.esn (range check)
-
-Jika engine.model === SB.effectivityType → Applicable ✅
-Jika tidak → Not Applicable ❌
-```
-
----
-
-## 11. Environment Variables
-
-```env
-# Database
-DATABASE_URL="postgresql://user:pass@localhost:5432/db_gmf"
-
-# JWT Secret
-JWT_SECRET="your-secret-key"
-
-# AI Extractor Service
-AI_SERVICE_URL="https://dzakievgn-sb-extractor.hf.space/api/extract"
-AI_SERVICE_API_KEY="hf_xxxxx"
-```
-
----
-
-## 12. Aturan Bisnis Penting
-
-### R1: SB Number adalah Primary Identifier
-- `sbNumber` bersifat `@unique` — tidak boleh duplikat
-- Saat upload PDF baru: jika AI mendeteksi `sb_code` yang sudah ada → **merge** ke record existing (bukan buat baru)
-
-### R2: EES Hanya Satu per SB
-- Relasi `ServiceBulletin` → `EesDocument` adalah **1:1** (`sourceSbId @unique`)
-- Jika generate ulang EES, record lama harus dihapus dulu (cascade)
-
-### R3: Engineering Recommendation Hanya Satu per SB
-- Relasi `ServiceBulletin` → `EngineeringRecommendation` adalah **1:1** (`sbId @unique`)
-- POST membuat baru, PATCH mengupdate existing
-
-### R4: Urutan Langkah Bersifat Logis (Bukan Teknis)
-- Langkah 1-6 adalah panduan UI flow, **bukan enforcement ketat** di backend
-- User bisa memanggil Step 5 (Generate EES) tanpa menjalankan Step 4 (Engineering Rec)
-- Yang wajib secara teknis: SB harus punya `rawPayload` (dari AI) sebelum bisa generate EES
-
-### R5: AI Bersifat Satu Arah
-- AI hanya dipanggil untuk **mengekstrak** data dari PDF
-- Hasil AI disimpan sebagai `rawPayload` (JSON) di `ServiceBulletin`
-- User bisa mengedit hasil AI sebelum generate EES
-- AI **tidak** dipanggil ulang saat generate/export
-
-### R6: Dua Template Export
-- **Garuda**: Format tabel 12 kolom, header + logo berdiri sendiri
-- **Citilink**: Format form CT-3-18.1 dengan checkbox dinamis
-- Template dipilih via endpoint path, bukan query parameter
-
----
-
-## 13. Panduan untuk Pengembang
-
-### Menambahkan Endpoint Baru
-1. Buat handler di `controllers/`
-2. Buat/update business logic di `services/`
-3. Buat/update query di `repositories/`
-4. Daftarkan route di `routes/serviceBulletinRoutes.js`
-5. Update `swagger.json`
-6. **Update bagian 6 (API Endpoint Map) di dokumen ini**
-
-### Mengubah Skema Database
-1. Edit `prisma/schema.prisma`
-2. Jalankan `npx prisma db push`
-3. Update seeder jika perlu
-4. **Update bagian 7 (Model Database) di dokumen ini**
-
-### Mengubah Format AI Response
-1. Edit normalisasi di `src/services/ocrClient.js`
-2. Pastikan output `payload` tetap kompatibel dengan `normalizeOcrPayload()` di `eesService.js`
-3. **Update bagian 8 (Integrasi AI) di dokumen ini**
-
-### Menambahkan Template Export Baru
-1. Buat file HTML di `src/templates/`
-2. Tambahkan logic rendering di `pdfGenerationService.js`
-3. Tambahkan route export di `serviceBulletinRoutes.js`
-4. Tambahkan handler di `exportController.js`
-5. **Update bagian 9 (Template PDF) di dokumen ini**
-
----
-
-## 14. Alur Pengerjaan & Perancangan Kedepan (Future Architecture & Roadmap)
-
-Dokumen ini mencatat arah perancangan masa depan (*Future Roadmap*) dan pengembangan tingkat lanjut arsitektur `GMF-BE` agar siap menghadapi skalabilitas tinggi serta kompleksitas operasional penerbangan:
-
-### A. Graph Lineage & Engine Relasi Multi-Tier SB (`SbRelation`)
-- **Visualisasi Pohon Silsilah (Graph Visualizer)**: Tim Frontend akan mengintegrasikan library visualisasi grafis (seperti React Flow / D3.js) yang mengonsumsi API `GET /api/service-bulletins/:id/lineage`. Engineer dapat melihat diagram rantai penggantian dokumen multi-tier (`SB W -> SB Y -> SB X`) secara interaktif.
-- **Transitive Supersession Propagation**: Backend akan terus menyempurnakan otomatisasi pengalihan antrean pengerjaan pada armada Engine ketika SB versi baru masuk, sehingga dokumen berantai secara otomatis mewarisi (*inherit*) posisi di dalam `SbRequirementGroup`.
-
-### B. Otomatisasi Compliance Engine & Evaluasi Disjungtif (Kombinasi OR / AND)
-- **Ekspresi Logika Prerequisite Kompleks**: Mendukung evaluasi kombinasi aturan prasyarat seperti `(Post-SB A OR Post-SB B) AND Pre-SB C`.
-- **Eksekusi Aturan Alternatif (`ANY_OF`) & Audit Trail**: Memastikan setiap kali sebuah SB ditandai `COMPLIED`, SB alternatif pada engine yang sama otomatis diubah menjadi `NOT_REQUIRED` dengan `resolutionReason = 'ALTERNATIVE_SB_COMPLIED'` dan bukti fisik `resolvedByComplianceId` (tersambung ke SVR).
-
-### C. Wildcard & RegEx Pattern Matching ESN
-- **Pencocokan Pola Abjad ESN AI**: AI mengirimkan aturan wildcard (seperti `89Y887` di mana `Y = 2 atau 3`), dan Backend secara otomatis mencocokkan pattern Regex (`89[23]887`) terhadap armada `Engine` di database GMF.
-
-### D. Integrasi Database Maskapai & Live PDF Preview
-- **Integrasi SVR & EES Real-time**: Menyinkronkan bukti kelayakan Shop Visit di dokumen SVR secara *real-time* ke antrean `ComplianceRecord` EES.
-- **Fitur Live-Preview PDF**: Menampilkan pratinjau instan dokumen EES Garuda/Citilink di sisi UI sebelum tombol Generate ditekan.
-
-
-
----
-
-## 15. Panduan Kontainerisasi Docker
-
-Aplikasi backend ini telah dikontainerisasi menggunakan **Docker** dan **Docker Compose** untuk memastikan kelancaran deployment (terutama dependency Puppeteer pada sistem operasi Linux).
-
-### A. Komponen Kontainer
-Sistem dibagi menjadi dua kontainer utama:
-1. **`app` (Node.js + Google Chrome):** Menjalankan server Express.js. Menggunakan image `node:20-slim` berbasis Debian untuk menginstal browser Chrome stabil yang digunakan oleh Puppeteer.
-2. **`db` (PostgreSQL 15):** Menjalankan database PostgreSQL Alpine. Data disimpan di volume persisten `pgdata`.
-
-### B. Konfigurasi File Docker
-* **[`Dockerfile`](file:///d:/GMF%20Intern/GMF-BE/Dockerfile):** Menginstal otomatis Google Chrome dan font pendukung legibilitas, lalu mengonfigurasi `PUPPETEER_EXECUTABLE_PATH`.
-* **[`docker-compose.yml`](file:///d:/GMF%20Intern/GMF-BE/docker-compose.yml):** Mengatur integrasi jaringan internal kedua kontainer, environment variables, port forwarding (3000 untuk backend, 5432 untuk database), dan mapping data volume (`pgdata` & `uploads_data`).
-* **[`.dockerignore`](file:///d:/GMF%20Intern/GMF-BE/.dockerignore):** Mengabaikan folder besar (`node_modules`), file log, database upload, dan berkas kredensial sensitif (`.env`) agar proses build cepat.
-
-### C. Alur Kerja (Development Hybrid)
-Untuk pengembangan aktif, direkomendasikan menjalankan database di Docker dan server Node.js secara lokal:
-1. Jalankan database kontainer: `docker compose up -d db`
-2. Jalankan aplikasi lokal: `npm run dev` (dengan port database terarah ke `localhost:5432`).
-
----
-
-## 16. Riwayat Perubahan Dokumen
+## 8. Riwayat Perubahan Dokumen (Changelog Logs)
 
 | Tanggal | Versi | Perubahan |
 |---------|-------|-----------|
@@ -645,4 +266,3 @@ Untuk pengembangan aktif, direkomendasikan menjalankan database di Docker dan se
   - Mencegah error `PrismaClientValidationError` akibat tipe data integer yang dikirim oleh AI untuk field yang didefinisikan sebagai string opsional (`String?`) di database.
 - **Integrasi Docker & Docker Compose**:
   - Membuat `Dockerfile`, `docker-compose.yml`, dan `.dockerignore` siap pakai di direktori root proyek untuk kemudahan deployment backend & database PostgreSQL 15 secara terisolasi.
-
