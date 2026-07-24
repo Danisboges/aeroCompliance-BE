@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "GMF AD/SB Compliance API",
+    "title": "GMF SB Compliance API",
     "version": "3.0.0",
-    "description": "## 📖 Dokumentasi API — Sistem Pemantauan AD/SB Compliance GMF\n\n---\n\n### 🚀 Panduan Pengujian Cepat (6 Langkah)\n\n**LANGKAH 1 — Login & Authorize**\n> `POST /api/auth/login` → salin `token` → klik **Authorize 🔒** → paste token\n\n**LANGKAH 2 — Pilih SB**\n> `GET /api/service-bulletins` → pilih SB yang ingin dianalisis → salin `id`\n\n**LANGKAH 3 — Upload PDF ke SB**\n> `POST /api/service-bulletins/{id}/upload-pdf` → upload file PDF asli SB\n\n**LANGKAH 4 — Trigger AI Analisis**\n> `POST /api/service-bulletins/{id}/analyze` → AI menganalisis PDF\n> `GET /api/service-bulletins/{id}/ai-summary` → lihat hasil AI\n> `PATCH /api/service-bulletins/{id}/ai-summary` → konfirmasi/edit hasil AI\n\n**LANGKAH 5 — Engineering Recommendation**\n> `POST /api/service-bulletins/{id}/engineering-rec` → COMPLY / DEFER / NA\n\n**LANGKAH 6 — Generate & Export EES**\n> `POST /api/service-bulletins/{id}/generate-ees` → generate EES\n> `GET /api/service-bulletins/{id}/export/garuda/pdf` → preview PDF Garuda\n> `GET /api/service-bulletins/{id}/export/citilink/pdf` → preview PDF Citilink\n\n---\n\n### 🔑 Akun Sandbox (Untuk Testing)\n| Role | Email | Password | Keterangan |\n|------|-------|----------|------------|\n| **1st Engineer** | firsteng@gmf.co.id | tech123 | (Garuda) Review Awal EES |\n| **2nd Engineer** | secondeng@gmf.co.id | tech123 | (Garuda) Final Approval EES |\n| **Technician** | technician@gmf.co.id | tech123 | (Garuda) Eksekusi Task |\n| **Admin** | admin@gmf.co.id | admin123 | Superuser (Semua Data) |"
+    "description": "## 📖 Dokumentasi API — Sistem Pemantauan SB Compliance GMF\n\n---\n\n### 🚀 Panduan Pengujian Cepat (6 Langkah)\n\n**LANGKAH 1 — Login & Authorize**\n> `POST /api/auth/login` → salin `token` → klik **Authorize 🔒** → paste token\n\n**LANGKAH 2 — Pilih SB**\n> `GET /api/service-bulletins` → pilih SB yang ingin dianalisis → salin `id`\n\n**LANGKAH 3 — Upload PDF ke SB**\n> `POST /api/service-bulletins/{id}/upload-pdf` → upload file PDF asli SB\n\n**LANGKAH 4 — Trigger AI Analisis**\n> `POST /api/service-bulletins/{id}/analyze` → AI menganalisis PDF\n> `GET /api/service-bulletins/{id}/ai-summary` → lihat hasil AI\n> `PATCH /api/service-bulletins/{id}/ai-summary` → konfirmasi/edit hasil AI\n\n**LANGKAH 5 — Engineering Recommendation**\n> `POST /api/service-bulletins/{id}/engineering-rec` → COMPLY / DEFER / NA\n\n**LANGKAH 6 — Generate & Export EES**\n> `POST /api/service-bulletins/{id}/generate-ees` → generate EES\n> `GET /api/service-bulletins/{id}/export/garuda/pdf` → preview PDF Garuda\n> `GET /api/service-bulletins/{id}/export/citilink/pdf` → preview PDF Citilink\n\n---\n\n### 🔑 Akun Sandbox (Untuk Testing)\n| Role | Email | Password | Keterangan |\n|------|-------|----------|------------|\n| **1st Engineer** | firsteng@gmf.co.id | tech123 | (Garuda) Review Awal EES |\n| **2nd Engineer** | secondeng@gmf.co.id | tech123 | (Garuda) Final Approval EES |\n| **Technician** | technician@gmf.co.id | tech123 | (Garuda) Eksekusi Task |\n| **Admin** | admin@gmf.co.id | admin123 | Superuser (Semua Data) |"
   },
   "servers": [
     {
@@ -1653,7 +1653,7 @@
     },
     "/api/shop-visit-reports/{id}": {
       "get": {
-        "summary": "Ambil detail SVR beserta item konfigurasi, LLP, dan AD status",
+        "summary": "Ambil detail SVR beserta item konfigurasi, LLP, dan SB status",
         "tags": [
           "Shop Visit Report (SVR)"
         ],

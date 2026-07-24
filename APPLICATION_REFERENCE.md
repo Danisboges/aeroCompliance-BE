@@ -1,4 +1,4 @@
-# 📘 GMF AD/SB Compliance System — Application Reference Guide
+# 📘 GMF SB Compliance System — Application Reference Guide
 
 > **Dokumen ini adalah satu-satunya sumber kebenaran (Single Source of Truth) untuk arsitektur, alur kerja, API, dan aturan bisnis aplikasi GMF-BE.**
 
@@ -6,7 +6,7 @@
 
 ## 1. Executive Summary & System Core
 
-Sistem backend untuk mengelola proses evaluasi **Service Bulletin (SB)** dan **Airworthiness Directive (AD)** pada mesin pesawat di lingkungan MRO (Maintenance, Repair, and Overhaul) **GMF AeroAsia**.
+Sistem backend untuk mengelola proses evaluasi **Service Bulletin (SB)** pada mesin pesawat di lingkungan MRO (Maintenance, Repair, and Overhaul) **GMF AeroAsia**.
 
 ### 🛠️ Tech Stack Utama
 
@@ -27,7 +27,7 @@ Sistem backend untuk mengelola proses evaluasi **Service Bulletin (SB)** dan **A
 GMF-BE/
 ├── prisma/
 │   ├── schema.prisma          # Skema database terintegrasi
-│   ├── seed.js                # Seeder user, SB, AD, & fleet
+│   ├── seed.js                # Seeder user, SB & fleet
 │   └── seedEngines.js         # Seeder pesawat (Aircraft & Engine)
 ├── src/
 │   ├── controllers/           # HTTP Handlers (sb, approval, relation, ees, dll)
@@ -300,3 +300,4 @@ GMF-BE/
   - Mencegah error `PrismaClientValidationError` akibat tipe data integer yang dikirim oleh AI untuk field yang didefinisikan sebagai string opsional (`String?`) di database.
 - **Integrasi Docker & Docker Compose**:
   - Membuat `Dockerfile`, `docker-compose.yml`, dan `.dockerignore` siap pakai di direktori root proyek untuk kemudahan deployment backend & database PostgreSQL 15 secara terisolasi.
+
