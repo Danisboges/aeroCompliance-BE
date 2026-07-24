@@ -2,13 +2,20 @@ const prisma = require('../db');
 const fs = require('fs');
 const path = require('path');
 
-const listApprovals = async ({ status, assigneeId, operatorId, skip = 0, take = 20 }) => {
+const listApprovals = async ({ status, assigneeId, operatorId, minCat, maxCat, skip = 0, take = 20 }) => {
   const where = {};
   if (status) where.status = status;
   if (assigneeId) where.assignedToId = assigneeId;
   
-  if (operatorId) {
-    where.eesDocument = { sourceSb: { operatorId } };
+  if (operatorId || minCat !== undefined || maxCat !== undefined) {
+    const sbWhere = {};
+    if (operatorId) sbWhere.operatorId = operatorId;
+    if (minCat !== undefined || maxCat !== undefined) {
+      sbWhere.complianceCategory = {};
+      if (minCat !== undefined) sbWhere.complianceCategory.gte = minCat;
+      if (maxCat !== undefined) sbWhere.complianceCategory.lt = maxCat;
+    }
+    where.eesDocument = { sourceSb: sbWhere };
   }
 
   const data = await prisma.approval.findMany({
@@ -28,19 +35,25 @@ const listApprovals = async ({ status, assigneeId, operatorId, skip = 0, take = 
 };
 
 const getPendingSecondEngineer = async (operatorId, skip = 0, take = 20) => {
-  // Second Engineer (hanya di Garuda) menunggu status PENDING
-  return await listApprovals({ status: 'PENDING', operatorId, skip, take });
+  let minCat = undefined;
+  if (operatorId) {
+    const op = await prisma.operator.findUnique({ where: { id: operatorId } });
+    if (op && op.code === 'GA') {
+      minCat = 4; // Second Engineer Garuda HANYA review Kategori >= 4
+    }
+  }
+  return await listApprovals({ status: 'PENDING', operatorId, minCat, skip, take });
 };
 
 const getPendingManager = async (operatorId, skip = 0, take = 20) => {
-  let targetStatus = 'PARTIALLY_APPROVED';
+  let maxCat = undefined;
   if (operatorId) {
     const op = await prisma.operator.findUnique({ where: { id: operatorId } });
-    if (op && op.code !== 'GA') {
-      targetStatus = 'PENDING'; // Citilink Manager menunggu PENDING
+    if (op && op.code === 'GA') {
+      maxCat = 4; // Manager Garuda HANYA review Kategori < 4
     }
   }
-  return await listApprovals({ status: targetStatus, operatorId, skip, take });
+  return await listApprovals({ status: 'PENDING', operatorId, maxCat, skip, take });
 };
 
 const getApprovalByEesId = async (eesId, operatorId) => {
@@ -126,30 +139,13 @@ const submitReview = async ({ eesId, action, comment, nextAssignedToId, actorId,
   }
 
   let finalStatus = action;
-  let nextLevel = approval.approvalLevel;
-  let newAssignedTo = approval.assignedToId;
-
-  const complianceCategory = approval.eesDocument.sourceSb.complianceCategory || 0;
-
+  // Alur 1-tingkat: Langsung APPROVED apa pun Kategorinya, mem-bypass 2nd Engineer (jika Mgr) / mem-bypass Mgr (jika 2nd Eng)
   if (action === 'APPROVED') {
-    if (isGaruda) {
-      if (approval.approvalLevel === 1) {
-        if (complianceCategory < 4) {
-          if (!nextAssignedToId) throw new Error('nextAssignedToId is required for Level 1 Garuda approval (Category < 4 requires Manager)');
-          finalStatus = 'PARTIALLY_APPROVED';
-          nextLevel = 2;
-          newAssignedTo = nextAssignedToId;
-        } else {
-          // Kategori >= 4 tidak butuh Manager, langsung APPROVED
-          finalStatus = 'APPROVED';
-        }
-      } else {
-        finalStatus = 'APPROVED';
-      }
-    } else {
-      finalStatus = 'APPROVED';
-    }
+    finalStatus = 'APPROVED';
   }
+  
+  const nextLevel = approval.approvalLevel;
+  const newAssignedTo = approval.assignedToId;
 
   const result = await prisma.$transaction(async (tx) => {
     const updatedApproval = await tx.approval.update({
@@ -163,10 +159,9 @@ const submitReview = async ({ eesId, action, comment, nextAssignedToId, actorId,
       }
     });
 
-    const eesReviewStatus = finalStatus === 'PARTIALLY_APPROVED' ? 'PENDING' : finalStatus;
     await tx.eesDocument.update({
       where: { id: eesId },
-      data: { reviewStatus: eesReviewStatus }
+      data: { reviewStatus: finalStatus }
     });
 
     const reviewAction = await tx.reviewAction.create({
@@ -190,9 +185,6 @@ const submitReview = async ({ eesId, action, comment, nextAssignedToId, actorId,
 
   const { notifyAll, notifyUser } = require('../socket');
   if (notifyAll) notifyAll('dashboard_updated', { trigger: 'approval_action' });
-  if (finalStatus === 'PARTIALLY_APPROVED' && newAssignedTo && notifyUser) {
-    notifyUser(newAssignedTo, 'dashboard_updated', { trigger: 'new_approval' });
-  }
 
   return result;
 };

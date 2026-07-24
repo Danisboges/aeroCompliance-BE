@@ -17,19 +17,32 @@ const handleControllerError = (res, error) => {
 };
 
 /**
- * POST /api/shop-visit-reports/upload
- * Upload SVR PDF document.
+ * POST /api/shop-visit-reports/upload/:docType
+ * Upload Engine PDF document (SVR, EDS, IQ03).
  */
-const uploadSvrPdf = async (req, res) => {
+const uploadEngineDocPdf = async (req, res) => {
   try {
-    const fileName = req.headers['x-file-name'] || 'svr-upload.pdf';
-    const result = await svrService.processSvrPdf({
-      buffer: req.body,
-      fileName
-    });
+    const docType = (req.params.docType || 'SVR').toUpperCase();
+    const validTypes = ['SVR', 'EDS', 'IQ03'];
+    if (!validTypes.includes(docType)) {
+      return res.status(400).json({ error: `Validation Error: Invalid docType '${docType}'. Must be one of SVR, EDS, or IQ03.` });
+    }
+
+    const fileName = req.headers['x-file-name'] || `${docType.toLowerCase()}-upload.pdf`;
+    let result;
+
+    if (docType === 'EDS') {
+      const edsService = require('../services/edsService');
+      result = await edsService.processEdsPdf({ buffer: req.body, fileName, docType });
+    } else if (docType === 'IQ03') {
+      const iq03Service = require('../services/iq03Service');
+      result = await iq03Service.processIq03Pdf({ buffer: req.body, fileName, docType });
+    } else {
+      result = await svrService.processSvrPdf({ buffer: req.body, fileName, docType });
+    }
 
     return res.status(201).json({
-      message: 'SVR PDF received and processed by SVR pipeline',
+      message: `${docType} PDF received and processed by pipeline`,
       data: result
     });
   } catch (error) {
@@ -163,7 +176,7 @@ const deleteShopVisitReport = async (req, res) => {
 };
 
 module.exports = {
-  uploadSvrPdf,
+  uploadEngineDocPdf,
   uploadSvrJson,
   listShopVisitReports,
   getShopVisitReport,

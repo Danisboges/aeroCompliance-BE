@@ -245,39 +245,123 @@ function _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, r
 
 /**
  * Checks applicability of all active fleet engines against an SB's effectivity rules.
- * Returns a list of engines annotated with { isApplicable, reason }.
+ * Uses 3 Decision Steps matching the system architecture:
+ * 1. Match Explicit ESN / Model?
+ * 2. Target Part Number Terpasang di Mesin?
+ * 3. Belum Superseded & Syarat Relasi SB Terpenuhi?
  */
 async function checkApplicabilityForSb(sb) {
   const allEngines = await prisma.engine.findMany({
     where: { active: true },
-    include: { aircraft: true },
+    include: {
+      aircraft: true,
+      svrConfigurationItems: true,
+      complianceRecords: {
+        include: {
+          sb: true
+        }
+      }
+    },
+  });
+
+  // Fetch active relations for this SB
+  const relations = await prisma.sbRelation.findMany({
+    where: { sourceSbId: sb.id, isActive: true }
   });
 
   return allEngines.map((engine) => {
-    // Rule 1: Engine model must match SB effectivityType
-    const modelMatch = sb.effectivityType
-      ? engine.model.toLowerCase().includes(sb.effectivityType.toLowerCase()) ||
-        sb.effectivityType.toLowerCase().includes(engine.model.split('-')[0].toLowerCase())
-      : false;
+    // -------------------------------------------------------------
+    // Decision 1: Match Explicit ESN / Model?
+    // -------------------------------------------------------------
+    let modelOrEsnMatch = true;
+    if (sb.effectivityRange) {
+      if (sb.effectivityRange.toLowerCase().includes('esn below')) {
+        const match = sb.effectivityRange.match(/esn below (\d+)/i);
+        if (match) {
+          const limit = parseInt(match[1], 10);
+          const esnNum = parseInt(engine.esn.replace(/\D/g, ''), 10);
+          modelOrEsnMatch = !isNaN(esnNum) && esnNum < limit;
+        }
+      }
+    }
+    if (modelOrEsnMatch && sb.effectivityType) {
+      const modelMatch = engine.model.toLowerCase().includes(sb.effectivityType.toLowerCase()) ||
+        sb.effectivityType.toLowerCase().includes(engine.model.split('-')[0].toLowerCase());
+      if (!modelMatch) modelOrEsnMatch = false;
+    }
 
-    // Rule 2: ESN range check — e.g. "ESN below 882000"
-    let esnInRange = true;
-    if (sb.effectivityRange && sb.effectivityRange.toLowerCase().includes('esn below')) {
-      const match = sb.effectivityRange.match(/esn below (\d+)/i);
-      if (match) {
-        const limit = parseInt(match[1], 10);
-        const esnNum = parseInt(engine.esn.replace(/\D/g, ''), 10);
-        esnInRange = !isNaN(esnNum) && esnNum < limit;
+    if (!modelOrEsnMatch) {
+      return {
+        engine,
+        aircraft: engine.aircraft,
+        isApplicable: false,
+        reason: '1. Explicit ESN or Engine Model does not match'
+      };
+    }
+
+    // -------------------------------------------------------------
+    // Decision 2: Target Part Number Terpasang di Mesin?
+    // -------------------------------------------------------------
+    const sbPartNumbers = sb.partNumber
+      ? sb.partNumber.split(',').map(p => p.trim().toLowerCase()).filter(Boolean)
+      : [];
+
+    if (sbPartNumbers.length > 0) {
+      const installedPns = (engine.svrConfigurationItems || [])
+        .map(item => (item.partNumber || '').toLowerCase());
+      
+      const hasPartMatch = sbPartNumbers.some(pn => installedPns.includes(pn));
+      if (!hasPartMatch) {
+        return {
+          engine,
+          aircraft: engine.aircraft,
+          isApplicable: false,
+          reason: '2. Target Part Number is not installed on engine'
+        };
       }
     }
 
-    const isApplicable = modelMatch && esnInRange;
-    const reason = !modelMatch
-      ? 'Different engine type'
-      : !esnInRange
-      ? 'ESN outside effectivity range'
-      : 'Within effectivity range';
+    // -------------------------------------------------------------
+    // Decision 3: Belum Superseded & Syarat Relasi SB Terpenuhi?
+    // -------------------------------------------------------------
+    // Check if this SB has been superseded for this engine
+    const isSuperseded = engine.complianceRecords.some(cr => {
+      return cr.status === 'COMPLIED' && cr.sb && cr.sb.relations && cr.sb.relations.some(r => r.targetSbNumber === sb.sbNumber && r.relationType === 'SUPERSEDES');
+    });
 
-    return { engine, aircraft: engine.aircraft, isApplicable, reason };
+    if (isSuperseded) {
+      return {
+        engine,
+        aircraft: engine.aircraft,
+        isApplicable: false,
+        reason: '3. SB has been Superseded by a newer SB'
+      };
+    }
+
+    // Check Pre-requisite SBs
+    const preRelations = relations.filter(r => r.conditionType === 'PRE' || r.relationType === 'CONCURRENT');
+    for (const preRel of preRelations) {
+      const preComplied = engine.complianceRecords.some(
+        cr => cr.sb && cr.sb.sbNumber === preRel.targetSbNumber && cr.status === 'COMPLIED'
+      );
+      if (!preComplied) {
+        return {
+          engine,
+          aircraft: engine.aircraft,
+          isApplicable: false,
+          reason: `3. Pre-requisite SB (${preRel.targetSbNumber}) is not fulfilled`
+        };
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Passed all 3 Decision Checks -> APPLICABLE
+    // -------------------------------------------------------------
+    return {
+      engine,
+      aircraft: engine.aircraft,
+      isApplicable: true,
+      reason: 'Applicable - Passed all 3 decision checks'
+    };
   });
 }

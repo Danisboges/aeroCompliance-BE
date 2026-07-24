@@ -135,8 +135,14 @@ GMF-BE/
 | `SbRelation` | `id` | Relasi antar-SB (`CONCURRENT`, `SUPERSEDES`, `TERMINATES`) |
 | `SbRequirementGroup` | `id`, `groupCode` | Aturan kelompok pemenuhan (`ANY_OF`, `ALL_OF`, `SEQUENCE`) |
 | `SbGroupResult` | `id` | Hasil status kelompok pemenuhan per-Engine |
-| `ShopVisitReport` | `id` | Dokumen laporan pengerjaan fisik mesin di bengkel GMF |
-| `ComplianceRecord` | `id` | Status pengerjaan SB per Engine (dengan `svrId` & `resolvedByComplianceId`) |
+| `SbGroupResult` | `id` | Hasil status kelompok pemenuhan per-Engine |
+| `ShopVisitReport` | `id` | Dokumen laporan pengerjaan fisik mesin di bengkel GMF (SVR) |
+| `EngineDataSheet` | `id` | Dokumen spesifikasi pabrikan/lembar data mesin (EDS) |
+| `Iq03Report` | `id` | Dokumen IQ03 terkait komponen dan status armada |
+| `EngineHistoryLog` | `id` | Catatan permanen jejak riwayat pertukaran ESN pada pesawat |
+| `EngineActiveComponent` | `id` | Single Source of Truth: Part aktif (terkini) yang terpasang di mesin |
+| `EngineDocumentComponentLog` | `id` | Arsip log masuk-keluar (IN/OUT) komponen mentah dari dokumen |
+| `ComplianceRecord` | `id` | Status pengerjaan SB per Engine (dengan `svrId`, `edsId`, `iq03Id` & `resolvedByComplianceId`) |
 | `SbComplianceAudit` | `id` | Riwayat audit jejak perubahan status pengerjaan SB |
 
 ---
@@ -156,8 +162,8 @@ GMF-BE/
 
 ## 7. Alur Pengerjaan Kedepan (Future Roadmap)
 
-1. **Frontend Graph Visualizer**: Integrasi library grafis UI (React Flow) yang memanfaatkan API `/api/service-bulletins/:id/lineage` untuk menampilkan diagram pohon silsilah SB interaktif.
-2. **Dynamic Boolean Evaluator**: Mendukung parsing otomatis kombinasi prasyarat rumit dari AI seperti `(Post-A OR Post-B) AND Pre-C`.
+1. **Integrasi Dokumen EDS (Engine Data Sheet)**: Pengembangan parser AI OCR khusus untuk membaca spesifikasi teknis dan ESN mesin baru dari berkas EDS secara otomatis.
+2. **Frontend Graph Visualizer**: Integrasi library grafis UI (React Flow) yang memanfaatkan API `/api/service-bulletins/:id/lineage` untuk menampilkan diagram pohon silsilah SB interaktif (rantai *SUPERSEDES* / *TERMINATES*).
 3. **Wildcard RegEx ESN Matching**: Mengotomatiskan pencocokan ESN bermotif wildcard (seperti `89Y887` di mana $Y \in \{2, 3\}$) langsung ke armada Engine.
 4. **Realtime SVR Sync & Live PDF Preview**: Menyinkronkan status pengerjaan SVR secara *real-time* dan menyediakan fitur pratinjau instan EES PDF di layar sebelum di-export.
 
@@ -176,8 +182,27 @@ GMF-BE/
 | 2026-07-20 | 1.7 | Pembaruan adaptasi struktur JSON AI terbaru (preservasi seluruh data mro_schema, penyesuaian nama key `issued_date`). Implementasi fitur Notifikasi Real-time berbasis WebSocket (`socket.io`) untuk update otomatis *Unread SB* dan *Pending Approvals* di Dashboard. |
 | 2026-07-21 | 1.8 | **Sistem Persetujuan Multi-Tier, Manajemen Tanda Tangan, & Optimasi API**. Menambahkan endpoint *Submit* dan *Review* EES berbasis ID dengan upload multipart gambar tanda tangan. Pemusnahan otomatis gambar tanda tangan sementara pasca pembuatan PDF Final. Optimasi drastis pada `GET /api/service-bulletins` (Lightweight DTO) menggunakan Prisma Select, serta penambahan endpoint baru `GET /api/ees`. |
 | 2026-07-22 | 1.9 | **Sistem Relasi SB, Group Pemenuhan (ANY_OF/ALL_OF), & Compliance Engine Per-Engine**. Implementasi model `SbRelation` (`CONCURRENT`, `SUPERSEDES`, `TERMINATES`), `SbRequirementGroup`, `SbRequirementMember`, `SbGroupResult`, dan `SbComplianceAudit`. Parsing otomatis `mro_schema.sb_relations` dari Webhook AI. Penambahan endpoint pohon silsilah (`GET /api/service-bulletins/:id/lineage`) dan ringkasan pemenuhan engine (`GET /api/engines/:engineId/compliance-summary`). |
+| 2026-07-22 | 2.0 | **Pembedaan Rekomendasi SB (Kategori < 4 Manual vs >= 4 Auto AI), Unified Dashboard, & Evaluasi Applicability SVR/EDS**. Penegasan alur pengerjaan: SB Kategori < 4 mewajibkan input rekomendasi enjiniring secara MANUAL lalu langsung menuju Cek Kesesuaian Armada. Penyelarasan antarmuka Dashboard seragam untuk seluruh Operator. Integrasi OCR SVR & EDS untuk mengekstrak ESN dan menentukan status *Applicable*, *Not Applicable*, atau *Superseded*. |
 
-### Fitur Terbaru (2026-07-22 v1.9)
+### Fitur Terbaru (2026-07-23 v2.0)
+- **Algoritma Deterministik Penentuan SB Applicability (`effectedEsnGMF`) — 4 Rule Utama**:
+  - **Rule 1 (Explicit ESN Match)**: Memfilter ESN spesifik (`effectedEsn`) jika tercantum di dokumen SB.
+  - **Rule 2 (Engine Model Match)**: Memfilter ESN yang memiliki tipe model mesin sama (`effectedModel`).
+  - **Rule 3 (Installed Part Number Match)**: Memfilter `effectedEsnGMF` berdasarkan part number target SB yang aktif terpasang pada tabel `EngineConfigReport` / `SvrConfigurationItem`.
+  - **Rule 4 (SB Relation & History Match)**: Memfilter `effectedEsnGMF` berdasarkan syarat hubungan SB terdahulu/lanjutan (`SbRelation` `SUPERSEDES`, `TERMINATES`, `CONCURRENT`) dengan aturan pemenuhan `ONE_OF` / `ALL_OF`, termasuk resolusi SB yang telah *superseded*.
+  - ESN yang lolos seluruh 4 rule mendapatkan status **`APPLICABLE`**, sedangkan ESN lainnya diset **`NOT_APPLICABLE`**.
+- **Analisis & Optimasi ERD Database (Server Storage Efficiency)**:
+  - Penyatuan tabel `EngineSBStatus` & `SVRSBStatus` menjadi 1 tabel terpadu **`ComplianceRecord`** (`engineId`, `sbId`, `svrId`, `status`, `complianceDate`).
+  - Menghilangkan redundansi tabel dan menghemat ruang penyimpanan (*storage*) pada server database.
+- **Pembedaan Rekomendasi EES berdasarkan Kategori SB**:
+  - Untuk **SB Kategori $\ge 4$**: Hasil olahan AI secara otomatis mengisi draf rekomendasi enjiniring (*Automatic Recommendation*).
+  - Untuk **SB Kategori $< 4$ (Kritis/Mandatory)**: Hasil rekomendasi AI dikosongkan/tidak disediakan. *First Engineer* wajib menginput rekomendasi & tindakan secara **MANUAL**.
+- **Revisi Alur Persetujuan Garuda Indonesia**:
+  - **SB Kategori $< 4$ (Kritis)**: Tidak memerlukan tanda tangan *Second Engineer*, dokumen disubmit oleh *First Engineer* dan **langsung ditinjau & ditandatangani oleh Manager**.
+  - **SB Kategori $\ge 4$ (Ringan)**: Ditandatangani oleh *Second Engineer* dan langsung **APPROVED** (*Bypass Manager*).
+- **Unified Dashboard (Antarmuka Seragam Multi-Operator)**:
+  - Antarmuka Dashboard dibuat konsisten dan seragam antara Garuda Indonesia dan Citilink. Pembedaan fitur dilakukan strictly berbasis *Role* pengguna (*First Engineer*, *Second Engineer*, *Manager*).
+
 - **Model Relasi Multi-Tier & Graph Silsilah SB**:
   - Penambahan tabel `SbRelation` untuk mencatat hubungan `CONCURRENT`, `SUPERSEDES`, dan `TERMINATES` antar Service Bulletin.
   - Endpoint `GET /api/service-bulletins/:id/lineage` menelusuri rantai penggantian dokumen secara rekursif (multi-tier `SB X -> SB Y -> SB W`) untuk visualisasi diagram pohon di Frontend.
@@ -189,6 +214,15 @@ GMF-BE/
     - Untuk aturan `ANY_OF`, SB alternatif lainnya pada engine tersebut otomatis diubah statusnya menjadi **`NOT_REQUIRED`** (`resolutionReason = 'ALTERNATIVE_SB_COMPLIED'`) dengan menautkan `resolvedByComplianceId`.
     - Jika status `COMPLIED` dibatalkan, sistem secara otomatis mengembalikan status SB alternatif menjadi `PENDING`.
   - Seluruh jejak perubahan status otomatis ini dicatat di tabel `SbComplianceAudit`.
+
+### Fitur Terbaru (2026-07-23 v2.1)
+- **Refactoring Arsitektur Data Mesin (3-Pillar Component Architecture)**:
+  - Mengatasi ambiguitas penggantian ESN secara parsial maupun rotasi (*Engine Swap*) dengan memperkenalkan 3 struktur terpisah: `EngineHistoryLog` (Perekam jejak rotasi ESN), `EngineActiveComponent` (Penampung suku cadang/komponen terkini yang aktif), dan `EngineDocumentComponentLog` (Penyimpan arsip mentah SVR/EDS).
+  - Algoritma *Applicability Aturan 3* secara spesifik kini menembak tabel `EngineActiveComponent` sehingga tidak lagi tertipu oleh riwayat *Part Number* lama yang sudah dicopot (berstatus OUT).
+- **Independensi Dokumen Mesin (SVR, EDS, IQ03)**:
+  - Meninggalkan pendekatan polimorfisme (*single table*) `docType` dan memecahnya menjadi tabel otonom: `ShopVisitReport`, `EngineDataSheet`, dan `Iq03Report`.
+  - Pembuatan *Service*, *Repository*, dan *AI Client* yang sepenuhnya independen (`edsService.js`, `iq03Service.js`).
+  - Pemusatan Endpoint Upload API di `POST /api/shop-visit-reports/upload/:docType` agar Frontend cukup berinteraksi dengan satu URL.
 
 ### Fitur Terbaru (2026-07-21 v1.8)
 - **Sistem Approval Bertingkat & Penyematan Tanda Tangan**:

@@ -162,10 +162,13 @@ model Engine {
   updatedAt DateTime @default(now()) @updatedAt
 
   shopVisitReports      ShopVisitReport[]
+  engineDataSheets      EngineDataSheet[]
+  iq03Reports           Iq03Report[]
   complianceRecords     ComplianceRecord[]
-  svrConfigurationItems SvrConfigurationItem[]
-  svrLlpStatuses        SvrLlpStatus[]
-  svrAdStatuses         SvrAdStatus[]
+  activeComponents      EngineActiveComponent[]
+  componentLogs         EngineDocumentComponentLog[]
+  llpLogs               EngineDocumentLlpLog[]
+  adLogs                EngineDocumentAdLog[]
   groupResults          SbGroupResult[]
 }
 
@@ -308,10 +311,24 @@ model EngineeringRecommendation {
   updatedAt DateTime @default(now()) @updatedAt
 }
 
-// --- SHOP VISIT REPORTS (SVR) ---
+/// --- ENGINE TRACKING & HISTORY ---
+
+model EngineHistoryLog {
+  id              String   @id @default(uuid())
+  aircraftId      String?  
+  position        String?
+  removedEsn      String?
+  installedEsn    String?
+  sourceDocType   String?
+  sourceDocId     String?
+  notes           String?  @db.Text
+  recordedAt      DateTime @default(now())
+}
+
+// --- 1. SHOP VISIT REPORTS (SVR) ---
 
 model ShopVisitReport {
-  id                      String  @id @default(uuid())
+  id                      String             @id @default(uuid())
   engineSerialNumber      String
   engineId                String?
   engine                  Engine? @relation(fields: [engineId], references: [id], onDelete: SetNull)
@@ -332,17 +349,78 @@ model ShopVisitReport {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  configurationReport SvrConfigurationItem[]
-  llpStatus           SvrLlpStatus[]
-  adStatus            SvrAdStatus[]
+  configurationReport EngineDocumentComponentLog[]
+  llpStatus           EngineDocumentLlpLog[]
+  adStatus            EngineDocumentAdLog[]
   complianceRecords   ComplianceRecord[]
 }
 
-model SvrConfigurationItem {
+// --- 2. ENGINE DATA SHEET (EDS) ---
+
+model EngineDataSheet {
+  id                      String  @id @default(uuid())
+  engineSerialNumber      String
+  engineId                String?
+  engine                  Engine? @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  engineType              String?
+  originalFileName        String?
+  storedFileName          String?
+  rawPayload              Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  configurationReport EngineDocumentComponentLog[]
+  llpStatus           EngineDocumentLlpLog[]
+  adStatus            EngineDocumentAdLog[]
+  complianceRecords   ComplianceRecord[]
+}
+
+// --- 3. IQ03 REPORT ---
+
+model Iq03Report {
+  id                      String  @id @default(uuid())
+  engineSerialNumber      String
+  engineId                String?
+  engine                  Engine? @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  engineType              String?
+  originalFileName        String?
+  storedFileName          String?
+  rawPayload              Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  configurationReport EngineDocumentComponentLog[]
+  llpStatus           EngineDocumentLlpLog[]
+  adStatus            EngineDocumentAdLog[]
+  complianceRecords   ComplianceRecord[]
+}
+
+// --- SHARED ENGINE COMPONENTS (ACTIVE VS LOG) ---
+
+model EngineActiveComponent {
+  id              String @id @default(uuid())
+  engineId        String
+  engine          Engine @relation(fields: [engineId], references: [id], onDelete: Cascade)
+  partNumber      String
+  partName        String?
+  module          String?
+  tsn             String?
+  csn             String?
+  lastUpdatedFrom String? // "SVR-123" or "EDS-456"
+  updatedAt       DateTime @updatedAt
+}
+
+model EngineDocumentComponentLog {
   id                 String          @id @default(uuid())
-  svrId              String
-  svr                ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  engineSerialNumber String? // Added for grouping by ESN
+  svrId              String?
+  svr                ShopVisitReport? @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  edsId              String?
+  eds                EngineDataSheet? @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  iq03Id             String?
+  iq03               Iq03Report?      @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  engineSerialNumber String? 
   engineId           String?
   engine             Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
   module             String?
@@ -358,11 +436,15 @@ model SvrConfigurationItem {
   workAccompl        String?
 }
 
-model SvrLlpStatus {
+model EngineDocumentLlpLog {
   id                  String          @id @default(uuid())
-  svrId               String
-  svr                 ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  engineSerialNumber  String? // Added for grouping by ESN
+  svrId               String?
+  svr                 ShopVisitReport? @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  edsId               String?
+  eds                 EngineDataSheet? @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  iq03Id              String?
+  iq03                Iq03Report?      @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  engineSerialNumber  String? 
   engineId            String?
   engine              Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
   no                  String?
@@ -371,17 +453,21 @@ model SvrLlpStatus {
   serialNumber        String?
   totalHour           String?
   totalCycle          String?
-  totalCyclesCategory Json? // Dynamic categories
-  lifeLimitCycles     Json? // Dynamic categories
-  remainingCycles     Json? // Dynamic categories
+  totalCyclesCategory Json? 
+  lifeLimitCycles     Json? 
+  remainingCycles     Json? 
   remark              String?
 }
 
-model SvrAdStatus {
+model EngineDocumentAdLog {
   id                           String          @id @default(uuid())
-  svrId                        String
-  svr                          ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  engineSerialNumber           String? // Added for grouping by ESN
+  svrId                        String?
+  svr                          ShopVisitReport? @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  edsId                        String?
+  eds                          EngineDataSheet? @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  iq03Id                       String?
+  iq03                         Iq03Report?      @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  engineSerialNumber           String? 
   engineId                     String?
   engine                       Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
   adNumber                     String?
@@ -406,6 +492,10 @@ model ComplianceRecord {
   complianceDate String? // Stored as string to preserve format
   svrId          String?
   svr            ShopVisitReport?        @relation(fields: [svrId], references: [id], onDelete: SetNull)
+  edsId          String?
+  eds            EngineDataSheet?        @relation(fields: [edsId], references: [id], onDelete: SetNull)
+  iq03Id         String?
+  iq03           Iq03Report?             @relation(fields: [iq03Id], references: [id], onDelete: SetNull)
   remarks        String?                 @db.Text
 
   resolutionReason          String?

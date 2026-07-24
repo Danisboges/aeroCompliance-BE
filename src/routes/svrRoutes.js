@@ -6,8 +6,8 @@ const svrController = require('../controllers/svrController');
 // Raw body parser for endpoint that receives binary PDF directly
 const pdfBodyParser = express.raw({ type: 'application/pdf', limit: '100mb' });
 
-// Upload SVR PDF directly (binary payload)
-router.post('/shop-visit-reports/upload', verifyToken, pdfBodyParser, svrController.uploadSvrPdf);
+// Upload Engine PDF directly (SVR, EDS, IQ03)
+router.post('/shop-visit-reports/upload/:docType', verifyToken, pdfBodyParser, svrController.uploadEngineDocPdf);
 
 // Webhook for SVR JSON ingestion
 router.post('/webhooks/svr', svrController.uploadSvrJson);

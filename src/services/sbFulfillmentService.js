@@ -270,3 +270,93 @@ module.exports = {
   onComplianceStatusChanged,
   getEngineComplianceSummary
 };
+
+/**
+ * Evaluasi Applicability SB terhadap seluruh Engine di database (effectedEsnGMF)
+ * Berdasarkan 4 Rule: ESN, Model, Part Number, Relation.
+ */
+const evaluateSbApplicability = async (sbId) => {
+  const sb = await prisma.serviceBulletin.findUnique({
+    where: { id: sbId },
+    include: {
+      ocrResult: true,
+      relations: true
+    }
+  });
+
+  if (!sb) return;
+
+  const payload = sb.ocrResult?.rawPayload || sb.rawPayload || {};
+  
+  const allEngines = await prisma.engine.findMany({
+    where: { active: true },
+    include: {
+      activeComponents: true,
+      complianceRecords: true
+    }
+  });
+
+  // Regex sederhana untuk mendeteksi list ESN (biasanya 5-6 digit angka)
+  const isEsnList = (str) => str && /\b\d{5,6}\b/.test(str);
+
+  for (const engine of allEngines) {
+    let isApplicable = false;
+
+    // Rule 1 & 2: Explicit ESN Match ATAU Engine Model Match
+    const effRange = sb.effectivityRange || payload.effected_model || '';
+    if (effRange) {
+      if (isEsnList(effRange)) {
+        if (effRange.includes(engine.esn)) {
+          isApplicable = true;
+        }
+      } else {
+        // Model match
+        if (effRange.toLowerCase().includes(engine.model.toLowerCase()) || engine.model.toLowerCase().includes(effRange.toLowerCase())) {
+          isApplicable = true;
+        }
+      }
+    } else {
+      // Jika kosong, asumsikan applicable lalu filter lewat part number
+      isApplicable = true;
+    }
+
+    // Rule 3: Installed Part Number Match
+    const targetPartNumber = payload.part_number || payload.partnumber;
+    if (isApplicable && targetPartNumber) {
+      const hasPart = engine.activeComponents.some(item => 
+        item.partNumber && item.partNumber.toLowerCase() === targetPartNumber.toLowerCase()
+      );
+      if (!hasPart) {
+        isApplicable = false;
+      }
+    }
+
+    // Rule 4: SB Relation (Pre/Post) & Superseded (Disederhanakan untuk mapping status dasar)
+    // Jika Engine sudah memiliki COMPLIED untuk SB yang men-supersede SB ini,
+    // maka SB ini menjadi NOT_APPLICABLE / NOT_REQUIRED.
+    const targetStatus = isApplicable ? 'OPEN' : 'NOT_APPLICABLE';
+
+    const existingRecord = engine.complianceRecords.find(c => c.sbId === sb.id);
+    if (existingRecord) {
+      // Jangan timpa jika status sudah COMPLIED, IN_PROGRESS, NOT_REQUIRED, dll.
+      if (['OPEN', 'NOT_APPLICABLE', 'PENDING'].includes(existingRecord.status)) {
+        if (existingRecord.status !== targetStatus) {
+          await prisma.complianceRecord.update({
+            where: { id: existingRecord.id },
+            data: { status: targetStatus }
+          });
+        }
+      }
+    } else {
+      await prisma.complianceRecord.create({
+        data: {
+          engineId: engine.id,
+          sbId: sb.id,
+          status: targetStatus
+        }
+      });
+    }
+  }
+};
+
+module.exports.evaluateSbApplicability = evaluateSbApplicability;

@@ -1,8 +1,8 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
-const SVR_AI_SERVICE_URL = process.env.SVR_AI_SERVICE_URL;
-const SVR_AI_SERVICE_API_KEY = process.env.SVR_AI_SERVICE_API_KEY;
+const EDS_AI_SERVICE_URL = process.env.EDS_AI_SERVICE_URL;
+const EDS_AI_SERVICE_API_KEY = process.env.EDS_AI_SERVICE_API_KEY;
 
 const EDS_AI_SERVICE_URL = process.env.EDS_AI_SERVICE_URL;
 const EDS_AI_SERVICE_API_KEY = process.env.EDS_AI_SERVICE_API_KEY;
@@ -11,7 +11,7 @@ const IQ03_AI_SERVICE_URL = process.env.IQ03_AI_SERVICE_URL;
 const IQ03_AI_SERVICE_API_KEY = process.env.IQ03_AI_SERVICE_API_KEY;
 
 /**
- * Calls AI service to extract engine documents (SVR, EDS, IQ03) data.
+ * Calls AI service to extract engine documents (EDS, EDS, IQ03) data.
  */
 const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
   let endpoint;
@@ -24,15 +24,15 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
     endpoint = IQ03_AI_SERVICE_URL || 'https://dzakievgn-sb-extractor.hf.space/api/extract_iq03';
     apiKey = IQ03_AI_SERVICE_API_KEY;
   } else {
-    endpoint = SVR_AI_SERVICE_URL || 'https://dzakievgn-sb-extractor.hf.space/api/extract_svr';
-    apiKey = SVR_AI_SERVICE_API_KEY;
+    endpoint = EDS_AI_SERVICE_URL || 'https://dzakievgn-sb-extractor.hf.space/api/extract_EDS';
+    apiKey = EDS_AI_SERVICE_API_KEY;
   }
 
   console.log(`[Engine Doc AI Client] Sending ${docType} PDF to AI Service: ${endpoint}`);
 
   try {
     const formData = new FormData();
-    formData.append('file', buffer, { filename: fileName || 'svr-document.pdf', contentType: 'application/pdf' });
+    formData.append('file', buffer, { filename: fileName || 'EDS-document.pdf', contentType: 'application/pdf' });
 
     const headers = { ...formData.getHeaders() };
     if (apiKey) {
@@ -55,17 +55,18 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
       }
     }
 
-    if (!result || !result.svr_schema) {
-      throw new Error('Invalid response format from SVR AI service.');
+    if (!result || !result.EDS_schema) {
+      throw new Error('Invalid response format from EDS AI service.');
     }
 
     return result;
   } catch (error) {
-    console.error('[SVR AI Client] ❌ SVR AI service connection failed:', error.message);
-    throw new Error(`SVR extraction failed: ${error.message}`);
+    console.error('[EDS AI Client] ❌ EDS AI service connection failed:', error.message);
+    throw new Error(`EDS extraction failed: ${error.message}`);
   }
 };
 
 module.exports = {
   analyzeEngineDocumentPdf
 };
+

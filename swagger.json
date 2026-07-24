@@ -1468,9 +1468,10 @@
         }
       }
     },
-    "/api/shop-visit-reports/upload": {
+    "/api/shop-visit-reports/upload/{docType}": {
       "post": {
-        "summary": "Upload PDF SVR asli (binary payload)",
+        "summary": "Upload PDF Dokumen Mesin (SVR / EDS / IQ03)",
+        "description": "Upload file PDF binary langsung (raw body). docType yang valid: **SVR, EDS, IQ03**",
         "tags": [
           "Shop Visit Report (SVR)"
         ],
@@ -1480,6 +1481,16 @@
           }
         ],
         "parameters": [
+          {
+            "name": "docType",
+            "in": "path",
+            "required": true,
+            "description": "Jenis Dokumen (SVR, EDS, atau IQ03)",
+            "schema": {
+              "type": "string",
+              "enum": ["SVR", "EDS", "IQ03"]
+            }
+          },
           {
             "name": "x-file-name",
             "in": "header",

@@ -328,7 +328,7 @@ const validateServiceBulletin = async (id, validatedPayload, updatedById = null)
   }
   assertPayloadShape(payload);
 
-  return serviceBulletinRepository.updateServiceBulletin(sb.id, {
+  const updatedSb = await serviceBulletinRepository.updateServiceBulletin(sb.id, {
     sbNumber: payload.bulletinNumber || payload.sb_code || payload.sbNumber || sb.sbNumber,
     title: payload.title || payload.tittle || sb.title,
     issuer: payload.issuer || payload.manufacturer || payload.effected_type || sb.issuer,
@@ -342,6 +342,13 @@ const validateServiceBulletin = async (id, validatedPayload, updatedById = null)
     draftStatus: 'VALIDATED',
     updatedById: updatedById || undefined
   });
+
+  const { evaluateSbApplicability } = require('./sbFulfillmentService');
+  await evaluateSbApplicability(updatedSb.id).catch(err => {
+    console.error(`[SB Applicability] Gagal mengevaluasi SB ${updatedSb.id}:`, err.message);
+  });
+
+  return updatedSb;
 };
 
 /**

@@ -1,20 +1,29 @@
 erDiagram
+    %% --- AUTH & MULTI-TENANT ---
+    Operator {
+        string id PK
+        string code UK
+        string name
+    }
+
     User {
         string id PK
         string email UK
         string username UK
         string password
         Role role
+        string operatorId FK
         datetime createdAt
         datetime updatedAt
     }
 
+    %% --- ASSETS ---
     Aircraft {
         string id PK
         string registration UK
         string msn UK
         string aircraftType
-        string operator
+        string operatorId FK
         boolean active
         datetime createdAt
         datetime updatedAt
@@ -32,6 +41,7 @@ erDiagram
         datetime updatedAt
     }
 
+    %% --- DOCUMENTS ---
     AirworthinessDirective {
         string id PK
         string adNumber UK
@@ -46,15 +56,20 @@ erDiagram
     ServiceBulletin {
         string id PK
         string sbNumber UK
+        string revision
         string title
         string issuer
         datetime issueDate
+        datetime receivedAt
         DocumentStatus status
         SbType sbType
         int complianceCategory
         string effectivityType
         string effectivityRange
         string compliancePeriod
+        string aircraftType
+        string impactType
+        string operatorId FK
         string originalFileName
         string storedFileName
         string createdById FK
@@ -62,6 +77,7 @@ erDiagram
         datetime createdAt
     }
 
+    %% --- OCR & EES WORKFLOW ---
     OcrResult {
         string id PK
         string serviceBulletinId FK "UK"
@@ -86,6 +102,7 @@ erDiagram
         string storedGarudaPdfPath
         string storedCitilinkPdfPath
         string storedExcelPath
+        ApprovalStatus reviewStatus
         datetime createdAt
     }
 
@@ -117,6 +134,7 @@ erDiagram
         datetime updatedAt
     }
 
+    %% --- SHOP VISIT REPORTS ---
     ShopVisitReport {
         string id PK
         string engineSerialNumber
@@ -188,6 +206,7 @@ erDiagram
         string remarks
     }
 
+    %% --- COMPLIANCE & AUDIT ---
     ComplianceRecord {
         string id PK
         string engineId FK
@@ -197,39 +216,140 @@ erDiagram
         string complianceDate
         string svrId FK
         string remarks
+        string resolutionReason
+        string resolvedByComplianceId FK
         datetime createdAt
         datetime updatedAt
     }
 
+    SbComplianceAudit {
+        string id PK
+        string complianceRecordId FK
+        ComplianceStatus previousStatus
+        ComplianceStatus newStatus
+        string changeSource
+        string changeReason
+        string triggeredByComplianceId
+        string changedById FK
+        datetime changedAt
+    }
+
+    %% --- SB RELATIONS & GROUPS ---
+    SbRelation {
+        string id PK
+        string sourceSbId FK
+        string targetSbNumber
+        SbRelationType relationType
+        string conditionType
+        datetime effectiveDate
+        boolean isActive
+        string remarks
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    SbRequirementGroup {
+        string id PK
+        string groupCode UK
+        string groupName
+        FulfillmentRule fulfillmentRule
+        int minimumRequired
+        string description
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    SbRequirementMember {
+        string id PK
+        string requirementGroupId FK
+        string targetSbNumber
+        int sequenceNumber
+        boolean isActive
+        datetime createdAt
+    }
+
+    SbGroupResult {
+        string id PK
+        string requirementGroupId FK
+        string engineId FK
+        FulfillmentStatus fulfillmentStatus
+        string satisfiedByComplianceId FK
+        datetime satisfiedAt
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    %% --- APPROVAL & DASHBOARD ---
+    Approval {
+        string id PK
+        string eesId FK "UK"
+        int approvalLevel
+        ApprovalStatus status
+        string submittedById
+        string assignedToId
+        datetime submittedAt
+        datetime reviewedAt
+        string comment
+    }
+
+    ReviewAction {
+        string id PK
+        string eesId FK
+        ApprovalStatus action
+        string actorId FK
+        Role actorRole
+        datetime createdAt
+        string comment
+        string signaturePath
+    }
+
+    ServiceBulletinRead {
+        string userId PK
+        string serviceBulletinId PK
+        datetime readAt
+    }
+
     %% --- RELATIONSHIPS ---
-    
-    %% Assets
-    Aircraft ||--o{ Engine : "has"
-    Engine ||--o{ ShopVisitReport : "has"
-    Engine ||--|{ ComplianceRecord : "has"
-    Engine ||--o{ SvrConfigurationItem : "installed_on"
-    Engine ||--o{ SvrLlpStatus : "status"
-    Engine ||--o{ SvrAdStatus : "status"
+    Operator ||--o{ User : "has"
+    Operator ||--o{ Aircraft : "owns"
+    Operator ||--o{ ServiceBulletin : "operates"
 
-    %% Airworthiness Directive
-    AirworthinessDirective ||--o{ ComplianceRecord : "referenced_in"
-
-    %% Service Bulletin Relations (OCR, EES, Rec, Compliance)
-    ServiceBulletin ||--o| OcrResult : "processed_to"
-    ServiceBulletin ||--o| EesDocument : "evaluated_in"
-    ServiceBulletin ||--o| EngineeringRecommendation : "recommended_by"
-    ServiceBulletin ||--o{ ComplianceRecord : "referenced_in"
-    
-    %% User Actions
-    User ||--o{ ServiceBulletin : "uploads (ServiceBulletinCreator)"
-    User ||--o{ ServiceBulletin : "updates (ServiceBulletinUpdater)"
+    User ||--o{ ServiceBulletin : "uploads (creator)"
+    User ||--o{ ServiceBulletin : "updates (updater)"
     User ||--o{ EngineeringRecommendation : "creates"
+    User ||--o{ ReviewAction : "acted_by"
+    User ||--o{ SbComplianceAudit : "audited_by"
 
-    %% EES evaluations
-    EesDocument ||--|{ EesEvaluationItem : "contains"
+    Aircraft ||--o{ Engine : "has"
 
-    %% SVR configurations & statuses
+    Engine ||--o{ ShopVisitReport : "has"
+    Engine ||--|{ ComplianceRecord : "tracked_in"
+    Engine ||--o{ SvrConfigurationItem : "installed_on"
+    Engine ||--o{ SvrLlpStatus : "llp_status"
+    Engine ||--o{ SvrAdStatus : "ad_status"
+    Engine ||--o{ SbGroupResult : "evaluated_in"
+
+    AirworthinessDirective ||--o{ ComplianceRecord : "has"
+
+    ServiceBulletin ||--o| OcrResult : "ocr_data"
+    ServiceBulletin ||--o| EesDocument : "generates"
+    ServiceBulletin ||--o| EngineeringRecommendation : "recommendation"
+    ServiceBulletin ||--o{ ComplianceRecord : "compliance"
+    ServiceBulletin ||--o{ SbRelation : "source_relations"
+
+    EesDocument ||--|{ EesEvaluationItem : "evaluations"
+    EesDocument ||--o| Approval : "approval_workflow"
+    EesDocument ||--o{ ReviewAction : "review_history"
+
     ShopVisitReport ||--|{ SvrConfigurationItem : "contains"
     ShopVisitReport ||--|{ SvrLlpStatus : "contains"
     ShopVisitReport ||--|{ SvrAdStatus : "contains"
-    ShopVisitReport ||--o{ ComplianceRecord : "recorded_in"
+    ShopVisitReport ||--o{ ComplianceRecord : "records"
+
+    ComplianceRecord ||--o{ SbComplianceAudit : "audits"
+    ComplianceRecord ||--o{ SbGroupResult : "satisfies"
+    ComplianceRecord ||--o| ComplianceRecord : "resolves"
+
+    SbRequirementGroup ||--|{ SbRequirementMember : "members"
+    SbRequirementGroup ||--o{ SbGroupResult : "results"

@@ -2,14 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const prisma = require('../db');
-const svrRepository = require('../repositories/svrRepository');
-const svrClient = require('../clients/svrClient');
+const edsRepository = require('../repositories/edsRepository');
+const edsClient = require('../clients/edsClient');
 
-const SVR_STORAGE_ROOT = path.resolve(__dirname, '../../uploads/svr-documents');
+const eds_STORAGE_ROOT = path.resolve(__dirname, '../../uploads/eds-documents');
 
 // Ensure directory exists synchronously
-if (!fs.existsSync(SVR_STORAGE_ROOT)) {
-  fs.mkdirSync(SVR_STORAGE_ROOT, { recursive: true });
+if (!fs.existsSync(eds_STORAGE_ROOT)) {
+  fs.mkdirSync(eds_STORAGE_ROOT, { recursive: true });
 }
 
 /**
@@ -24,19 +24,19 @@ const cleanIdentifier = (str) => {
 /**
  * Service Bulletin & AD matching logic.
  */
-const matchSvrCompliance = async (svr) => {
-  if (!svr.engineId) {
-    console.log(`[SVR Compliance] SVR ${svr.id} has no matching Engine. Skipping compliance matching.`);
+const matchedsCompliance = async (eds) => {
+  if (!eds.engineId) {
+    console.log(`[eds Compliance] eds ${eds.id} has no matching Engine. Skipping compliance matching.`);
     return;
   }
 
-  console.log(`[SVR Compliance] Running compliance matching for SVR ${svr.id} (ESN: ${svr.engineSerialNumber})`);
+  console.log(`[eds Compliance] Running compliance matching for eds ${eds.id} (ESN: ${eds.engineSerialNumber})`);
 
   // Fetch all active SBs and ADs from database
   const sbs = await prisma.serviceBulletin.findMany({ where: { status: 'ACTIVE' } });
   const ads = await prisma.airworthinessDirective.findMany({ where: { status: 'ACTIVE' } });
 
-  for (const adItem of svr.adStatus) {
+  for (const adItem of eds.adStatus) {
     const adNumClean = cleanIdentifier(adItem.adNumber);
     const refSbClean = cleanIdentifier(adItem.referenceSb);
 
@@ -71,26 +71,26 @@ const matchSvrCompliance = async (svr) => {
     }
 
     if (matchedAd) {
-      console.log(`[SVR Compliance] Matched AD: ${matchedAd.adNumber} with SVR item: ${adItem.adNumber}`);
+      console.log(`[eds Compliance] Matched AD: ${matchedAd.adNumber} with eds item: ${adItem.adNumber}`);
       await prisma.complianceRecord.upsert({
         where: {
           engineId_adId: {
-            engineId: svr.engineId,
+            engineId: eds.engineId,
             adId: matchedAd.id
           }
         },
         create: {
-          engineId: svr.engineId,
+          engineId: eds.engineId,
           adId: matchedAd.id,
           status,
-          complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
-          svrId: svr.id,
+          complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
+          edsId: eds.id,
           remarks: adItem.remarks || adItem.methodOfCompliance || null
         },
         update: {
           status,
-          complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
-          svrId: svr.id,
+          complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
+          edsId: eds.id,
           remarks: adItem.remarks || adItem.methodOfCompliance || null
         }
       });
@@ -116,26 +116,26 @@ const matchSvrCompliance = async (svr) => {
     }
 
     if (matchedSb) {
-      console.log(`[SVR Compliance] Matched SB: ${matchedSb.sbNumber} with SVR item: ${adItem.adNumber || adItem.referenceSb}`);
+      console.log(`[eds Compliance] Matched SB: ${matchedSb.sbNumber} with eds item: ${adItem.adNumber || adItem.referenceSb}`);
       await prisma.complianceRecord.upsert({
         where: {
           engineId_sbId: {
-            engineId: svr.engineId,
+            engineId: eds.engineId,
             sbId: matchedSb.id
           }
         },
         create: {
-          engineId: svr.engineId,
+          engineId: eds.engineId,
           sbId: matchedSb.id,
           status,
-          complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
-          svrId: svr.id,
+          complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
+          edsId: eds.id,
           remarks: adItem.remarks || adItem.methodOfCompliance || null
         },
         update: {
           status,
-          complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
-          svrId: svr.id,
+          complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
+          edsId: eds.id,
           remarks: adItem.remarks || adItem.methodOfCompliance || null
         }
       });
@@ -146,28 +146,28 @@ const matchSvrCompliance = async (svr) => {
 /**
  * Normalizes raw JSON response/payload into database structures and saves.
  */
-const processSvrJson = async (rawPayload, originalFileName = 'payload.json', storedFileName = 'PENDING', docType = 'SVR') => {
-  // Dynamic unwrapping of nested SVR payload
+const processEdsJson = async (rawPayload, originalFileName = 'payload.json', storedFileName = 'PENDING', docType = 'EDS') => {
+  // Dynamic unwrapping of nested eds payload
   let data = rawPayload;
-  if (data && data.svr_schema) {
-    if (data.svr_schema.svr_schema) {
-      data = data.svr_schema.svr_schema;
+  if (data && data.eds_schema) {
+    if (data.eds_schema.eds_schema) {
+      data = data.eds_schema.eds_schema;
     } else {
-      data = data.svr_schema;
+      data = data.eds_schema;
     }
   }
 
   if (!data || typeof data !== 'object') {
-    throw new Error('Validation Error: Invalid SVR payload structure');
+    throw new Error('Validation Error: Invalid eds payload structure');
   }
 
-  // Extract SVR properties
+  // Extract eds properties
   const engineSerialNumber = data.engine_serial_number ? String(data.engine_serial_number) : '';
   if (!engineSerialNumber) {
-    throw new Error('Validation Error: engine_serial_number is required in SVR payload');
+    throw new Error('Validation Error: engine_serial_number is required in eds payload');
   }
 
-  const svrData = {
+  const edsData = {
     engineSerialNumber,
     engineType: data.engine_type || '',
     shopInDate: data.shop_in_date || '',
@@ -187,7 +187,7 @@ const processSvrJson = async (rawPayload, originalFileName = 'payload.json', sto
 
   // Map configuration items
   const rawConfigs = Array.isArray(data.configuration_report) ? data.configuration_report : [];
-  svrData.configurationReport = rawConfigs.map(item => ({
+  edsData.configurationReport = rawConfigs.map(item => ({
     module: item.module || '',
     partName: item.part_name || '',
     inOut: item.in_out || '',
@@ -203,7 +203,7 @@ const processSvrJson = async (rawPayload, originalFileName = 'payload.json', sto
 
   // Map LLP items
   const rawLlps = Array.isArray(data.life_limited_part_status) ? data.life_limited_part_status : [];
-  svrData.llpStatus = rawLlps.map(item => ({
+  edsData.llpStatus = rawLlps.map(item => ({
     no: item.no !== undefined && item.no !== null ? String(item.no) : '',
     description: item.description || '',
     partNumber: item.part_number || '',
@@ -218,7 +218,7 @@ const processSvrJson = async (rawPayload, originalFileName = 'payload.json', sto
 
   // Map AD/SB items
   const rawAds = Array.isArray(data.airworthiness_directive_status) ? data.airworthiness_directive_status : [];
-  svrData.adStatus = rawAds
+  edsData.adStatus = rawAds
     .filter(item => item.ad_number !== null || item.reference_sb !== null) // Filter out empty lines
     .map(item => ({
       adNumber: item.ad_number || '',
@@ -231,92 +231,93 @@ const processSvrJson = async (rawPayload, originalFileName = 'payload.json', sto
       remarks: item.remarks || ''
     }));
 
-  // Save SVR to Database (Murni untuk History Log)
-  const svr = await svrRepository.createShopVisitReport(svrData);
+  // Save eds to Database (Murni untuk History Log)
+  const eds = await edsRepository.createEngineDataSheet(edsData);
 
   // Sync EngineActiveComponent (Data Terkini)
-  if (svr.engineId) {
-    console.log(`[SVR Service] Syncing Active Components for Engine: ${svr.engineId}`);
-    for (const item of svrData.configurationReport) {
+  if (eds.engineId) {
+    console.log(`[eds Service] Syncing Active Components for Engine: ${eds.engineId}`);
+    for (const item of edsData.configurationReport) {
       if (!item.partNumber) continue;
 
       if (item.inOut === 'IN' || item.inOut === 'INSTALLED') {
         // Tambahkan ke tabel aktif
         const existing = await prisma.engineActiveComponent.findFirst({
-          where: { engineId: svr.engineId, partNumber: item.partNumber }
+          where: { engineId: eds.engineId, partNumber: item.partNumber }
         });
         
         if (!existing) {
           await prisma.engineActiveComponent.create({
             data: {
-              engineId: svr.engineId,
+              engineId: eds.engineId,
               partNumber: item.partNumber,
               partName: item.partName,
               module: item.module,
               tsn: item.tsn,
               csn: item.csn,
-              lastUpdatedFrom: `SVR-${svr.id}`
+              lastUpdatedFrom: `eds-${eds.id}`
             }
           });
         }
       } else if (item.inOut === 'OUT' || item.inOut === 'REMOVED') {
         // Hapus dari tabel aktif jika dicabut
         await prisma.engineActiveComponent.deleteMany({
-          where: { engineId: svr.engineId, partNumber: item.partNumber }
+          where: { engineId: eds.engineId, partNumber: item.partNumber }
         });
       }
     }
   }
 
   // Trigger compliance matching
-  await matchSvrCompliance(svr);
+  await matchedsCompliance(eds);
 
-  // Refetch SVR to include newly created complianceRecords relation
-  return svrRepository.findShopVisitReportById(svr.id);
+  // Refetch eds to include newly created complianceRecords relation
+  return edsRepository.findEngineDataSheetById(eds.id);
 };
 
 /**
- * Handle PDF SVR Upload.
+ * Handle PDF eds Upload.
  */
-const processSvrPdf = async ({ buffer, fileName, docType = 'SVR' }) => {
+const processEdsPdf = async ({ buffer, fileName, docType = 'EDS' }) => {
   // Generate random hash for file naming
   const hash = crypto.createHash('md5').update(buffer).digest('hex');
   const storedFileName = `engine-doc-${Date.now()}-${hash.slice(0, 10)}.pdf`;
-  const storagePath = path.join(SVR_STORAGE_ROOT, storedFileName);
+  const storagePath = path.join(eds_STORAGE_ROOT, storedFileName);
 
   // Write PDF to disk
   fs.writeFileSync(storagePath, buffer);
 
   // Send to AI Extractor Client
   console.log(`[Engine Doc Service] Running AI extraction for file: ${fileName} as ${docType}`);
-  const aiResult = await svrClient.analyzeEngineDocumentPdf({ fileName, buffer, docType });
+  const aiResult = await edsClient.analyzeEngineDocumentPdf({ fileName, buffer, docType });
 
   // Ingest extracted JSON
-  return processSvrJson(aiResult, fileName, storedFileName, docType);
+  return processEdsJson(aiResult, fileName, storedFileName, docType);
 };
 
 /**
- * Get SVR File Information.
+ * Get eds File Information.
  */
-const getSvrFile = async (id) => {
-  const svr = await svrRepository.findShopVisitReportById(id);
-  if (!svr || !svr.storedFileName || svr.storedFileName === 'PENDING') {
-    throw new Error('Not Found: SVR PDF file does not exist');
+const getedsFile = async (id) => {
+  const eds = await edsRepository.findEngineDataSheetById(id);
+  if (!eds || !eds.storedFileName || eds.storedFileName === 'PENDING') {
+    throw new Error('Not Found: eds PDF file does not exist');
   }
-  const storagePath = path.join(SVR_STORAGE_ROOT, svr.storedFileName);
+  const storagePath = path.join(eds_STORAGE_ROOT, eds.storedFileName);
   if (!fs.existsSync(storagePath)) {
-    throw new Error('Not Found: SVR PDF file not found on disk');
+    throw new Error('Not Found: eds PDF file not found on disk');
   }
   return {
     storagePath,
-    fileName: svr.originalFileName || `${svr.engineSerialNumber}-SVR.pdf`,
+    fileName: eds.originalFileName || `${eds.engineSerialNumber}-eds.pdf`,
     mimeType: 'application/pdf'
   };
 };
 
 module.exports = {
-  processSvrJson,
-  processSvrPdf,
-  getSvrFile,
-  matchSvrCompliance
+  processEdsJson,
+  processEdsPdf,
+  getedsFile,
+  matchedsCompliance
 };
+
