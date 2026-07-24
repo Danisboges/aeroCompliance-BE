@@ -36,19 +36,18 @@ const matchSvrCompliance = async (svr) => {
 
   // Fetch all active SBs and ADs from database
   const sbs = await prisma.serviceBulletin.findMany({ where: { status: 'ACTIVE' } });
-  const ads = await prisma.airworthinessDirective.findMany({ where: { status: 'ACTIVE' } });
 
-  for (const adItem of svr.adStatus) {
-    const adNumClean = cleanIdentifier(adItem.adNumber);
-    const refSbClean = cleanIdentifier(adItem.referenceSb);
+  for (const sbItem of svr.sbStatus) {
+    const sbNumClean = cleanIdentifier(sbItem.adNumber);
+    const refSbClean = cleanIdentifier(sbItem.referenceSb);
 
-    if (!adNumClean && !refSbClean) continue;
+    if (!sbNumClean && !refSbClean) continue;
 
     // Determine compliance status based on remarks/method
     let status = 'COMPLIED'; // Default
-    const remarksLower = (adItem.remarks || '').toLowerCase();
-    const mocLower = (adItem.methodOfCompliance || '').toLowerCase();
-    const descLower = (adItem.description || '').toLowerCase();
+    const remarksLower = (sbItem.remarks || '').toLowerCase();
+    const mocLower = (sbItem.methodOfCompliance || '').toLowerCase();
+    const descLower = (sbItem.description || '').toLowerCase();
 
     if (
       remarksLower.includes('not applicable') || 
@@ -63,61 +62,13 @@ const matchSvrCompliance = async (svr) => {
       status = 'OPEN';
     }
 
-    // 1. Try to match with AirworthinessDirective (AD) in DB
-    let matchedAd = null;
-    if (adNumClean) {
-      matchedAd = ads.find(dbAd => {
-        const dbAdClean = cleanIdentifier(dbAd.adNumber);
-        return dbAdClean && (adNumClean.includes(dbAdClean) || dbAdClean.includes(adNumClean));
-      });
-    }
-
-    if (matchedAd) {
-      console.log(`[SVR Compliance] Matched AD: ${matchedAd.adNumber} with SVR item: ${adItem.adNumber}`);
-      
-      const existingCompliance = await prisma.complianceRecord.findUnique({
-        where: { engineId_adId: { engineId: svr.engineId, adId: matchedAd.id } }
-      });
-
-      if (existingCompliance && existingCompliance.sourceDate && existingCompliance.sourceDate > currentDocDate) {
-        console.log(`[SVR Compliance] Skipping AD ${matchedAd.adNumber} because existing record is newer.`);
-        continue;
-      }
-
-      if (existingCompliance) {
-        await prisma.complianceRecord.update({
-          where: { id: existingCompliance.id },
-          data: {
-            status,
-            complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
-            svrId: svr.id,
-            remarks: adItem.remarks || adItem.methodOfCompliance || null,
-            sourceDate: currentDocDate
-          }
-        });
-      } else {
-        await prisma.complianceRecord.create({
-          data: {
-            engineId: svr.engineId,
-            adId: matchedAd.id,
-            status,
-            complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
-            svrId: svr.id,
-            remarks: adItem.remarks || adItem.methodOfCompliance || null,
-            sourceDate: currentDocDate
-          }
-        });
-      }
-      continue; // Skip SB checking if AD matched
-    }
-
     // 2. Try to match with ServiceBulletin (SB) in DB
     let matchedSb = null;
     // Check match against adNumber (which sometimes has SB code like "CFM56-7B SB 72-1082")
-    if (adNumClean) {
+    if (sbNumClean) {
       matchedSb = sbs.find(dbSb => {
         const dbSbClean = cleanIdentifier(dbSb.sbNumber);
-        return dbSbClean && (adNumClean.includes(dbSbClean) || dbSbClean.includes(adNumClean));
+        return dbSbClean && (sbNumClean.includes(dbSbClean) || dbSbClean.includes(sbNumClean));
       });
     }
 
@@ -130,7 +81,7 @@ const matchSvrCompliance = async (svr) => {
     }
 
     if (matchedSb) {
-      console.log(`[SVR Compliance] Matched SB: ${matchedSb.sbNumber} with SVR item: ${adItem.adNumber || adItem.referenceSb}`);
+      console.log(`[SVR Compliance] Matched SB: ${matchedSb.sbNumber} with SVR item: ${sbItem.adNumber || sbItem.referenceSb}`);
       
       const existingCompliance = await prisma.complianceRecord.findUnique({
         where: { engineId_sbId: { engineId: svr.engineId, sbId: matchedSb.id } }
@@ -146,9 +97,9 @@ const matchSvrCompliance = async (svr) => {
           where: { id: existingCompliance.id },
           data: {
             status,
-            complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
+            complianceDate: sbItem.notificationDateOfCompliance || svr.shopOutDate || null,
             svrId: svr.id,
-            remarks: adItem.remarks || adItem.methodOfCompliance || null,
+            remarks: sbItem.remarks || sbItem.methodOfCompliance || null,
             sourceDate: currentDocDate
           }
         });
@@ -158,9 +109,9 @@ const matchSvrCompliance = async (svr) => {
             engineId: svr.engineId,
             sbId: matchedSb.id,
             status,
-            complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
+            complianceDate: sbItem.notificationDateOfCompliance || svr.shopOutDate || null,
             svrId: svr.id,
-            remarks: adItem.remarks || adItem.methodOfCompliance || null,
+            remarks: sbItem.remarks || sbItem.methodOfCompliance || null,
             sourceDate: currentDocDate
           }
         });
@@ -243,8 +194,8 @@ const processSvrJson = async (rawPayload, originalFileName = 'payload.json', sto
   }));
 
   // Map AD/SB items
-  const rawAds = Array.isArray(data.airworthiness_directive_status) ? data.airworthiness_directive_status : [];
-  svrData.adStatus = rawAds
+  const rawSbs = Array.isArray(data.airworthiness_directive_status) ? data.airworthiness_directive_status : [];
+  svrData.sbStatus = rawSbs
     .filter(item => item.ad_number !== null || item.reference_sb !== null) // Filter out empty lines
     .map(item => ({
       adNumber: item.ad_number || '',

@@ -60,8 +60,7 @@ const extractPdfItems = (sb, dynamicEsnVal = '-') => {
       desc: item.requirementDesc || '-',
       taskType: item.taskType || '-',
       ref: item.ref || item.reference || globalRef,
-      app: isApplicable ? 'Y' : 'N',
-      adRelated: item.adRelated || '-',
+      app: isApplicable ? 'Y' : 'N',
       warranty: warrantyVal,
       affectedAcEngine: item.affectedAcEngine || esnVal,
       rep: item.rep || '-',
@@ -202,7 +201,6 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     // Group merged columns
     if (item.isFirstInGroup) {
       html += `<td rowspan="${item.groupLength}">${item.app}</td>`;
-      html += `<td rowspan="${item.groupLength}">${item.adRelated}</td>`;
       html += `<td rowspan="${item.groupLength}">${item.warranty}</td>`;
       html += `<td rowspan="${item.groupLength}">${item.affectedAcEngine}</td>`;
       html += `<td rowspan="${item.groupLength}">${item.rep}</td>`;

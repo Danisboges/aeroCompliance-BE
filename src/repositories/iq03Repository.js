@@ -6,7 +6,7 @@ const includeRelations = {
   complianceRecords: {
     include: {
       sb: true,
-      ad: true
+      sb: true
     }
   }
 };
@@ -15,7 +15,7 @@ const includeRelations = {
  * Creates a new Iq03Report record along with its child relations.
  */
 const createIq03Report = async (data) => {
-  const { configurationReport, llpStatus, adStatus, ...headerData } = data;
+  const { configurationReport, llpStatus, sbStatus, ...headerData } = data;
   
   // Find associated Engine in database by ESN (Engine Serial Number)
   let engineId = null;

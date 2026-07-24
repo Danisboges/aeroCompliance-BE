@@ -4,11 +4,11 @@ const includeRelations = {
   engine: true,
   configurationReport: true,
   llpStatus: true,
-  adStatus: true,
+  sbStatus: true,
   complianceRecords: {
     include: {
       sb: true,
-      ad: true
+      sb: true
     }
   }
 };
@@ -17,7 +17,7 @@ const includeRelations = {
  * Creates a new ShopVisitReport record along with its child relations.
  */
 const createShopVisitReport = async (data) => {
-  const { configurationReport, llpStatus, adStatus, ...headerData } = data;
+  const { configurationReport, llpStatus, sbStatus, ...headerData } = data;
   
   // Find associated Engine in database by ESN (Engine Serial Number)
   let engineId = null;
@@ -38,7 +38,7 @@ const createShopVisitReport = async (data) => {
     engineSerialNumber: headerData.engineSerialNumber
   }));
 
-  const mappedAds = (adStatus || []).map(item => ({
+  const mappedSbs = (sbStatus || []).map(item => ({
     ...item,
     engineSerialNumber: headerData.engineSerialNumber
   }));
@@ -53,8 +53,8 @@ const createShopVisitReport = async (data) => {
       llpStatus: {
         create: mappedLlps
       },
-      adStatus: {
-        create: mappedAds
+      sbStatus: {
+        create: mappedSbs
       }
     },
     include: includeRelations
