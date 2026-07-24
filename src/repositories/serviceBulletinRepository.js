@@ -255,7 +255,7 @@ async function checkApplicabilityForSb(sb) {
     where: { active: true },
     include: {
       aircraft: true,
-      svrConfigurationItems: true,
+      activeComponents: true,
       complianceRecords: {
         include: {
           sb: true
@@ -307,7 +307,7 @@ async function checkApplicabilityForSb(sb) {
       : [];
 
     if (sbPartNumbers.length > 0) {
-      const installedPns = (engine.svrConfigurationItems || [])
+      const installedPns = (engine.activeComponents || [])
         .map(item => (item.partNumber || '').toLowerCase());
       
       const hasPartMatch = sbPartNumbers.some(pn => installedPns.includes(pn));
@@ -316,7 +316,7 @@ async function checkApplicabilityForSb(sb) {
           engine,
           aircraft: engine.aircraft,
           isApplicable: false,
-          reason: '2. Target Part Number is not installed on engine'
+          reason: '2. Target Part Number is not installed on engine (based on Active Components)'
         };
       }
     }
