@@ -166,8 +166,29 @@
             "example": "REP"
           },
           "references": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "GE90-100 Boeing 777 Aircraft Maintenance Manual (AMM)"
+            ]
+          },
+          "component_type": {
             "type": "string",
-            "example": "GE90-100 Engine Manual (EM)"
+            "example": "FAN HUB FRAME ASSEMBLY"
+          },
+          "compliance_time_type": {
+            "type": "string",
+            "example": "Prior to 20,000 cycles"
+          },
+          "repetitive": {
+            "type": "boolean",
+            "example": false
+          },
+          "note": {
+            "type": "string",
+            "example": "Do not mix parts"
           }
         }
       },
@@ -2214,7 +2235,7 @@
     "/api/webhooks/eds": {
       "post": {
         "summary": "Webhook: Ingest JSON EDS dari AI",
-        "description": "Endpoint untuk menerima hasil parsing JSON dari tim AI untuk Engine Data Sheet (EDS)",
+        "description": "Endpoint untuk menerima hasil parsing JSON dari tim AI untuk Engine Data Submittal (EDS)",
         "tags": [
           "Shop Visit Report (SVR)"
         ],

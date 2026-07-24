@@ -14,6 +14,8 @@ const pdfBodyParser = express.raw({ type: 'application/pdf', limit: '100mb' });
 // ── Step 1: Select SB / Upload SB Baru ───────────────────────────────────────
 // Sumber A: List semua SB dari database perusahaan (with search/filter)
 router.get('/service-bulletins', verifyToken, sbListController.listServiceBulletins);
+// List SB yang belum di-review/generate (belum ada AI analisis / EES)
+router.get('/service-bulletins/unreviewed', verifyToken, sbListController.listUnreviewedServiceBulletins);
 // Get single SB detail
 router.get('/service-bulletins/:id', verifyToken, sbListController.getServiceBulletin);
 // Sumber A: Upload PDF ke SB yang sudah ada di database → AI analisis otomatis

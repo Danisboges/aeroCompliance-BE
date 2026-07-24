@@ -193,8 +193,8 @@ async function markServiceBulletinAsRead(sbId, userId) {
  * Lists all SBs with optional text search and type/status filters (for Select SB step).
  * Supports pagination, operator filter, and date ranges.
  */
-async function findAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy = 'receivedAt', sortOrder = 'desc', page, limit } = {}) {
-  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo });
+async function findAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy = 'receivedAt', sortOrder = 'desc', page, limit, unreviewedOnly } = {}) {
+  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly });
   
   const queryOptions = {
     where,
@@ -217,12 +217,12 @@ async function findAllWithFilter({ search, sbType, status, operatorId, receivedF
 /**
  * Counts all SBs with optional filters (for pagination).
  */
-async function countAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo } = {}) {
-  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo });
+async function countAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly } = {}) {
+  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly });
   return prisma.serviceBulletin.count({ where });
 }
 
-function _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo }) {
+function _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly }) {
   const where = {};
   if (search) {
     where.OR = [
@@ -240,6 +240,14 @@ function _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, r
     if (receivedFrom) where.receivedAt.gte = new Date(receivedFrom);
     if (receivedTo) where.receivedAt.lte = new Date(receivedTo);
   }
+
+  if (unreviewedOnly) {
+    // "Belum melakukan analisis AI dan belum masuk ke Alur Pembuatan Dokumen Evaluasi"
+    // This means generatedEes is null, and OCR is not generated.
+    // The most accurate way is generatedEes is null.
+    where.generatedEes = { is: null };
+  }
+
   return where;
 }
 
@@ -269,7 +277,7 @@ async function checkApplicabilityForSb(sb) {
     where: { sourceSbId: sb.id, isActive: true }
   });
 
-  return allEngines.map((engine) => {
+  const results = allEngines.map((engine) => {
     // -------------------------------------------------------------
     // Decision 1: Match Explicit ESN / Model?
     // -------------------------------------------------------------
@@ -364,4 +372,23 @@ async function checkApplicabilityForSb(sb) {
       reason: 'Applicable - Passed all 3 decision checks'
     };
   });
+
+  // --- SAVE APPLICABILITY SUMMARY TO SB DOCUMENT ---
+  const applicableEngines = results.filter(r => r.isApplicable).map(r => r.engine.esn);
+  const notApplicableEngines = results.filter(r => !r.isApplicable).map(r => ({
+    esn: r.engine.esn,
+    reason: r.reason
+  }));
+
+  await prisma.serviceBulletin.update({
+    where: { id: sb.id },
+    data: {
+      applicabilitySummary: {
+        applicableEngines,
+        notApplicableEngines
+      }
+    }
+  });
+
+  return results;
 }

@@ -5,7 +5,7 @@ const { generateId } = require('../utils/idGenerator');
  * Persists EesDocument along with its nested EesEvaluationItems.
  */
 const createEesDocument = async (documentData, evaluations) => {
-  const { eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, esn, aircraftType } = documentData;
+  const { eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, esn, aircraftType, partNumber, componentType, complianceTimeType, isRepetitive, note, isManualEdited } = documentData;
 
   return await prisma.$transaction(async (tx) => {
     // Hapus EesDocument lama jika sudah ada untuk menghindari kendala keunikan
@@ -34,6 +34,12 @@ const createEesDocument = async (documentData, evaluations) => {
         effectedModel: effectedModel || null,
         esn: esn || null,
         aircraftType: aircraftType || null,
+        partNumber: partNumber || null,
+        componentType: componentType || null,
+        complianceTimeType: complianceTimeType || null,
+        isRepetitive: isRepetitive !== undefined && isRepetitive !== null ? Boolean(isRepetitive) : null,
+        note: note || null,
+        isManualEdited: isManualEdited || false,
         evaluations: {
           create: evaluations.map((item) => ({
             id: generateId('ITEM'),
@@ -42,6 +48,7 @@ const createEesDocument = async (documentData, evaluations) => {
             requirementDesc: String(item.requirementDesc ?? ''),
             remarks: item.remarks ? String(item.remarks) : null,
             taskType: item.taskType ? String(item.taskType) : null,
+            references: item.references || null,
             adRelated: item.adRelated ? String(item.adRelated) : null,
             warranty: item.warranty !== undefined ? Boolean(item.warranty) : null,
             rep: item.rep ? String(item.rep) : null,

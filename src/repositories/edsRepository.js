@@ -13,9 +13,9 @@ const includeRelations = {
 };
 
 /**
- * Creates a new EngineDataSheet record along with its child relations.
+ * Creates a new engineDataSubmittal record along with its child relations.
  */
-const createEngineDataSheet = async (data) => {
+const createengineDataSubmittal = async (data) => {
   const { configurationReport, llpStatus, adStatus, ...headerData } = data;
   
   // Find associated Engine in database by ESN (Engine Serial Number)
@@ -37,7 +37,7 @@ const createEngineDataSheet = async (data) => {
     engineSerialNumber: headerData.engineSerialNumber
   }));
 
-  return prisma.engineDataSheet.create({
+  return prisma.engineDataSubmittal.create({
     data: {
       ...headerData,
       engineId,
@@ -53,24 +53,24 @@ const createEngineDataSheet = async (data) => {
 };
 
 /**
- * Retrieves a EngineDataSheet by ID.
+ * Retrieves a engineDataSubmittal by ID.
  */
-const findEngineDataSheetById = async (id) => {
-  return prisma.EngineDataSheet.findUnique({
+const findengineDataSubmittalById = async (id) => {
+  return prisma.engineDataSubmittal.findUnique({
     where: { id },
     include: includeRelations
   });
 };
 
 /**
- * Lists EngineDataSheets with filter and pagination.
+ * Lists engineDataSubmittals with filter and pagination.
  */
-const listEngineDataSheets = async ({ skip = 0, take = 20, esn } = {}) => {
+const listengineDataSubmittals = async ({ skip = 0, take = 20, esn } = {}) => {
   const where = {};
   if (esn) {
     where.engineSerialNumber = esn;
   }
-  return prisma.EngineDataSheet.findMany({
+  return prisma.engineDataSubmittal.findMany({
     where,
     skip: parseInt(skip, 10),
     take: parseInt(take, 10),
@@ -82,31 +82,31 @@ const listEngineDataSheets = async ({ skip = 0, take = 20, esn } = {}) => {
 };
 
 /**
- * Counts EngineDataSheets matching filters.
+ * Counts engineDataSubmittals matching filters.
  */
-const countEngineDataSheets = async ({ esn } = {}) => {
+const countengineDataSubmittals = async ({ esn } = {}) => {
   const where = {};
   if (esn) {
     where.engineSerialNumber = esn;
   }
-  return prisma.EngineDataSheet.count({ where });
+  return prisma.engineDataSubmittal.count({ where });
 };
 
 /**
- * Deletes a EngineDataSheet record.
+ * Deletes a engineDataSubmittal record.
  */
-const deleteEngineDataSheet = async (id) => {
-  return prisma.EngineDataSheet.delete({
+const deleteengineDataSubmittal = async (id) => {
+  return prisma.engineDataSubmittal.delete({
     where: { id },
     include: includeRelations
   });
 };
 
 module.exports = {
-  createEngineDataSheet,
-  findEngineDataSheetById,
-  listEngineDataSheets,
-  countEngineDataSheets,
-  deleteEngineDataSheet
+  createengineDataSubmittal,
+  findengineDataSubmittalById,
+  listengineDataSubmittals,
+  countengineDataSubmittals,
+  deleteengineDataSubmittal
 };
 

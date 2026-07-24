@@ -369,6 +369,7 @@ const generateEes = async (id, updatedById = null, customData = {}) => {
   };
 
   if (customData.eesNumber) payload.eesNumber = customData.eesNumber;
+  if (customData.isManualEdited !== undefined) payload.isManualEdited = customData.isManualEdited;
   if (customData.aircraftType) {
     const prisma = require('../db');
     const validAircraft = await prisma.aircraft.findFirst({

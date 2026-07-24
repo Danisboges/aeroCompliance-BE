@@ -244,7 +244,7 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
     }));
 
   // Save eds to Database (Murni untuk History Log)
-  const eds = await edsRepository.createEngineDataSheet(edsData);
+  const eds = await edsRepository.createengineDataSubmittal(edsData);
 
   // Sync EngineActiveComponent (Data Terkini) berdasarkan Hirarki Waktu
   if (eds.engineId) {
@@ -305,7 +305,7 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
   await matchedsCompliance(eds);
 
   // Refetch eds to include newly created complianceRecords relation
-  return edsRepository.findEngineDataSheetById(eds.id);
+  return edsRepository.findengineDataSubmittalById(eds.id);
 };
 
 /**
@@ -332,7 +332,7 @@ const processEdsPdf = async ({ buffer, fileName, docType = 'EDS' }) => {
  * Get eds File Information.
  */
 const getedsFile = async (id) => {
-  const eds = await edsRepository.findEngineDataSheetById(id);
+  const eds = await edsRepository.findengineDataSubmittalById(id);
   if (!eds || !eds.storedFileName || eds.storedFileName === 'PENDING') {
     throw new Error('Not Found: eds PDF file does not exist');
   }

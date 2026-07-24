@@ -29,9 +29,12 @@ const formatSbResponse = (sb, originalUrl = '') => {
   
   const result = {
     ...sbJson,
-    rawPayload: sbJson.ocrResult?.rawPayload,
     status
   };
+
+  if (status !== 'GENERATED') {
+    result.rawPayload = sbJson.ocrResult?.rawPayload;
+  }
 
   // Add virtual sb property pointing back to the result details (without circular references)
   // to ensure compatibility with older clients expecting draft.sb.generatedEes
@@ -407,7 +410,7 @@ async function updateEesDocument(req, res) {
     }
     // Re-validate and regenerate EES from user-edited payload
     await serviceBulletinService.validateServiceBulletin(req.params.id, validatedPayload, req.user?.id);
-    const result = await serviceBulletinService.generateEes(req.params.id, req.user?.id);
+    const result = await serviceBulletinService.generateEes(req.params.id, req.user?.id, { isManualEdited: true });
     return res.status(200).json({
       message: 'EES document updated successfully',
       data: formatSbResponse(result, req.originalUrl),

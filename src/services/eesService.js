@@ -119,12 +119,15 @@ const normalizeOcrPayload = (rawPayload) => {
 
   let rawItems = [];
   
-  // NEW Format (problem_evidence + description)
+  // NEW Format (effectivity + problem_evidence + description)
+  if (Array.isArray(payload.effectivity)) {
+    rawItems = rawItems.concat(payload.effectivity.map(i => ({ ...i, paragraph: 'EFFECTIVITY' })));
+  }
   if (Array.isArray(payload.problem_evidence)) {
-    rawItems = rawItems.concat(payload.problem_evidence);
+    rawItems = rawItems.concat(payload.problem_evidence.map(i => ({ ...i, paragraph: 'PROBLEM_EVIDENCE' })));
   }
   if (Array.isArray(payload.description)) {
-    rawItems = rawItems.concat(payload.description);
+    rawItems = rawItems.concat(payload.description.map(i => ({ ...i, paragraph: 'DESCRIPTION' })));
   }
   
   // OLD Format fallback
@@ -147,9 +150,11 @@ const normalizeOcrPayload = (rawPayload) => {
     const isApplicable = item.isApplicable !== undefined ? Boolean(item.isApplicable) : true;
     return {
       itemNo: item.itemNo !== undefined && item.itemNo !== null ? String(item.itemNo) : String(index + 1),
+      paragraph: item.paragraph || item.paragraph_number || null,
       requirementDesc: item.requirement_desc || item.requirementDesc || item.paragraph || 'No description provided',
       remarks: item.remark || item.remarks || '',
       taskType: item.taskType || payload.task_type || '',
+      references: item.references || null,
       isApplicable
     };
   });
@@ -160,14 +165,19 @@ const normalizeOcrPayload = (rawPayload) => {
     title: payload.tittle || payload.title || '',
     issuer: payload.effected_type || payload.issuer || '',
     taskType: payload.task_type || '',
-    references: formatReferences(payload.references),
+    references: payload.references || null,
     effectedType: payload.effected_type || '',
-    effectedModel: Array.isArray(payload.effected_model) ? payload.effected_model.join(', ') : (typeof payload.effected_model === 'string' ? payload.effected_model : ''),
+    effectedModel: Array.isArray(payload.effected_model) ? payload.effected_model : (typeof payload.effected_model === 'string' ? payload.effected_model.split(',').map(s=>s.trim()) : null),
     aircraftType: payload.aircraftType,
     aircraftId: payload.aircraftId,
     manufacturer,
     partNumber: payload.part_number || (payload.mro_schema && payload.mro_schema.mro_schema ? payload.mro_schema.mro_schema.part_number : '') || '',
+    componentType: payload.component_type || null,
+    complianceTimeType: payload.compliance_time_type || null,
+    isRepetitive: payload.repetitive !== undefined ? Boolean(payload.repetitive) : null,
+    note: payload.note || null,
     requiresManualEes,
+    isManualEdited: payload.isManualEdited || false,
     evaluations,
   };
 };
@@ -177,7 +187,7 @@ const normalizeOcrPayload = (rawPayload) => {
  */
 const processEesWebhook = async (payload, explicitSourceSbId = null) => {
   const normalized = normalizeOcrPayload(payload);
-  const { eesNumber, bulletinNumber, evaluations, taskType, references, effectedType, effectedModel, aircraftType, manufacturer, partNumber } = normalized;
+  const { eesNumber, bulletinNumber, evaluations, taskType, references, effectedType, effectedModel, aircraftType, manufacturer, partNumber, isManualEdited } = normalized;
 
   let sourceSbId = explicitSourceSbId;
 
@@ -216,7 +226,10 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
 
   // Teruskan ke repository dengan sourceSbId yang sudah di-resolve
   return await eesRepository.createEesDocument(
-    { eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, aircraftType, partNumber },
+    { 
+      eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, aircraftType, 
+      partNumber, componentType, complianceTimeType, isRepetitive, note, isManualEdited 
+    },
     evaluations
   );
 };

@@ -132,6 +132,7 @@ model User {
   engineeringRecs          EngineeringRecommendation[]
   reviewActions            ReviewAction[]
   sbComplianceAudits       SbComplianceAudit[]
+  engineHistoryLogs        EngineHistoryLog[]
 }
 
 // --- ASSETS ---
@@ -161,13 +162,14 @@ model Engine {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  shopVisitReports      ShopVisitReport[]
-  engineDataSheets      EngineDataSheet[]
-  iq03Reports           Iq03Report[]
-  complianceRecords     ComplianceRecord[]
-  activeComponents      EngineActiveComponent[]
+  shopVisitReports     ShopVisitReport[]
+  EngineDataSubmittals EngineDataSubmittal[]
+  iq03Reports          Iq03Report[]
+  complianceRecords    ComplianceRecord[]
+  activeComponents     EngineActiveComponent[]
 
-  groupResults          SbGroupResult[]
+  groupResults      SbGroupResult[]
+  engineHistoryLogs EngineHistoryLog[]
 }
 
 // --- DOCUMENTS (AD, SB, EES) ---
@@ -201,7 +203,7 @@ model ServiceBulletin {
   sbType             SbType?
   complianceCategory Int?
   effectivityType    String?
-  effectivityRange   String?
+  effectivityRange   Json?
   compliancePeriod   String?
   aircraftType       String?
   impactType         String?
@@ -218,6 +220,8 @@ model ServiceBulletin {
 
   updatedById String?
   updatedBy   User?   @relation("ServiceBulletinUpdater", fields: [updatedById], references: [id])
+
+  applicabilitySummary Json?
 
   // Relations
   ocrResult         OcrResult?
@@ -254,24 +258,32 @@ model EesDocument {
   sourceSb   ServiceBulletin @relation(fields: [sourceSbId], references: [id], onDelete: Cascade)
 
   // Dokumen Global Fields
-  taskType      String?
-  references    String?
-  effectedType  String?
-  effectedModel String?
+  taskType           String?
+  references         Json?
+  effectedType       String?
+  effectedModel      String?
+  componentType      String?
+  complianceTimeType String?
+  isRepetitive       Boolean?
+  note               String?  @db.Text
 
   aircraftType String?
 
-  esn String?
+  esn        String?
+  partNumber String?
 
   storedGarudaPdfPath   String?
   storedCitilinkPdfPath String?
   storedExcelPath       String?
 
-  reviewStatus  ApprovalStatus      @default(PENDING)
-  evaluations   EesEvaluationItem[]
-  reviewActions ReviewAction[]
-  approval      Approval?
-  createdAt     DateTime            @default(now())
+  reviewStatus   ApprovalStatus @default(PENDING)
+  isManualEdited Boolean        @default(false)
+
+  evaluations       EesEvaluationItem[]
+  reviewActions     ReviewAction[]
+  approval          Approval?
+  engineHistoryLogs EngineHistoryLog[]
+  createdAt         DateTime            @default(now())
 }
 
 model EesEvaluationItem {
@@ -282,6 +294,7 @@ model EesEvaluationItem {
   paragraph       String?
   requirementDesc String      @db.Text
   remarks         String?     @db.Text
+  references      Json?
   taskType        String?
   adRelated       String?
   warranty        Boolean?
@@ -312,21 +325,38 @@ model EngineeringRecommendation {
 /// --- ENGINE TRACKING & HISTORY ---
 
 model EngineHistoryLog {
-  id              String   @id @default(uuid())
-  aircraftId      String?  
-  position        String?
-  removedEsn      String?
-  installedEsn    String?
-  sourceDocType   String?
-  sourceDocId     String?
-  notes           String?  @db.Text
-  recordedAt      DateTime @default(now())
+  id       String @id @default(uuid())
+  engineId String
+  engine   Engine @relation(fields: [engineId], references: [id], onDelete: Cascade)
+
+  // -- Linked List / Rekam Jejak Penggantian --
+  previousLogId String?           @unique
+  previousLog   EngineHistoryLog? @relation("LogReplacement", fields: [previousLogId], references: [id], onDelete: SetNull)
+  replacedBy    EngineHistoryLog? @relation("LogReplacement")
+
+  // -- Penanda Jenis Dokumen Cepat --
+  documentType String? // "SVR", "EDS", "IQ03", "EES", dll
+
+  // -- Relasi Spesifik Dokumen --
+  svrId  String?
+  svr    ShopVisitReport?     @relation(fields: [svrId], references: [id], onDelete: SetNull)
+  edsId  String?
+  eds    EngineDataSubmittal? @relation(fields: [edsId], references: [id], onDelete: SetNull)
+  iq03Id String?
+  iq03   Iq03Report?          @relation(fields: [iq03Id], references: [id], onDelete: SetNull)
+  eesId  String?
+  ees    EesDocument?         @relation(fields: [eesId], references: [id], onDelete: SetNull)
+
+  changedById String?
+  changedBy   User?    @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  notes       String?  @db.Text
+  recordedAt  DateTime @default(now())
 }
 
 // --- 1. SHOP VISIT REPORTS (SVR) ---
 
 model ShopVisitReport {
-  id                      String             @id @default(uuid())
+  id                      String  @id @default(uuid())
   engineSerialNumber      String
   engineId                String?
   engine                  Engine? @relation(fields: [engineId], references: [id], onDelete: SetNull)
@@ -347,57 +377,69 @@ model ShopVisitReport {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  configurationReport SvrConfigurationItem[]
-  llpStatus           SvrLlpStatus[]
-  adStatus            SvrAdStatus[]
+  configurationReport DocumentConfigurationItem[]
+  llpStatus           DocumentLlpStatus[]
+  adStatus            DocumentAdStatus[]
+  sbStatus            DocumentSbStatus[]
+  accessoriesList     DocumentAccessoriesList[]
   complianceRecords   ComplianceRecord[]
+  engineHistoryLogs   EngineHistoryLog[]
 }
 
-// --- 2. ENGINE DATA SHEET (EDS) ---
+// --- 2. Engine Data Submittal (EDS) ---
 
-model EngineDataSheet {
-  id                      String  @id @default(uuid())
-  engineSerialNumber      String
-  engineId                String?
-  engine                  Engine? @relation(fields: [engineId], references: [id], onDelete: SetNull)
-  engineType              String?
-  originalFileName        String?
-  storedFileName          String?
-  rawPayload              Json?
+model EngineDataSubmittal {
+  id                 String  @id @default(uuid())
+  engineSerialNumber String
+  engineId           String?
+  engine             Engine? @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  engineType         String?
+  originalFileName   String?
+  storedFileName     String?
+  rawPayload         Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  configurationReport EdsConfigurationItem[]
-  adStatus            EdsAdStatus[]
+  configurationReport DocumentConfigurationItem[]
+  llpStatus           DocumentLlpStatus[]
+  adStatus            DocumentAdStatus[]
+  sbStatus            DocumentSbStatus[]
+  accessoriesList     DocumentAccessoriesList[]
   complianceRecords   ComplianceRecord[]
+  engineHistoryLogs   EngineHistoryLog[]
 }
 
 // --- 3. IQ03 REPORT ---
 
 model Iq03Report {
-  id                      String  @id @default(uuid())
-  engineSerialNumber      String
-  engineId                String?
-  engine                  Engine? @relation(fields: [engineId], references: [id], onDelete: SetNull)
-  engineType              String?
-  originalFileName        String?
-  storedFileName          String?
-  rawPayload              Json?
+  id                 String  @id @default(uuid())
+  engineSerialNumber String
+  engineId           String?
+  engine             Engine? @relation(fields: [engineId], references: [id], onDelete: SetNull)
+  engineType         String?
+  originalFileName   String?
+  storedFileName     String?
+  rawPayload         Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  configurationReport Iq03ConfigurationItem[]
+  configurationReport DocumentConfigurationItem[]
+  llpStatus           DocumentLlpStatus[]
+  adStatus            DocumentAdStatus[]
+  sbStatus            DocumentSbStatus[]
+  accessoriesList     DocumentAccessoriesList[]
   complianceRecords   ComplianceRecord[]
+  engineHistoryLogs   EngineHistoryLog[]
 }
 
 // --- SHARED ENGINE COMPONENTS (ACTIVE VS LOG) ---
 
 model EngineActiveComponent {
-  id              String @id @default(uuid())
+  id              String    @id @default(uuid())
   engineId        String
-  engine          Engine @relation(fields: [engineId], references: [id], onDelete: Cascade)
+  engine          Engine    @relation(fields: [engineId], references: [id], onDelete: Cascade)
   partNumber      String
   partName        String?
   module          String?
@@ -405,14 +447,18 @@ model EngineActiveComponent {
   csn             String?
   lastUpdatedFrom String? // "SVR-123" or "EDS-456"
   sourceDate      DateTime? // Tanggal dokumen sumber (SVR/EDS/IQ03 reportDate)
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime  @updatedAt
 }
 
-model SvrConfigurationItem {
-  id                 String          @id @default(uuid())
-  svrId              String
-  svr                ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  engineSerialNumber String? 
+model DocumentConfigurationItem {
+  id                 String               @id @default(uuid())
+  svrId              String?
+  svr                ShopVisitReport?     @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  edsId              String?
+  eds                EngineDataSubmittal? @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  iq03Id             String?
+  iq03               Iq03Report?          @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  engineSerialNumber String?
   module             String?
   partName           String?
   inOut              String? // "IN" or "OUT"
@@ -426,28 +472,36 @@ model SvrConfigurationItem {
   workAccompl        String?
 }
 
-model SvrLlpStatus {
-  id                  String          @id @default(uuid())
-  svrId               String
-  svr                 ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  engineSerialNumber  String? 
+model DocumentLlpStatus {
+  id                  String               @id @default(uuid())
+  svrId               String?
+  svr                 ShopVisitReport?     @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  edsId               String?
+  eds                 EngineDataSubmittal? @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  iq03Id              String?
+  iq03                Iq03Report?          @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  engineSerialNumber  String?
   no                  String?
   description         String?
   partNumber          String?
   serialNumber        String?
   totalHour           String?
   totalCycle          String?
-  totalCyclesCategory Json? 
-  lifeLimitCycles     Json? 
-  remainingCycles     Json? 
+  totalCyclesCategory Json?
+  lifeLimitCycles     Json?
+  remainingCycles     Json?
   remark              String?
 }
 
-model SvrAdStatus {
-  id                           String          @id @default(uuid())
-  svrId                        String
-  svr                          ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  engineSerialNumber           String? 
+model DocumentAdStatus {
+  id                           String               @id @default(uuid())
+  svrId                        String?
+  svr                          ShopVisitReport?     @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  edsId                        String?
+  eds                          EngineDataSubmittal? @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  iq03Id                       String?
+  iq03                         Iq03Report?          @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  engineSerialNumber           String?
   adNumber                     String?
   notificationDateOfCompliance String?
   description                  String?
@@ -455,58 +509,47 @@ model SvrAdStatus {
   recurrInsp                   String?
   moduleApplicability          String?
   methodOfCompliance           String?
-  remarks                      String?         @db.Text
+  remarks                      String?              @db.Text
 }
 
-model EdsConfigurationItem {
-  id                 String          @id @default(uuid())
-  edsId              String
-  eds                EngineDataSheet @relation(fields: [edsId], references: [id], onDelete: Cascade)
-  engineSerialNumber String? 
-  module             String?
-  partName           String?
-  inOut              String? // "IN" or "OUT"
-  partNumber         String?
-  serial             String?
-  qty                String?
-  tsn                String?
-  csn                String?
-  tso                String?
-  cso                String?
-  workAccompl        String?
-}
-
-model EdsAdStatus {
-  id                           String          @id @default(uuid())
-  edsId                        String
-  eds                          EngineDataSheet @relation(fields: [edsId], references: [id], onDelete: Cascade)
-  engineSerialNumber           String? 
-  adNumber                     String?
+model DocumentSbStatus {
+  id                           String               @id @default(uuid())
+  svrId                        String?
+  svr                          ShopVisitReport?     @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  edsId                        String?
+  eds                          EngineDataSubmittal? @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  iq03Id                       String?
+  iq03                         Iq03Report?          @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  engineSerialNumber           String?
+  sbNumber                     String?
   notificationDateOfCompliance String?
   description                  String?
-  referenceSb                  String?
-  recurrInsp                   String?
+  catType                      String?
   moduleApplicability          String?
   methodOfCompliance           String?
-  remarks                      String?         @db.Text
+  remarks                      String?              @db.Text
 }
 
-model Iq03ConfigurationItem {
-  id                 String          @id @default(uuid())
-  iq03Id             String
-  iq03               Iq03Report      @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
-  engineSerialNumber String? 
-  module             String?
-  partName           String?
-  inOut              String? // "IN" or "OUT"
-  partNumber         String?
-  serial             String?
-  qty                String?
-  tsn                String?
-  csn                String?
-  tso                String?
-  cso                String?
-  workAccompl        String?
+model DocumentAccessoriesList {
+  id                   String               @id @default(uuid())
+  svrId                String?
+  svr                  ShopVisitReport?     @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  edsId                String?
+  eds                  EngineDataSubmittal? @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  iq03Id               String?
+  iq03                 Iq03Report?          @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  engineSerialNumber   String?
+  no                   String?
+  description          String?
+  receivedPn           String?
+  receivedSn           String?
+  receivedTsn          String?
+  receivedTso          String?
+  installedPn          String?
+  installedSn          String?
+  installedTsn         String?
+  installedTso         String?
+  maintenancePerformed String?
 }
 
 model ComplianceRecord {
@@ -522,7 +565,7 @@ model ComplianceRecord {
   svrId          String?
   svr            ShopVisitReport?        @relation(fields: [svrId], references: [id], onDelete: SetNull)
   edsId          String?
-  eds            EngineDataSheet?        @relation(fields: [edsId], references: [id], onDelete: SetNull)
+  eds            EngineDataSubmittal?    @relation(fields: [edsId], references: [id], onDelete: SetNull)
   iq03Id         String?
   iq03           Iq03Report?             @relation(fields: [iq03Id], references: [id], onDelete: SetNull)
   remarks        String?                 @db.Text
@@ -530,8 +573,8 @@ model ComplianceRecord {
 
   resolutionReason          String?
   resolvedByComplianceId    String?
-  resolvedByCompliance      ComplianceRecord?    @relation("ComplianceResolution", fields: [resolvedByComplianceId], references: [id], onDelete: SetNull)
-  resolvesComplianceRecords ComplianceRecord[]   @relation("ComplianceResolution")
+  resolvedByCompliance      ComplianceRecord?   @relation("ComplianceResolution", fields: [resolvedByComplianceId], references: [id], onDelete: SetNull)
+  resolvesComplianceRecords ComplianceRecord[]  @relation("ComplianceResolution")
   audits                    SbComplianceAudit[]
   satisfiedGroupResults     SbGroupResult[]
 
@@ -550,7 +593,7 @@ model SbRelation {
   sourceSb       ServiceBulletin @relation(fields: [sourceSbId], references: [id], onDelete: Cascade)
   targetSbNumber String
   relationType   SbRelationType
-  conditionType  String?         // "PRE", "POST", "NONE"
+  conditionType  String? // "PRE", "POST", "NONE"
   effectiveDate  DateTime?
   isActive       Boolean         @default(true)
   remarks        String?         @db.Text
@@ -578,12 +621,12 @@ model SbRequirementGroup {
 }
 
 model SbRequirementMember {
-  id                 String               @id @default(uuid())
+  id                 String             @id @default(uuid())
   requirementGroupId String
-  requirementGroup   SbRequirementGroup   @relation(fields: [requirementGroupId], references: [id], onDelete: Cascade)
+  requirementGroup   SbRequirementGroup @relation(fields: [requirementGroupId], references: [id], onDelete: Cascade)
   targetSbNumber     String
   sequenceNumber     Int?
-  isActive           Boolean              @default(true)
+  isActive           Boolean            @default(true)
 
   createdAt DateTime @default(now())
 
@@ -591,15 +634,15 @@ model SbRequirementMember {
 }
 
 model SbGroupResult {
-  id                        String             @id @default(uuid())
-  requirementGroupId        String
-  requirementGroup          SbRequirementGroup @relation(fields: [requirementGroupId], references: [id], onDelete: Cascade)
-  engineId                  String
-  engine                    Engine             @relation(fields: [engineId], references: [id], onDelete: Cascade)
-  fulfillmentStatus         FulfillmentStatus  @default(OPEN)
-  satisfiedByComplianceId   String?
-  satisfiedByCompliance     ComplianceRecord?  @relation(fields: [satisfiedByComplianceId], references: [id], onDelete: SetNull)
-  satisfiedAt               DateTime?
+  id                      String             @id @default(uuid())
+  requirementGroupId      String
+  requirementGroup        SbRequirementGroup @relation(fields: [requirementGroupId], references: [id], onDelete: Cascade)
+  engineId                String
+  engine                  Engine             @relation(fields: [engineId], references: [id], onDelete: Cascade)
+  fulfillmentStatus       FulfillmentStatus  @default(OPEN)
+  satisfiedByComplianceId String?
+  satisfiedByCompliance   ComplianceRecord?  @relation(fields: [satisfiedByComplianceId], references: [id], onDelete: SetNull)
+  satisfiedAt             DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -608,17 +651,17 @@ model SbGroupResult {
 }
 
 model SbComplianceAudit {
-  id                       String            @id @default(uuid())
-  complianceRecordId       String
-  complianceRecord         ComplianceRecord  @relation(fields: [complianceRecordId], references: [id], onDelete: Cascade)
-  previousStatus           ComplianceStatus?
-  newStatus                ComplianceStatus
-  changeSource             String            // "SYSTEM" or "USER"
-  changeReason             String?           @db.Text
+  id                      String            @id @default(uuid())
+  complianceRecordId      String
+  complianceRecord        ComplianceRecord  @relation(fields: [complianceRecordId], references: [id], onDelete: Cascade)
+  previousStatus          ComplianceStatus?
+  newStatus               ComplianceStatus
+  changeSource            String // "SYSTEM" or "USER"
+  changeReason            String?           @db.Text
   triggeredByComplianceId String?
-  changedById              String?
-  changedBy                User?             @relation(fields: [changedById], references: [id], onDelete: SetNull)
-  changedAt                DateTime          @default(now())
+  changedById             String?
+  changedBy               User?             @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  changedAt               DateTime          @default(now())
 
   @@index([complianceRecordId, changedAt])
 }
@@ -657,15 +700,15 @@ model Approval {
 }
 
 model ReviewAction {
-  id        String         @id @default(uuid())
-  eesId     String
-  ees       EesDocument    @relation(fields: [eesId], references: [id], onDelete: Cascade)
-  action    ApprovalStatus
-  actorId   String
-  actor     User           @relation(fields: [actorId], references: [id])
-  actorRole Role
-  createdAt DateTime       @default(now())
-  comment   String?        @db.Text
+  id            String         @id @default(uuid())
+  eesId         String
+  ees           EesDocument    @relation(fields: [eesId], references: [id], onDelete: Cascade)
+  action        ApprovalStatus
+  actorId       String
+  actor         User           @relation(fields: [actorId], references: [id])
+  actorRole     Role
+  createdAt     DateTime       @default(now())
+  comment       String?        @db.Text
   signaturePath String?
 
   @@index([action, createdAt])

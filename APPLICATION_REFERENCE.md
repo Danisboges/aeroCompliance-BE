@@ -137,7 +137,7 @@ GMF-BE/
 | `SbGroupResult` | `id` | Hasil status kelompok pemenuhan per-Engine |
 | `SbGroupResult` | `id` | Hasil status kelompok pemenuhan per-Engine |
 | `ShopVisitReport` | `id` | Dokumen laporan pengerjaan fisik mesin di bengkel GMF (SVR) |
-| `EngineDataSheet` | `id` | Dokumen spesifikasi pabrikan/lembar data mesin (EDS) |
+| `EngineDataSubmittal` | `id` | Dokumen spesifikasi pabrikan/lembar data mesin (EDS) |
 | `Iq03Report` | `id` | Dokumen IQ03 terkait komponen dan status armada |
 | `EngineHistoryLog` | `id` | Catatan permanen jejak riwayat pertukaran ESN pada pesawat |
 | `EngineActiveComponent` | `id` | Single Source of Truth: Part aktif (terkini) yang terpasang di mesin |
@@ -162,7 +162,7 @@ GMF-BE/
 
 ## 7. Alur Pengerjaan Kedepan (Future Roadmap)
 
-1. **Integrasi Dokumen EDS (Engine Data Sheet)**: Pengembangan parser AI OCR khusus untuk membaca spesifikasi teknis dan ESN mesin baru dari berkas EDS secara otomatis.
+1. **Integrasi Dokumen EDS (Engine Data Submittal)**: Pengembangan parser AI OCR khusus untuk membaca spesifikasi teknis dan ESN mesin baru dari berkas EDS secara otomatis.
 2. **Frontend Graph Visualizer**: Integrasi library grafis UI (React Flow) yang memanfaatkan API `/api/service-bulletins/:id/lineage` untuk menampilkan diagram pohon silsilah SB interaktif (rantai *SUPERSEDES* / *TERMINATES*).
 3. **Wildcard RegEx ESN Matching**: Mengotomatiskan pencocokan ESN bermotif wildcard (seperti `89Y887` di mana $Y \in \{2, 3\}$) langsung ke armada Engine.
 4. **Realtime SVR Sync & Live PDF Preview**: Menyinkronkan status pengerjaan SVR secara *real-time* dan menyediakan fitur pratinjau instan EES PDF di layar sebelum di-export.
@@ -220,7 +220,7 @@ GMF-BE/
   - Mengatasi ambiguitas penggantian ESN secara parsial maupun rotasi (*Engine Swap*) dengan memperkenalkan 3 struktur terpisah: `EngineHistoryLog` (Perekam jejak rotasi ESN), `EngineActiveComponent` (Penampung suku cadang/komponen terkini yang aktif), dan `EngineDocumentComponentLog` (Penyimpan arsip mentah SVR/EDS).
   - Algoritma *Applicability Aturan 3* secara spesifik kini menembak tabel `EngineActiveComponent` sehingga tidak lagi tertipu oleh riwayat *Part Number* lama yang sudah dicopot (berstatus OUT).
 - **Independensi Dokumen Mesin (SVR, EDS, IQ03)**:
-  - Meninggalkan pendekatan polimorfisme (*single table*) `docType` dan memecahnya menjadi tabel otonom: `ShopVisitReport`, `EngineDataSheet`, dan `Iq03Report`.
+  - Meninggalkan pendekatan polimorfisme (*single table*) `docType` dan memecahnya menjadi tabel otonom: `ShopVisitReport`, `EngineDataSubmittal`, dan `Iq03Report`.
   - Pembuatan *Service*, *Repository*, dan *AI Client* yang sepenuhnya independen (`edsService.js`, `iq03Service.js`).
   - Pemusatan Endpoint Upload API di `POST /api/shop-visit-reports/upload/:docType` agar Frontend cukup berinteraksi dengan satu URL.
 
