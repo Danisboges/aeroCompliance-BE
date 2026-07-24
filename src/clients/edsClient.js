@@ -4,11 +4,7 @@ const FormData = require('form-data');
 const EDS_AI_SERVICE_URL = process.env.EDS_AI_SERVICE_URL;
 const EDS_AI_SERVICE_API_KEY = process.env.EDS_AI_SERVICE_API_KEY;
 
-const EDS_AI_SERVICE_URL = process.env.EDS_AI_SERVICE_URL;
-const EDS_AI_SERVICE_API_KEY = process.env.EDS_AI_SERVICE_API_KEY;
 
-const IQ03_AI_SERVICE_URL = process.env.IQ03_AI_SERVICE_URL;
-const IQ03_AI_SERVICE_API_KEY = process.env.IQ03_AI_SERVICE_API_KEY;
 
 /**
  * Calls AI service to extract engine documents (EDS, EDS, IQ03) data.

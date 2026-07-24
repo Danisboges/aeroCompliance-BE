@@ -166,9 +166,7 @@ model Engine {
   iq03Reports           Iq03Report[]
   complianceRecords     ComplianceRecord[]
   activeComponents      EngineActiveComponent[]
-  componentLogs         EngineDocumentComponentLog[]
-  llpLogs               EngineDocumentLlpLog[]
-  adLogs                EngineDocumentAdLog[]
+
   groupResults          SbGroupResult[]
 }
 
@@ -349,9 +347,9 @@ model ShopVisitReport {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  configurationReport EngineDocumentComponentLog[]
-  llpStatus           EngineDocumentLlpLog[]
-  adStatus            EngineDocumentAdLog[]
+  configurationReport SvrConfigurationItem[]
+  llpStatus           SvrLlpStatus[]
+  adStatus            SvrAdStatus[]
   complianceRecords   ComplianceRecord[]
 }
 
@@ -370,9 +368,8 @@ model EngineDataSheet {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  configurationReport EngineDocumentComponentLog[]
-  llpStatus           EngineDocumentLlpLog[]
-  adStatus            EngineDocumentAdLog[]
+  configurationReport EdsConfigurationItem[]
+  adStatus            EdsAdStatus[]
   complianceRecords   ComplianceRecord[]
 }
 
@@ -391,9 +388,7 @@ model Iq03Report {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  configurationReport EngineDocumentComponentLog[]
-  llpStatus           EngineDocumentLlpLog[]
-  adStatus            EngineDocumentAdLog[]
+  configurationReport Iq03ConfigurationItem[]
   complianceRecords   ComplianceRecord[]
 }
 
@@ -409,20 +404,15 @@ model EngineActiveComponent {
   tsn             String?
   csn             String?
   lastUpdatedFrom String? // "SVR-123" or "EDS-456"
+  sourceDate      DateTime? // Tanggal dokumen sumber (SVR/EDS/IQ03 reportDate)
   updatedAt       DateTime @updatedAt
 }
 
-model EngineDocumentComponentLog {
+model SvrConfigurationItem {
   id                 String          @id @default(uuid())
-  svrId              String?
-  svr                ShopVisitReport? @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  edsId              String?
-  eds                EngineDataSheet? @relation(fields: [edsId], references: [id], onDelete: Cascade)
-  iq03Id             String?
-  iq03               Iq03Report?      @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  svrId              String
+  svr                ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
   engineSerialNumber String? 
-  engineId           String?
-  engine             Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
   module             String?
   partName           String?
   inOut              String? // "IN" or "OUT"
@@ -436,17 +426,11 @@ model EngineDocumentComponentLog {
   workAccompl        String?
 }
 
-model EngineDocumentLlpLog {
+model SvrLlpStatus {
   id                  String          @id @default(uuid())
-  svrId               String?
-  svr                 ShopVisitReport? @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  edsId               String?
-  eds                 EngineDataSheet? @relation(fields: [edsId], references: [id], onDelete: Cascade)
-  iq03Id              String?
-  iq03                Iq03Report?      @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  svrId               String
+  svr                 ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
   engineSerialNumber  String? 
-  engineId            String?
-  engine              Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
   no                  String?
   description         String?
   partNumber          String?
@@ -459,17 +443,11 @@ model EngineDocumentLlpLog {
   remark              String?
 }
 
-model EngineDocumentAdLog {
+model SvrAdStatus {
   id                           String          @id @default(uuid())
-  svrId                        String?
-  svr                          ShopVisitReport? @relation(fields: [svrId], references: [id], onDelete: Cascade)
-  edsId                        String?
-  eds                          EngineDataSheet? @relation(fields: [edsId], references: [id], onDelete: Cascade)
-  iq03Id                       String?
-  iq03                         Iq03Report?      @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  svrId                        String
+  svr                          ShopVisitReport @relation(fields: [svrId], references: [id], onDelete: Cascade)
   engineSerialNumber           String? 
-  engineId                     String?
-  engine                       Engine?         @relation(fields: [engineId], references: [id], onDelete: SetNull)
   adNumber                     String?
   notificationDateOfCompliance String?
   description                  String?
@@ -478,6 +456,57 @@ model EngineDocumentAdLog {
   moduleApplicability          String?
   methodOfCompliance           String?
   remarks                      String?         @db.Text
+}
+
+model EdsConfigurationItem {
+  id                 String          @id @default(uuid())
+  edsId              String
+  eds                EngineDataSheet @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  engineSerialNumber String? 
+  module             String?
+  partName           String?
+  inOut              String? // "IN" or "OUT"
+  partNumber         String?
+  serial             String?
+  qty                String?
+  tsn                String?
+  csn                String?
+  tso                String?
+  cso                String?
+  workAccompl        String?
+}
+
+model EdsAdStatus {
+  id                           String          @id @default(uuid())
+  edsId                        String
+  eds                          EngineDataSheet @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  engineSerialNumber           String? 
+  adNumber                     String?
+  notificationDateOfCompliance String?
+  description                  String?
+  referenceSb                  String?
+  recurrInsp                   String?
+  moduleApplicability          String?
+  methodOfCompliance           String?
+  remarks                      String?         @db.Text
+}
+
+model Iq03ConfigurationItem {
+  id                 String          @id @default(uuid())
+  iq03Id             String
+  iq03               Iq03Report      @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  engineSerialNumber String? 
+  module             String?
+  partName           String?
+  inOut              String? // "IN" or "OUT"
+  partNumber         String?
+  serial             String?
+  qty                String?
+  tsn                String?
+  csn                String?
+  tso                String?
+  cso                String?
+  workAccompl        String?
 }
 
 model ComplianceRecord {
@@ -497,6 +526,7 @@ model ComplianceRecord {
   iq03Id         String?
   iq03           Iq03Report?             @relation(fields: [iq03Id], references: [id], onDelete: SetNull)
   remarks        String?                 @db.Text
+  sourceDate     DateTime? // Tanggal dokumen sumber
 
   resolutionReason          String?
   resolvedByComplianceId    String?

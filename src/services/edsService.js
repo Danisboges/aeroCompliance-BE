@@ -30,7 +30,9 @@ const matchedsCompliance = async (eds) => {
     return;
   }
 
-  console.log(`[eds Compliance] Running compliance matching for eds ${eds.id} (ESN: ${eds.engineSerialNumber})`);
+  console.log(`[EDS Compliance] Running compliance matching for EDS ${eds.id} (ESN: ${eds.engineSerialNumber})`);
+
+  const currentDocDate = new Date(eds.reportDate || eds.shopOutDate || eds.createdAt);
 
   // Fetch all active SBs and ADs from database
   const sbs = await prisma.serviceBulletin.findMany({ where: { status: 'ACTIVE' } });
@@ -71,29 +73,41 @@ const matchedsCompliance = async (eds) => {
     }
 
     if (matchedAd) {
-      console.log(`[eds Compliance] Matched AD: ${matchedAd.adNumber} with eds item: ${adItem.adNumber}`);
-      await prisma.complianceRecord.upsert({
-        where: {
-          engineId_adId: {
-            engineId: eds.engineId,
-            adId: matchedAd.id
-          }
-        },
-        create: {
-          engineId: eds.engineId,
-          adId: matchedAd.id,
-          status,
-          complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
-          edsId: eds.id,
-          remarks: adItem.remarks || adItem.methodOfCompliance || null
-        },
-        update: {
-          status,
-          complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
-          edsId: eds.id,
-          remarks: adItem.remarks || adItem.methodOfCompliance || null
-        }
+      console.log(`[EDS Compliance] Matched AD: ${matchedAd.adNumber} with EDS item: ${adItem.adNumber}`);
+      
+      const existingCompliance = await prisma.complianceRecord.findUnique({
+        where: { engineId_adId: { engineId: eds.engineId, adId: matchedAd.id } }
       });
+
+      if (existingCompliance && existingCompliance.sourceDate && existingCompliance.sourceDate > currentDocDate) {
+        console.log(`[EDS Compliance] Skipping AD ${matchedAd.adNumber} because existing record is newer.`);
+        continue;
+      }
+
+      if (existingCompliance) {
+        await prisma.complianceRecord.update({
+          where: { id: existingCompliance.id },
+          data: {
+            status,
+            complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
+            edsId: eds.id,
+            remarks: adItem.remarks || adItem.methodOfCompliance || null,
+            sourceDate: currentDocDate
+          }
+        });
+      } else {
+        await prisma.complianceRecord.create({
+          data: {
+            engineId: eds.engineId,
+            adId: matchedAd.id,
+            status,
+            complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
+            edsId: eds.id,
+            remarks: adItem.remarks || adItem.methodOfCompliance || null,
+            sourceDate: currentDocDate
+          }
+        });
+      }
       continue; // Skip SB checking if AD matched
     }
 
@@ -116,29 +130,41 @@ const matchedsCompliance = async (eds) => {
     }
 
     if (matchedSb) {
-      console.log(`[eds Compliance] Matched SB: ${matchedSb.sbNumber} with eds item: ${adItem.adNumber || adItem.referenceSb}`);
-      await prisma.complianceRecord.upsert({
-        where: {
-          engineId_sbId: {
-            engineId: eds.engineId,
-            sbId: matchedSb.id
-          }
-        },
-        create: {
-          engineId: eds.engineId,
-          sbId: matchedSb.id,
-          status,
-          complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
-          edsId: eds.id,
-          remarks: adItem.remarks || adItem.methodOfCompliance || null
-        },
-        update: {
-          status,
-          complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
-          edsId: eds.id,
-          remarks: adItem.remarks || adItem.methodOfCompliance || null
-        }
+      console.log(`[EDS Compliance] Matched SB: ${matchedSb.sbNumber} with EDS item: ${adItem.adNumber || adItem.referenceSb}`);
+      
+      const existingCompliance = await prisma.complianceRecord.findUnique({
+        where: { engineId_sbId: { engineId: eds.engineId, sbId: matchedSb.id } }
       });
+
+      if (existingCompliance && existingCompliance.sourceDate && existingCompliance.sourceDate > currentDocDate) {
+        console.log(`[EDS Compliance] Skipping SB ${matchedSb.sbNumber} because existing record is newer.`);
+        continue;
+      }
+
+      if (existingCompliance) {
+        await prisma.complianceRecord.update({
+          where: { id: existingCompliance.id },
+          data: {
+            status,
+            complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
+            edsId: eds.id,
+            remarks: adItem.remarks || adItem.methodOfCompliance || null,
+            sourceDate: currentDocDate
+          }
+        });
+      } else {
+        await prisma.complianceRecord.create({
+          data: {
+            engineId: eds.engineId,
+            sbId: matchedSb.id,
+            status,
+            complianceDate: adItem.notificationDateOfCompliance || eds.shopOutDate || null,
+            edsId: eds.id,
+            remarks: adItem.remarks || adItem.methodOfCompliance || null,
+            sourceDate: currentDocDate
+          }
+        });
+      }
     }
   }
 };
@@ -201,20 +227,6 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
     workAccompl: item.work_accompl || ''
   }));
 
-  // Map LLP items
-  const rawLlps = Array.isArray(data.life_limited_part_status) ? data.life_limited_part_status : [];
-  edsData.llpStatus = rawLlps.map(item => ({
-    no: item.no !== undefined && item.no !== null ? String(item.no) : '',
-    description: item.description || '',
-    partNumber: item.part_number || '',
-    serialNumber: item.serial_number || '',
-    totalHour: item.total_hour || '',
-    totalCycle: item.total_cycle !== undefined && item.total_cycle !== null ? String(item.total_cycle) : '',
-    totalCyclesCategory: item.total_cycles_category || {},
-    lifeLimitCycles: item.life_limit_cycles || {},
-    remainingCycles: item.remaining_cycles || {},
-    remark: item.remark || ''
-  }));
 
   // Map AD/SB items
   const rawAds = Array.isArray(data.airworthiness_directive_status) ? data.airworthiness_directive_status : [];
@@ -234,18 +246,27 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
   // Save eds to Database (Murni untuk History Log)
   const eds = await edsRepository.createEngineDataSheet(edsData);
 
-  // Sync EngineActiveComponent (Data Terkini)
+  // Sync EngineActiveComponent (Data Terkini) berdasarkan Hirarki Waktu
   if (eds.engineId) {
-    console.log(`[eds Service] Syncing Active Components for Engine: ${eds.engineId}`);
+    console.log(`[EDS Service] Syncing Active Components for Engine: ${eds.engineId}`);
+    
+    // Parse tanggal dokumen saat ini
+    const currentDocDate = new Date(eds.reportDate || eds.shopOutDate || eds.createdAt);
+    
     for (const item of edsData.configurationReport) {
       if (!item.partNumber) continue;
 
+      const existing = await prisma.engineActiveComponent.findFirst({
+        where: { engineId: eds.engineId, partNumber: item.partNumber }
+      });
+
+      // Jika ada komponen aktif yang diubah oleh dokumen yang lebih baru, abaikan dokumen lama ini.
+      if (existing && existing.sourceDate && existing.sourceDate > currentDocDate) {
+        console.log(`[EDS Service] Skipping part ${item.partNumber} because existing active component is newer.`);
+        continue;
+      }
+
       if (item.inOut === 'IN' || item.inOut === 'INSTALLED') {
-        // Tambahkan ke tabel aktif
-        const existing = await prisma.engineActiveComponent.findFirst({
-          where: { engineId: eds.engineId, partNumber: item.partNumber }
-        });
-        
         if (!existing) {
           await prisma.engineActiveComponent.create({
             data: {
@@ -255,12 +276,24 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
               module: item.module,
               tsn: item.tsn,
               csn: item.csn,
-              lastUpdatedFrom: `eds-${eds.id}`
+              lastUpdatedFrom: `EDS-${eds.id}`,
+              sourceDate: currentDocDate
+            }
+          });
+        } else {
+          await prisma.engineActiveComponent.update({
+            where: { id: existing.id },
+            data: {
+              partName: item.partName,
+              module: item.module,
+              tsn: item.tsn,
+              csn: item.csn,
+              lastUpdatedFrom: `EDS-${eds.id}`,
+              sourceDate: currentDocDate
             }
           });
         }
       } else if (item.inOut === 'OUT' || item.inOut === 'REMOVED') {
-        // Hapus dari tabel aktif jika dicabut
         await prisma.engineActiveComponent.deleteMany({
           where: { engineId: eds.engineId, partNumber: item.partNumber }
         });

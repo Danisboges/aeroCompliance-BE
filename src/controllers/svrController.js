@@ -70,6 +70,50 @@ const uploadSvrJson = async (req, res) => {
 };
 
 /**
+ * POST /api/webhooks/eds
+ * Webhook that directly ingests raw JSON extracted from EDS document.
+ */
+const uploadEdsJson = async (req, res) => {
+  try {
+    const edsService = require('../services/edsService');
+    const result = await edsService.processEdsJson(
+      req.body,
+      req.headers['x-file-name'] || 'eds-ingested-payload.json',
+      'PENDING',
+      'EDS'
+    );
+    return res.status(201).json({
+      message: 'EDS JSON ingested successfully',
+      data: result
+    });
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+/**
+ * POST /api/webhooks/iq03
+ * Webhook that directly ingests raw JSON extracted from IQ03 document.
+ */
+const uploadIq03Json = async (req, res) => {
+  try {
+    const iq03Service = require('../services/iq03Service');
+    const result = await iq03Service.processIq03Json(
+      req.body,
+      req.headers['x-file-name'] || 'iq03-ingested-payload.json',
+      'PENDING',
+      'IQ03'
+    );
+    return res.status(201).json({
+      message: 'IQ03 JSON ingested successfully',
+      data: result
+    });
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+/**
  * GET /api/shop-visit-reports
  * List all SVR records with pagination and filters.
  */
@@ -178,6 +222,8 @@ const deleteShopVisitReport = async (req, res) => {
 module.exports = {
   uploadEngineDocPdf,
   uploadSvrJson,
+  uploadEdsJson,
+  uploadIq03Json,
   listShopVisitReports,
   getShopVisitReport,
   viewSvrPdf,

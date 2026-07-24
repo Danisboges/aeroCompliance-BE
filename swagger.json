@@ -1350,25 +1350,52 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "id": { "type": "string" },
-                          "eesNumber": { "type": "string" },
-                          "reviewStatus": { "type": "string" },
-                          "taskType": { "type": "string" },
-                          "createdAt": { "type": "string", "format": "date-time" },
+                          "id": {
+                            "type": "string"
+                          },
+                          "eesNumber": {
+                            "type": "string"
+                          },
+                          "reviewStatus": {
+                            "type": "string"
+                          },
+                          "taskType": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
                           "sourceSb": {
                             "type": "object",
                             "properties": {
-                              "id": { "type": "string" },
-                              "sbNumber": { "type": "string" },
-                              "title": { "type": "string" },
-                              "operator": { "type": "object" },
+                              "id": {
+                                "type": "string"
+                              },
+                              "sbNumber": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "operator": {
+                                "type": "object"
+                              },
                               "createdBy": {
                                 "type": "object",
                                 "properties": {
-                                  "id": { "type": "string" },
-                                  "username": { "type": "string" },
-                                  "email": { "type": "string" },
-                                  "role": { "type": "string" }
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "username": {
+                                    "type": "string"
+                                  },
+                                  "email": {
+                                    "type": "string"
+                                  },
+                                  "role": {
+                                    "type": "string"
+                                  }
                                 }
                               }
                             }
@@ -1379,10 +1406,18 @@
                     "pagination": {
                       "type": "object",
                       "properties": {
-                        "page": { "type": "integer" },
-                        "limit": { "type": "integer" },
-                        "total": { "type": "integer" },
-                        "totalPages": { "type": "integer" }
+                        "page": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "totalPages": {
+                          "type": "integer"
+                        }
                       }
                     }
                   }
@@ -1488,7 +1523,11 @@
             "description": "Jenis Dokumen (SVR, EDS, atau IQ03)",
             "schema": {
               "type": "string",
-              "enum": ["SVR", "EDS", "IQ03"]
+              "enum": [
+                "SVR",
+                "EDS",
+                "IQ03"
+              ]
             }
           },
           {
@@ -2071,12 +2110,37 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["targetSbNumber", "relationType"],
+                "required": [
+                  "targetSbNumber",
+                  "relationType"
+                ],
                 "properties": {
-                  "targetSbNumber": { "type": "string", "example": "CFM56-7B S/B 72-0581" },
-                  "relationType": { "type": "string", "enum": ["CONCURRENT", "SUPERSEDES", "TERMINATES"], "example": "CONCURRENT" },
-                  "conditionType": { "type": "string", "enum": ["PRE", "POST", "NONE"], "example": "POST" },
-                  "remarks": { "type": "string", "example": "Prerequisite relation" }
+                  "targetSbNumber": {
+                    "type": "string",
+                    "example": "CFM56-7B S/B 72-0581"
+                  },
+                  "relationType": {
+                    "type": "string",
+                    "enum": [
+                      "CONCURRENT",
+                      "SUPERSEDES",
+                      "TERMINATES"
+                    ],
+                    "example": "CONCURRENT"
+                  },
+                  "conditionType": {
+                    "type": "string",
+                    "enum": [
+                      "PRE",
+                      "POST",
+                      "NONE"
+                    ],
+                    "example": "POST"
+                  },
+                  "remarks": {
+                    "type": "string",
+                    "example": "Prerequisite relation"
+                  }
                 }
               }
             }
@@ -2143,6 +2207,52 @@
         "responses": {
           "200": {
             "description": "Engine compliance summary retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/webhooks/eds": {
+      "post": {
+        "summary": "Webhook: Ingest JSON EDS dari AI",
+        "description": "Endpoint untuk menerima hasil parsing JSON dari tim AI untuk Engine Data Sheet (EDS)",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "EDS JSON ingested successfully"
+          }
+        }
+      }
+    },
+    "/api/webhooks/iq03": {
+      "post": {
+        "summary": "Webhook: Ingest JSON IQ03 dari AI",
+        "description": "Endpoint untuk menerima hasil parsing JSON dari tim AI untuk IQ03 Report",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "IQ03 JSON ingested successfully"
           }
         }
       }

@@ -30,19 +30,16 @@ const createShopVisitReport = async (data) => {
 
   const mappedConfigs = (configurationReport || []).map(item => ({
     ...item,
-    engineId,
     engineSerialNumber: headerData.engineSerialNumber
   }));
 
   const mappedLlps = (llpStatus || []).map(item => ({
     ...item,
-    engineId,
     engineSerialNumber: headerData.engineSerialNumber
   }));
 
   const mappedAds = (adStatus || []).map(item => ({
     ...item,
-    engineId,
     engineSerialNumber: headerData.engineSerialNumber
   }));
 

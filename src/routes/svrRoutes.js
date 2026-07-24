@@ -9,8 +9,10 @@ const pdfBodyParser = express.raw({ type: 'application/pdf', limit: '100mb' });
 // Upload Engine PDF directly (SVR, EDS, IQ03)
 router.post('/shop-visit-reports/upload/:docType', verifyToken, pdfBodyParser, svrController.uploadEngineDocPdf);
 
-// Webhook for SVR JSON ingestion
+// Webhook for SVR, EDS, and IQ03 JSON ingestion
 router.post('/webhooks/svr', svrController.uploadSvrJson);
+router.post('/webhooks/eds', svrController.uploadEdsJson);
+router.post('/webhooks/iq03', svrController.uploadIq03Json);
 
 // SVR lists and details
 router.get('/shop-visit-reports', verifyToken, svrController.listShopVisitReports);

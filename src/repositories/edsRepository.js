@@ -3,7 +3,6 @@ const prisma = require('../db');
 const includeRelations = {
   engine: true,
   configurationReport: true,
-  llpStatus: true,
   adStatus: true,
   complianceRecords: {
     include: {
@@ -30,31 +29,20 @@ const createEngineDataSheet = async (data) => {
 
   const mappedConfigs = (configurationReport || []).map(item => ({
     ...item,
-    engineId,
-    engineSerialNumber: headerData.engineSerialNumber
-  }));
-
-  const mappedLlps = (llpStatus || []).map(item => ({
-    ...item,
-    engineId,
     engineSerialNumber: headerData.engineSerialNumber
   }));
 
   const mappedAds = (adStatus || []).map(item => ({
     ...item,
-    engineId,
     engineSerialNumber: headerData.engineSerialNumber
   }));
 
-  return prisma.EngineDataSheet.create({
+  return prisma.engineDataSheet.create({
     data: {
       ...headerData,
       engineId,
       configurationReport: {
         create: mappedConfigs
-      },
-      llpStatus: {
-        create: mappedLlps
       },
       adStatus: {
         create: mappedAds

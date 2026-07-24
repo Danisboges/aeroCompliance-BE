@@ -32,6 +32,8 @@ const matchSvrCompliance = async (svr) => {
 
   console.log(`[SVR Compliance] Running compliance matching for SVR ${svr.id} (ESN: ${svr.engineSerialNumber})`);
 
+  const currentDocDate = new Date(svr.reportDate || svr.shopOutDate || svr.createdAt);
+
   // Fetch all active SBs and ADs from database
   const sbs = await prisma.serviceBulletin.findMany({ where: { status: 'ACTIVE' } });
   const ads = await prisma.airworthinessDirective.findMany({ where: { status: 'ACTIVE' } });
@@ -72,28 +74,40 @@ const matchSvrCompliance = async (svr) => {
 
     if (matchedAd) {
       console.log(`[SVR Compliance] Matched AD: ${matchedAd.adNumber} with SVR item: ${adItem.adNumber}`);
-      await prisma.complianceRecord.upsert({
-        where: {
-          engineId_adId: {
-            engineId: svr.engineId,
-            adId: matchedAd.id
-          }
-        },
-        create: {
-          engineId: svr.engineId,
-          adId: matchedAd.id,
-          status,
-          complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
-          svrId: svr.id,
-          remarks: adItem.remarks || adItem.methodOfCompliance || null
-        },
-        update: {
-          status,
-          complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
-          svrId: svr.id,
-          remarks: adItem.remarks || adItem.methodOfCompliance || null
-        }
+      
+      const existingCompliance = await prisma.complianceRecord.findUnique({
+        where: { engineId_adId: { engineId: svr.engineId, adId: matchedAd.id } }
       });
+
+      if (existingCompliance && existingCompliance.sourceDate && existingCompliance.sourceDate > currentDocDate) {
+        console.log(`[SVR Compliance] Skipping AD ${matchedAd.adNumber} because existing record is newer.`);
+        continue;
+      }
+
+      if (existingCompliance) {
+        await prisma.complianceRecord.update({
+          where: { id: existingCompliance.id },
+          data: {
+            status,
+            complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
+            svrId: svr.id,
+            remarks: adItem.remarks || adItem.methodOfCompliance || null,
+            sourceDate: currentDocDate
+          }
+        });
+      } else {
+        await prisma.complianceRecord.create({
+          data: {
+            engineId: svr.engineId,
+            adId: matchedAd.id,
+            status,
+            complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
+            svrId: svr.id,
+            remarks: adItem.remarks || adItem.methodOfCompliance || null,
+            sourceDate: currentDocDate
+          }
+        });
+      }
       continue; // Skip SB checking if AD matched
     }
 
@@ -117,28 +131,40 @@ const matchSvrCompliance = async (svr) => {
 
     if (matchedSb) {
       console.log(`[SVR Compliance] Matched SB: ${matchedSb.sbNumber} with SVR item: ${adItem.adNumber || adItem.referenceSb}`);
-      await prisma.complianceRecord.upsert({
-        where: {
-          engineId_sbId: {
-            engineId: svr.engineId,
-            sbId: matchedSb.id
-          }
-        },
-        create: {
-          engineId: svr.engineId,
-          sbId: matchedSb.id,
-          status,
-          complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
-          svrId: svr.id,
-          remarks: adItem.remarks || adItem.methodOfCompliance || null
-        },
-        update: {
-          status,
-          complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
-          svrId: svr.id,
-          remarks: adItem.remarks || adItem.methodOfCompliance || null
-        }
+      
+      const existingCompliance = await prisma.complianceRecord.findUnique({
+        where: { engineId_sbId: { engineId: svr.engineId, sbId: matchedSb.id } }
       });
+
+      if (existingCompliance && existingCompliance.sourceDate && existingCompliance.sourceDate > currentDocDate) {
+        console.log(`[SVR Compliance] Skipping SB ${matchedSb.sbNumber} because existing record is newer.`);
+        continue;
+      }
+
+      if (existingCompliance) {
+        await prisma.complianceRecord.update({
+          where: { id: existingCompliance.id },
+          data: {
+            status,
+            complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
+            svrId: svr.id,
+            remarks: adItem.remarks || adItem.methodOfCompliance || null,
+            sourceDate: currentDocDate
+          }
+        });
+      } else {
+        await prisma.complianceRecord.create({
+          data: {
+            engineId: svr.engineId,
+            sbId: matchedSb.id,
+            status,
+            complianceDate: adItem.notificationDateOfCompliance || svr.shopOutDate || null,
+            svrId: svr.id,
+            remarks: adItem.remarks || adItem.methodOfCompliance || null,
+            sourceDate: currentDocDate
+          }
+        });
+      }
     }
   }
 };
@@ -234,18 +260,27 @@ const processSvrJson = async (rawPayload, originalFileName = 'payload.json', sto
   // Save SVR to Database (Murni untuk History Log)
   const svr = await svrRepository.createShopVisitReport(svrData);
 
-  // Sync EngineActiveComponent (Data Terkini)
+  // Sync EngineActiveComponent (Data Terkini) berdasarkan Hirarki Waktu
   if (svr.engineId) {
     console.log(`[SVR Service] Syncing Active Components for Engine: ${svr.engineId}`);
+    
+    // Parse tanggal dokumen saat ini
+    const currentDocDate = new Date(svr.reportDate || svr.shopOutDate || svr.createdAt);
+    
     for (const item of svrData.configurationReport) {
       if (!item.partNumber) continue;
 
+      const existing = await prisma.engineActiveComponent.findFirst({
+        where: { engineId: svr.engineId, partNumber: item.partNumber }
+      });
+
+      // Jika ada komponen aktif yang diubah oleh dokumen yang lebih baru, abaikan dokumen lama ini.
+      if (existing && existing.sourceDate && existing.sourceDate > currentDocDate) {
+        console.log(`[SVR Service] Skipping part ${item.partNumber} because existing active component is newer.`);
+        continue;
+      }
+
       if (item.inOut === 'IN' || item.inOut === 'INSTALLED') {
-        // Tambahkan ke tabel aktif
-        const existing = await prisma.engineActiveComponent.findFirst({
-          where: { engineId: svr.engineId, partNumber: item.partNumber }
-        });
-        
         if (!existing) {
           await prisma.engineActiveComponent.create({
             data: {
@@ -255,12 +290,24 @@ const processSvrJson = async (rawPayload, originalFileName = 'payload.json', sto
               module: item.module,
               tsn: item.tsn,
               csn: item.csn,
-              lastUpdatedFrom: `SVR-${svr.id}`
+              lastUpdatedFrom: `SVR-${svr.id}`,
+              sourceDate: currentDocDate
+            }
+          });
+        } else {
+          await prisma.engineActiveComponent.update({
+            where: { id: existing.id },
+            data: {
+              partName: item.partName,
+              module: item.module,
+              tsn: item.tsn,
+              csn: item.csn,
+              lastUpdatedFrom: `SVR-${svr.id}`,
+              sourceDate: currentDocDate
             }
           });
         }
       } else if (item.inOut === 'OUT' || item.inOut === 'REMOVED') {
-        // Hapus dari tabel aktif jika dicabut
         await prisma.engineActiveComponent.deleteMany({
           where: { engineId: svr.engineId, partNumber: item.partNumber }
         });
