@@ -31,7 +31,9 @@ const createEesDocument = async (documentData, evaluations) => {
         taskType: taskType || null,
         references: references || null,
         effectedType: effectedType || null,
-        effectedModel: effectedModel || null,
+        effectedModel: Array.isArray(effectedModel)
+          ? effectedModel.join(", ")
+          : effectedModel || null,
         esn: esn || null,
         aircraftType: aircraftType || null,
         partNumber: partNumber || null,

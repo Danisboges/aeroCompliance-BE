@@ -159,6 +159,16 @@ const normalizeOcrPayload = (rawPayload) => {
     };
   });
 
+  const effectedModel = Array.isArray(payload.effected_model)
+    ? payload.effected_model
+        .map(String)
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .join(", ")
+    : typeof payload.effected_model === "string"
+      ? payload.effected_model.trim()
+      : null;
+
   return {
     eesNumber,
     bulletinNumber,
@@ -167,7 +177,7 @@ const normalizeOcrPayload = (rawPayload) => {
     taskType: payload.task_type || '',
     references: payload.references || null,
     effectedType: payload.effected_type || '',
-    effectedModel: Array.isArray(payload.effected_model) ? payload.effected_model : (typeof payload.effected_model === 'string' ? payload.effected_model.split(',').map(s=>s.trim()) : null),
+    effectedModel,
     aircraftType: payload.aircraftType,
     aircraftId: payload.aircraftId,
     manufacturer,
@@ -187,7 +197,23 @@ const normalizeOcrPayload = (rawPayload) => {
  */
 const processEesWebhook = async (payload, explicitSourceSbId = null) => {
   const normalized = normalizeOcrPayload(payload);
-  const { eesNumber, bulletinNumber, evaluations, taskType, references, effectedType, effectedModel, aircraftType, manufacturer, partNumber, isManualEdited } = normalized;
+  const {
+    eesNumber,
+    bulletinNumber,
+    evaluations,
+    taskType,
+    references,
+    effectedType,
+    effectedModel,
+    aircraftType,
+    manufacturer,
+    partNumber,
+    componentType,
+    complianceTimeType,
+    isRepetitive,
+    note,
+    isManualEdited,
+  } = normalized;
 
   let sourceSbId = explicitSourceSbId;
 

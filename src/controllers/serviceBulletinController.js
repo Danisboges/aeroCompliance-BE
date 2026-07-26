@@ -2,18 +2,26 @@ const fs = require('fs');
 const serviceBulletinService = require('../services/serviceBulletinService');
 const pdfGenerationService = require('../services/pdfGenerationService');
 
+const eesRepository = require('../repositories/eesRepository');
+
 const handleControllerError = (res, error) => {
-  if (error.message.startsWith('Validation Error')) {
+  console.error("[ServiceBulletinController]", {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+  });
+
+  if (error.message.startsWith("Validation Error")) {
     return res.status(400).json({ error: error.message });
   }
 
-  if (error.message.startsWith('Not Found')) {
+  if (error.message.startsWith("Not Found")) {
     return res.status(404).json({ error: error.message });
   }
 
   return res.status(500).json({
-    error: 'Internal Server Error',
-    details: error.message
+    error: "Internal Server Error",
+    details: error.message,
   });
 };
 
@@ -404,6 +412,18 @@ async function getEesDocument(req, res) {
  */
 async function updateEesDocument(req, res) {
   try {
+    const existingEes = await eesRepository.getEesDocumentBySbId(req.params.id);
+
+    if (
+      existingEes &&
+      ["APPROVED", "IN_REVIEW"].includes(existingEes.reviewStatus)
+    ) {
+      return res.status(409).json({
+        error: "Conflict",
+        details: "EES yang sudah masuk proses approval tidak dapat diregenerate.",
+      });
+    }
+
     const { validatedPayload } = req.body;
     if (!validatedPayload) {
       return res.status(400).json({ error: 'Validation Error: validatedPayload is required' });
