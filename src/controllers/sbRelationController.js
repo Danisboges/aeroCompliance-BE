@@ -12,7 +12,7 @@ const getSbRelations = async (req, res) => {
   } catch (error) {
     console.error('[SbRelationController]', error);
     if (error.message.includes('not found')) {
-      return res.status(404).json({ error: error.message });
+      return res.status(404).json({ error: 'Data tidak ada' });
     }
     return res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -29,7 +29,7 @@ const getSbLineageTree = async (req, res) => {
   } catch (error) {
     console.error('[SbRelationController]', error);
     if (error.message.includes('not found')) {
-      return res.status(404).json({ error: error.message });
+      return res.status(404).json({ error: 'Data tidak ada' });
     }
     return res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -76,7 +76,7 @@ const getEngineComplianceSummary = async (req, res) => {
   } catch (error) {
     console.error('[SbRelationController]', error);
     if (error.message.includes('not found')) {
-      return res.status(404).json({ error: error.message });
+      return res.status(404).json({ error: 'Data tidak ada' });
     }
     return res.status(500).json({ error: 'Internal Server Error' });
   }

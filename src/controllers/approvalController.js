@@ -53,8 +53,8 @@ const getApprovalByEesId = async (req, res) => {
     });
   } catch (error) {
     console.error('[ApprovalController]', error);
-    if (error.message.includes('not found') || error.message.includes('Unauthorized')) {
-      return res.status(404).json({ error: error.message });
+    if (error.message.includes('not found') || error.message.includes('Unauthorized') || error.message.includes('No active approval found')) {
+      return res.status(404).json({ error: 'Data tidak ada' });
     }
     return res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -88,7 +88,10 @@ const postReview = async (req, res) => {
     });
   } catch (error) {
     console.error('[ApprovalController]', error);
-    if (error.message.includes('Invalid') || error.message.includes('found')) {
+    if (error.message.includes('found')) {
+      return res.status(404).json({ error: 'Data tidak ada' });
+    }
+    if (error.message.includes('Invalid')) {
       return res.status(400).json({ error: error.message });
     }
     return res.status(500).json({ error: 'Internal Server Error' });
@@ -119,7 +122,10 @@ const submitForApproval = async (req, res) => {
     });
   } catch (error) {
     console.error('[ApprovalController]', error);
-    if (error.message.includes('already') || error.message.includes('found')) {
+    if (error.message.includes('found')) {
+      return res.status(404).json({ error: 'Data tidak ada' });
+    }
+    if (error.message.includes('already')) {
       return res.status(400).json({ error: error.message });
     }
     return res.status(500).json({ error: 'Internal Server Error' });

@@ -7,9 +7,14 @@ const getSummary = async (req, res) => {
   try {
     const { month, recentLimit, operatorId, timezone } = req.query;
     
-    // Validation
-    if (!month || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
-      return res.status(400).json({ error: 'Invalid or missing month parameter. Use YYYY-MM format.' });
+    let targetMonth = month;
+    if (!targetMonth) {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      targetMonth = `${yyyy}-${mm}`;
+    } else if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(targetMonth)) {
+      return res.status(400).json({ error: 'Invalid month parameter. Use YYYY-MM format.' });
     }
 
     // RBAC and Operator isolation check
@@ -23,7 +28,7 @@ const getSummary = async (req, res) => {
     }
 
     const summary = await dashboardService.getDashboardSummary({
-      month,
+      month: targetMonth,
       recentLimit,
       operatorId: effectiveOperatorId,
       userId: req.user.id

@@ -82,14 +82,14 @@ const getDashboardSummary = async ({ month, recentLimit = 5, operatorId, userId 
       createdAt: { gte: monthStart, lt: nextMonthStart }
     },
     include: {
-      eesDocument: {
+      ees: {
         include: { sourceSb: true }
       }
     }
   });
 
   const monthlyReviews = operatorId 
-    ? monthlyReviewsRaw.filter(r => r.eesDocument?.sourceSb?.operatorId === operatorId)
+    ? monthlyReviewsRaw.filter(r => r.ees?.sourceSb?.operatorId === operatorId)
     : monthlyReviewsRaw;
 
   let approved = 0, rejected = 0, returned = 0;
@@ -100,7 +100,7 @@ const getDashboardSummary = async ({ month, recentLimit = 5, operatorId, userId 
     if (r.action === 'REJECTED') rejected++;
     if (r.action === 'RETURNED') returned++;
 
-    const cat = r.eesDocument?.sourceSb?.complianceCategory || 0;
+    const cat = r.ees?.sourceSb?.complianceCategory || 0;
     categoryCount[cat] = (categoryCount[cat] || 0) + 1;
   });
 
