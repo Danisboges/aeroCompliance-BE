@@ -61,8 +61,9 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
 
     return result;
   } catch (error) {
-    console.error('[SVR AI Client] ❌ SVR AI service connection failed:', error.message);
-    throw new Error(`SVR extraction failed: ${error.message}`);
+    const errorMsg = error.response ? `HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}` : error.message;
+    console.error('[SVR AI Client] ❌ SVR AI service connection failed:', errorMsg);
+    throw new Error(`SVR extraction failed: ${errorMsg}`);
   }
 };
 
