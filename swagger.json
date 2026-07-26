@@ -1524,62 +1524,6 @@
         }
       }
     },
-    "/api/shop-visit-reports/upload/{docType}": {
-      "post": {
-        "summary": "Upload PDF Dokumen Mesin (SVR / EDS / IQ03)",
-        "description": "Upload file PDF binary langsung (raw body). docType yang valid: **SVR, EDS, IQ03**",
-        "tags": [
-          "Shop Visit Report (SVR)"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "docType",
-            "in": "path",
-            "required": true,
-            "description": "Jenis Dokumen (SVR, EDS, atau IQ03)",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "SVR",
-                "EDS",
-                "IQ03"
-              ]
-            }
-          },
-          {
-            "name": "x-file-name",
-            "in": "header",
-            "required": true,
-            "description": "Nama file PDF asli (misal: SVR_660235_2026.pdf)",
-            "schema": {
-              "type": "string",
-              "example": "SVR_660235_2026.pdf"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/pdf": {
-              "schema": {
-                "type": "string",
-                "format": "binary"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "SVR PDF received and processed by SVR pipeline"
-          }
-        }
-      }
-    },
     "/api/webhooks/svr": {
       "post": {
         "summary": "Webhook ingest JSON SVR mentah (hasil ekstraksi AI)",
@@ -2274,6 +2218,132 @@
         "responses": {
           "201": {
             "description": "IQ03 JSON ingested successfully"
+          }
+        }
+      }
+    },
+    "/api/shop-visit-reports/upload/SVR": {
+      "post": {
+        "summary": "Upload PDF SVR Document",
+        "description": "Upload file PDF binary langsung (raw body). docType yang valid: **SVR, EDS, IQ03**",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-file-name",
+            "in": "header",
+            "required": true,
+            "description": "Nama file PDF asli (misal: SVR_660235_2026.pdf)",
+            "schema": {
+              "type": "string",
+              "example": "SVR_660235_2026.pdf"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "SVR PDF received and processed by SVR pipeline"
+          }
+        }
+      }
+    },
+    "/api/engine-data-sheets/upload/EDS": {
+      "post": {
+        "summary": "Upload PDF EDS Document",
+        "description": "Upload file PDF binary langsung (raw body). docType yang valid: **SVR, EDS, IQ03**",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-file-name",
+            "in": "header",
+            "required": true,
+            "description": "Nama file PDF asli (misal: SVR_660235_2026.pdf)",
+            "schema": {
+              "type": "string",
+              "example": "SVR_660235_2026.pdf"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "SVR PDF received and processed by SVR pipeline"
+          }
+        }
+      }
+    },
+    "/api/iq03-reports/upload/IQ03": {
+      "post": {
+        "summary": "Upload PDF IQ03 Document",
+        "description": "Upload file PDF binary langsung (raw body). docType yang valid: **SVR, EDS, IQ03**",
+        "tags": [
+          "Shop Visit Report (SVR)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-file-name",
+            "in": "header",
+            "required": true,
+            "description": "Nama file PDF asli (misal: SVR_660235_2026.pdf)",
+            "schema": {
+              "type": "string",
+              "example": "SVR_660235_2026.pdf"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "SVR PDF received and processed by SVR pipeline"
           }
         }
       }
