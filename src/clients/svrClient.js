@@ -18,13 +18,13 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
   let apiKey;
 
   if (docType === 'EDS') {
-    endpoint = EDS_AI_SERVICE_URL || 'https://dzakievgn-sb-extractor.hf.space/api/extract_eds';
+    endpoint = EDS_AI_SERVICE_URL;
     apiKey = EDS_AI_SERVICE_API_KEY;
   } else if (docType === 'IQ03') {
-    endpoint = IQ03_AI_SERVICE_URL || 'https://dzakievgn-sb-extractor.hf.space/api/extract_iq03';
+    endpoint = IQ03_AI_SERVICE_URL;
     apiKey = IQ03_AI_SERVICE_API_KEY;
   } else {
-    endpoint = SVR_AI_SERVICE_URL || 'https://dzakievgn-sb-extractor.hf.space/api/extract_svr';
+    endpoint = SVR_AI_SERVICE_URL;
     apiKey = SVR_AI_SERVICE_API_KEY;
   }
 
@@ -32,7 +32,7 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
 
   try {
     const formData = new FormData();
-    formData.append('file', buffer, { filename: fileName || 'svr-document.pdf', contentType: 'application/pdf' });
+    formData.append('files', buffer, { filename: fileName || 'svr-document.pdf', contentType: 'application/pdf' });
 
     const headers = { ...formData.getHeaders() };
     if (apiKey) {

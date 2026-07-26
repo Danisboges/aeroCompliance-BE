@@ -14,13 +14,13 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
   let apiKey;
 
   if (docType === 'EDS') {
-    endpoint = EDS_AI_SERVICE_URL || 'https://dzakievgn-sb-extractor.hf.space/api/extract_eds';
+    endpoint = EDS_AI_SERVICE_URL;
     apiKey = EDS_AI_SERVICE_API_KEY;
   } else if (docType === 'IQ03') {
-    endpoint = IQ03_AI_SERVICE_URL || 'https://dzakievgn-sb-extractor.hf.space/api/extract_iq03';
+    endpoint = IQ03_AI_SERVICE_URL;
     apiKey = IQ03_AI_SERVICE_API_KEY;
   } else {
-    endpoint = EDS_AI_SERVICE_URL || 'https://dzakievgn-sb-extractor.hf.space/api/extract_EDS';
+    endpoint = EDS_AI_SERVICE_URL;
     apiKey = EDS_AI_SERVICE_API_KEY;
   }
 
