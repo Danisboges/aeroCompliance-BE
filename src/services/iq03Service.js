@@ -21,8 +21,6 @@ const cleanIdentifier = (str) => {
   return str.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 };
 
-
-
 /**
  * Normalizes raw JSON response/payload into database structures and saves.
  */
@@ -50,19 +48,9 @@ const processIq03Json = async (rawPayload, originalFileName = 'payload.json', st
   const iq03Data = {
     engineSerialNumber,
     engineType: data.engine_type || '',
-    shopInDate: data.shop_in_date || '',
-    shopOutDate: data.shop_out_date || '',
-    reportDate: data.report_date || data.shop_out_date || '', // Date when report was written
-    reasonForShopVisit: data.reason_for_shop_visit || '',
-    tsn: data.tsn || '',
-    csn: data.csn || '',
-    tslv: data.tslv || '',
-    cslv: data.cslv || '',
-    authorizedReleaseStatus: data.authorized_release_status || '',
     originalFileName,
     storedFileName,
-    rawPayload,
-    docType
+    rawPayload
   };
 
   // Map configuration items
@@ -81,8 +69,6 @@ const processIq03Json = async (rawPayload, originalFileName = 'payload.json', st
     workAccompl: item.work_accompl || ''
   }));
 
-
-
   // Save iq03 to Database (Murni untuk History Log)
   const iq03 = await iq03Repository.createIq03Report(iq03Data);
 
@@ -91,7 +77,7 @@ const processIq03Json = async (rawPayload, originalFileName = 'payload.json', st
     console.log(`[IQ03 Service] Syncing Active Components for Engine: ${iq03.engineId}`);
     
     // Parse tanggal dokumen saat ini
-    const currentDocDate = new Date(iq03.reportDate || iq03.shopOutDate || iq03.createdAt);
+    const currentDocDate = new Date(data.report_date || data.shop_out_date || iq03.createdAt);
     
     for (const item of iq03Data.configurationReport) {
       if (!item.partNumber) continue;
@@ -189,4 +175,3 @@ module.exports = {
   processIq03Pdf,
   getiq03File
 };
-

@@ -1090,7 +1090,38 @@
         ],
         "responses": {
           "200": {
-            "description": "✅ EES Document ditemukan"
+            "description": "✅ EES Document ditemukan beserta metadata SB dan Permissions",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "id": "EES-DOC-XXXXXXXX",
+                    "eesNumber": "EES-GE90-0685",
+                    "reviewStatus": "PENDING",
+                    "taskType": "REP",
+                    "createdAt": "2024-03-20T10:00:00.000Z",
+                    "evaluations": [],
+                    "approval": {
+                      "status": "PENDING",
+                      "assignedToId": "USR-123"
+                    },
+                    "reviewActions": [],
+                    "serviceBulletin": {
+                      "id": "SB-DOC-XXXXXXXX",
+                      "sbNumber": "SB 72-0685 R06",
+                      "title": "ENGINE - FAN HUB FRAME",
+                      "operator": { "code": "GIA", "name": "Garuda Indonesia" },
+                      "aircraftType": "B777-300ER"
+                    },
+                    "permissions": {
+                      "canEdit": true,
+                      "canReview": true,
+                      "canApprove": false
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "❌ Belum ada EES yang di-generate"

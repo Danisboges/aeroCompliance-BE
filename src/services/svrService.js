@@ -38,10 +38,9 @@ const matchSvrCompliance = async (svr) => {
   const sbs = await prisma.serviceBulletin.findMany({ where: { status: 'ACTIVE' } });
 
   for (const sbItem of svr.sbStatus) {
-    const sbNumClean = cleanIdentifier(sbItem.adNumber);
-    const refSbClean = cleanIdentifier(sbItem.referenceSb);
+    const sbNumClean = cleanIdentifier(sbItem.sbNumber);
 
-    if (!sbNumClean && !refSbClean) continue;
+    if (!sbNumClean) continue;
 
     // Determine compliance status based on remarks/method
     let status = 'COMPLIED'; // Default
@@ -64,7 +63,6 @@ const matchSvrCompliance = async (svr) => {
 
     // 2. Try to match with ServiceBulletin (SB) in DB
     let matchedSb = null;
-    // Check match against adNumber (which sometimes has SB code like "CFM56-7B SB 72-1082")
     if (sbNumClean) {
       matchedSb = sbs.find(dbSb => {
         const dbSbClean = cleanIdentifier(dbSb.sbNumber);
@@ -72,16 +70,8 @@ const matchSvrCompliance = async (svr) => {
       });
     }
 
-    // Fallback: Check match against referenceSb
-    if (!matchedSb && refSbClean) {
-      matchedSb = sbs.find(dbSb => {
-        const dbSbClean = cleanIdentifier(dbSb.sbNumber);
-        return dbSbClean && (refSbClean.includes(dbSbClean) || dbSbClean.includes(refSbClean));
-      });
-    }
-
     if (matchedSb) {
-      console.log(`[SVR Compliance] Matched SB: ${matchedSb.sbNumber} with SVR item: ${sbItem.adNumber || sbItem.referenceSb}`);
+      console.log(`[SVR Compliance] Matched SB: ${matchedSb.sbNumber} with SVR item: ${sbItem.sbNumber}`);
       
       const existingCompliance = await prisma.complianceRecord.findUnique({
         where: { engineId_sbId: { engineId: svr.engineId, sbId: matchedSb.id } }
@@ -158,8 +148,7 @@ const processSvrJson = async (rawPayload, originalFileName = 'payload.json', sto
     authorizedReleaseStatus: data.authorized_release_status || '',
     originalFileName,
     storedFileName,
-    rawPayload,
-    docType
+    rawPayload
   };
 
   // Map configuration items
@@ -198,15 +187,33 @@ const processSvrJson = async (rawPayload, originalFileName = 'payload.json', sto
   svrData.sbStatus = rawSbs
     .filter(item => item.ad_number !== null || item.reference_sb !== null) // Filter out empty lines
     .map(item => ({
-      adNumber: item.ad_number || '',
+      sbNumber: item.ad_number || item.reference_sb || '',
       notificationDateOfCompliance: item.notification_date_of_compliance || '',
       description: item.description || '',
-      referenceSb: item.reference_sb || '',
-      recurrInsp: item.recurr_insp || '',
       moduleApplicability: item.module_applicability || '',
       methodOfCompliance: item.method_of_compliance || '',
-      remarks: item.remarks || ''
+      remarks: [
+        item.remarks,
+        item.reference_sb ? `Ref SB: ${item.reference_sb}` : '',
+        item.recurr_insp ? `Recurr Insp: ${item.recurr_insp}` : ''
+      ].filter(Boolean).join(' | ')
     }));
+
+  // Map Accessories List
+  const rawAccessories = Array.isArray(data.accessories_list) ? data.accessories_list : [];
+  svrData.accessoriesList = rawAccessories.map(item => ({
+    no: item.no !== undefined && item.no !== null ? String(item.no) : '',
+    description: item.description || '',
+    receivedPn: item.received?.pn || '',
+    receivedSn: item.received?.sn || '',
+    receivedTsn: item.received?.tsn || '',
+    receivedTso: item.received?.tso || '',
+    installedPn: item.installed?.pn || '',
+    installedSn: item.installed?.sn || '',
+    installedTsn: item.installed?.tsn || '',
+    installedTso: item.installed?.tso || '',
+    maintenancePerformed: item.maintenance_performed || ''
+  }));
 
   // Save SVR to Database (Murni untuk History Log)
   const svr = await svrRepository.createShopVisitReport(svrData);

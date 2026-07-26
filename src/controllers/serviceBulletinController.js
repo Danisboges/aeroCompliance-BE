@@ -400,7 +400,26 @@ async function getEesDocument(req, res) {
     if (!sb.generatedEes) {
       return res.status(404).json({ error: 'Not Found: No EES document generated for this SB yet' });
     }
-    return res.status(200).json({ data: sb.generatedEes });
+    const eesData = {
+      ...sb.generatedEes,
+      serviceBulletin: {
+        id: sb.id,
+        sbNumber: sb.sbNumber,
+        revision: sb.revision,
+        title: sb.title,
+        status: sb.status,
+        operator: sb.operator,
+        aircraftType: sb.aircraftType,
+        effectivityType: sb.effectivityType,
+        applicabilitySummary: sb.applicabilitySummary
+      },
+      permissions: {
+        canEdit: sb.generatedEes.reviewStatus === 'PENDING' || sb.generatedEes.reviewStatus === 'RETURNED',
+        canReview: req.user?.role === 'ENGINEER' && sb.generatedEes.reviewStatus === 'PENDING',
+        canApprove: req.user?.role === 'MANAGER' && sb.generatedEes.reviewStatus === 'IN_REVIEW'
+      }
+    };
+    return res.status(200).json({ data: eesData });
   } catch (error) {
     return handleControllerError(res, error);
   }
@@ -436,6 +455,13 @@ async function updateEesDocument(req, res) {
       data: formatSbResponse(result, req.originalUrl),
     });
   } catch (error) {
+    console.error('[ServiceBulletinController.updateEesDocument]', {
+      serviceBulletinId: req.params.id,
+      errorName: error.name,
+      errorCode: error.code,
+      message: error.message,
+      stack: error.stack
+    });
     return handleControllerError(res, error);
   }
 }

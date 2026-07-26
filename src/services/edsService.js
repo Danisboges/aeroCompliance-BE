@@ -32,16 +32,15 @@ const matchedsCompliance = async (eds) => {
 
   console.log(`[EDS Compliance] Running compliance matching for EDS ${eds.id} (ESN: ${eds.engineSerialNumber})`);
 
-  const currentDocDate = new Date(eds.reportDate || eds.shopOutDate || eds.createdAt);
+  const currentDocDate = new Date(eds.createdAt);
 
   // Fetch all active SBs and ADs from database
   const sbs = await prisma.serviceBulletin.findMany({ where: { status: 'ACTIVE' } });
 
   for (const sbItem of eds.sbStatus) {
-    const sbNumClean = cleanIdentifier(sbItem.adNumber);
-    const refSbClean = cleanIdentifier(sbItem.referenceSb);
+    const sbNumClean = cleanIdentifier(sbItem.sbNumber);
 
-    if (!sbNumClean && !refSbClean) continue;
+    if (!sbNumClean) continue;
 
     // Determine compliance status based on remarks/method
     let status = 'COMPLIED'; // Default
@@ -64,7 +63,6 @@ const matchedsCompliance = async (eds) => {
 
     // 2. Try to match with ServiceBulletin (SB) in DB
     let matchedSb = null;
-    // Check match against adNumber (which sometimes has SB code like "CFM56-7B SB 72-1082")
     if (sbNumClean) {
       matchedSb = sbs.find(dbSb => {
         const dbSbClean = cleanIdentifier(dbSb.sbNumber);
@@ -72,16 +70,8 @@ const matchedsCompliance = async (eds) => {
       });
     }
 
-    // Fallback: Check match against referenceSb
-    if (!matchedSb && refSbClean) {
-      matchedSb = sbs.find(dbSb => {
-        const dbSbClean = cleanIdentifier(dbSb.sbNumber);
-        return dbSbClean && (refSbClean.includes(dbSbClean) || dbSbClean.includes(refSbClean));
-      });
-    }
-
     if (matchedSb) {
-      console.log(`[EDS Compliance] Matched SB: ${matchedSb.sbNumber} with EDS item: ${sbItem.adNumber || sbItem.referenceSb}`);
+      console.log(`[EDS Compliance] Matched SB: ${matchedSb.sbNumber} with EDS item: ${sbItem.sbNumber}`);
       
       const existingCompliance = await prisma.complianceRecord.findUnique({
         where: { engineId_sbId: { engineId: eds.engineId, sbId: matchedSb.id } }
@@ -97,7 +87,7 @@ const matchedsCompliance = async (eds) => {
           where: { id: existingCompliance.id },
           data: {
             status,
-            complianceDate: sbItem.notificationDateOfCompliance || eds.shopOutDate || null,
+            complianceDate: sbItem.notificationDateOfCompliance || null,
             edsId: eds.id,
             remarks: sbItem.remarks || sbItem.methodOfCompliance || null,
             sourceDate: currentDocDate
@@ -109,7 +99,7 @@ const matchedsCompliance = async (eds) => {
             engineId: eds.engineId,
             sbId: matchedSb.id,
             status,
-            complianceDate: sbItem.notificationDateOfCompliance || eds.shopOutDate || null,
+            complianceDate: sbItem.notificationDateOfCompliance || null,
             edsId: eds.id,
             remarks: sbItem.remarks || sbItem.methodOfCompliance || null,
             sourceDate: currentDocDate
@@ -147,19 +137,9 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
   const edsData = {
     engineSerialNumber,
     engineType: data.engine_type || '',
-    shopInDate: data.shop_in_date || '',
-    shopOutDate: data.shop_out_date || '',
-    reportDate: data.report_date || data.shop_out_date || '', // Date when report was written
-    reasonForShopVisit: data.reason_for_shop_visit || '',
-    tsn: data.tsn || '',
-    csn: data.csn || '',
-    tslv: data.tslv || '',
-    cslv: data.cslv || '',
-    authorizedReleaseStatus: data.authorized_release_status || '',
     originalFileName,
     storedFileName,
-    rawPayload,
-    docType
+    rawPayload
   };
 
   // Map configuration items
@@ -178,20 +158,21 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
     workAccompl: item.work_accompl || ''
   }));
 
-
   // Map AD/SB items
   const rawSbs = Array.isArray(data.airworthiness_directive_status) ? data.airworthiness_directive_status : [];
   edsData.sbStatus = rawSbs
     .filter(item => item.ad_number !== null || item.reference_sb !== null) // Filter out empty lines
     .map(item => ({
-      adNumber: item.ad_number || '',
+      sbNumber: item.ad_number || item.reference_sb || '',
       notificationDateOfCompliance: item.notification_date_of_compliance || '',
       description: item.description || '',
-      referenceSb: item.reference_sb || '',
-      recurrInsp: item.recurr_insp || '',
       moduleApplicability: item.module_applicability || '',
       methodOfCompliance: item.method_of_compliance || '',
-      remarks: item.remarks || ''
+      remarks: [
+        item.remarks,
+        item.reference_sb ? `Ref SB: ${item.reference_sb}` : '',
+        item.recurr_insp ? `Recurr Insp: ${item.recurr_insp}` : ''
+      ].filter(Boolean).join(' | ')
     }));
 
   // Save eds to Database (Murni untuk History Log)
@@ -202,7 +183,7 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
     console.log(`[EDS Service] Syncing Active Components for Engine: ${eds.engineId}`);
     
     // Parse tanggal dokumen saat ini
-    const currentDocDate = new Date(eds.reportDate || eds.shopOutDate || eds.createdAt);
+    const currentDocDate = new Date(data.report_date || data.shop_out_date || eds.createdAt);
     
     for (const item of edsData.configurationReport) {
       if (!item.partNumber) continue;
@@ -304,4 +285,3 @@ module.exports = {
   getedsFile,
   matchedsCompliance
 };
-

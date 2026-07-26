@@ -10,19 +10,8 @@ const IQ03_AI_SERVICE_API_KEY = process.env.IQ03_AI_SERVICE_API_KEY;
  * Calls AI service to extract engine documents (IQ03, EDS, IQ03) data.
  */
 const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
-  let endpoint;
-  let apiKey;
-
-  if (docType === 'EDS') {
-    endpoint = EDS_AI_SERVICE_URL;
-    apiKey = EDS_AI_SERVICE_API_KEY;
-  } else if (docType === 'IQ03') {
-    endpoint = IQ03_AI_SERVICE_URL;
-    apiKey = IQ03_AI_SERVICE_API_KEY;
-  } else {
-    endpoint = IQ03_AI_SERVICE_URL;
-    apiKey = IQ03_AI_SERVICE_API_KEY;
-  }
+  let endpoint = IQ03_AI_SERVICE_URL;
+  let apiKey = IQ03_AI_SERVICE_API_KEY;
 
   console.log(`[Engine Doc AI Client] Sending ${docType} PDF to AI Service: ${endpoint}`);
 
@@ -51,7 +40,7 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
       }
     }
 
-    if (!result || !result.IQ03_schema) {
+    if (!result || (!result.IQ03_schema && !result.iq03_schema)) {
       throw new Error('Invalid response format from IQ03 AI service.');
     }
 

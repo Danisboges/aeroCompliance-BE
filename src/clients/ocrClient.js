@@ -21,12 +21,14 @@ const analyzePdf = async ({ fileName, checksum, buffer, storagePath }) => {
     const formData = new FormData();
     formData.append('file', buffer, { filename: fileName || 'document.pdf', contentType: 'application/pdf' });
 
+    const headers = { ...formData.getHeaders() };
+    if (AI_SERVICE_API_KEY) {
+      headers['Authorization'] = `Bearer ${AI_SERVICE_API_KEY}`;
+    }
+
     // Gunakan axios tanpa timeout untuk request AI yang memakan waktu lama
     const response = await axios.post(AI_SERVICE_URL, formData, {
-      headers: {
-        ...formData.getHeaders(),
-        'Authorization': `Bearer ${AI_SERVICE_API_KEY}`
-      },
+      headers,
       timeout: 0 // Disable timeout di level axios
     });
 

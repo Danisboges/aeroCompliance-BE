@@ -9,10 +9,22 @@ const includeRelations = {
     select: { id: true, email: true, username: true, role: true }
   },
   generatedEes: {
-    include: { evaluations: true }
+    include: { 
+      evaluations: true,
+      approval: true,
+      reviewActions: {
+        include: {
+          actor: {
+            select: { id: true, username: true, email: true, role: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      }
+    }
   },
   ocrResult: true,
-  engineeringRec: true
+  engineeringRec: true,
+  operator: true
 };
 
 const listSelect = {

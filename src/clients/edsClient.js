@@ -10,19 +10,8 @@ const EDS_AI_SERVICE_API_KEY = process.env.EDS_AI_SERVICE_API_KEY;
  * Calls AI service to extract engine documents (EDS, EDS, IQ03) data.
  */
 const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
-  let endpoint;
-  let apiKey;
-
-  if (docType === 'EDS') {
-    endpoint = EDS_AI_SERVICE_URL;
-    apiKey = EDS_AI_SERVICE_API_KEY;
-  } else if (docType === 'IQ03') {
-    endpoint = IQ03_AI_SERVICE_URL;
-    apiKey = IQ03_AI_SERVICE_API_KEY;
-  } else {
-    endpoint = EDS_AI_SERVICE_URL;
-    apiKey = EDS_AI_SERVICE_API_KEY;
-  }
+  let endpoint = EDS_AI_SERVICE_URL;
+  let apiKey = EDS_AI_SERVICE_API_KEY;
 
   console.log(`[Engine Doc AI Client] Sending ${docType} PDF to AI Service: ${endpoint}`);
 
@@ -51,7 +40,7 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
       }
     }
 
-    if (!result || !result.EDS_schema) {
+    if (!result || (!result.EDS_schema && !result.eds_schema)) {
       throw new Error('Invalid response format from EDS AI service.');
     }
 

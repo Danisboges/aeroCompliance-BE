@@ -145,17 +145,45 @@ const normalizeOcrPayload = (rawPayload) => {
     }
   }
 
+  const normalizeBoolean = (val) => {
+    if (val === true || val === false) return val;
+    if (typeof val === 'string') {
+      const lower = val.toLowerCase().trim();
+      if (lower === 'true' || lower === '1') return true;
+      if (lower === 'false' || lower === '0') return false;
+    }
+    if (val === 1) return true;
+    if (val === 0) return false;
+    return null; // Fallback
+  };
+
   // Map each raw item to schema fields
   evaluations = rawItems.map((item, index) => {
-    const isApplicable = item.isApplicable !== undefined ? Boolean(item.isApplicable) : true;
+    let isApplicable = normalizeBoolean(item.isApplicable);
+    if (isApplicable === null) isApplicable = true; // Default
+
+    let requirementDesc = item.requirement_desc || item.requirementDesc || item.paragraph;
+    if (!requirementDesc || typeof requirementDesc !== 'string' || requirementDesc.trim() === '') {
+      requirementDesc = 'No description provided';
+    }
+
+    let dueAt = null;
+    if (item.dueAt) {
+      const parsedDate = new Date(item.dueAt);
+      if (!isNaN(parsedDate.getTime())) {
+        dueAt = parsedDate;
+      }
+    }
+
     return {
       itemNo: item.itemNo !== undefined && item.itemNo !== null ? String(item.itemNo) : String(index + 1),
       paragraph: item.paragraph || item.paragraph_number || null,
-      requirementDesc: item.requirement_desc || item.requirementDesc || item.paragraph || 'No description provided',
+      requirementDesc,
       remarks: item.remark || item.remarks || '',
       taskType: item.taskType || payload.task_type || '',
       references: item.references || null,
-      isApplicable
+      isApplicable,
+      dueAt
     };
   });
 
@@ -184,10 +212,10 @@ const normalizeOcrPayload = (rawPayload) => {
     partNumber: payload.part_number || (payload.mro_schema && payload.mro_schema.mro_schema ? payload.mro_schema.mro_schema.part_number : '') || '',
     componentType: payload.component_type || null,
     complianceTimeType: payload.compliance_time_type || null,
-    isRepetitive: payload.repetitive !== undefined ? Boolean(payload.repetitive) : null,
+    isRepetitive: normalizeBoolean(payload.repetitive),
     note: payload.note || null,
     requiresManualEes,
-    isManualEdited: payload.isManualEdited || false,
+    isManualEdited: normalizeBoolean(payload.isManualEdited) || false,
     evaluations,
   };
 };
