@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { PDFDocument } = require('pdf-lib');
 const svrService = require('../services/svrService');
 const svrRepository = require('../repositories/svrRepository');
 
@@ -28,17 +29,44 @@ const uploadEngineDocPdf = async (req, res) => {
       return res.status(400).json({ error: `Validation Error: Invalid docType '${docType}'. Must be one of SVR, EDS, or IQ03.` });
     }
 
-    const fileName = req.headers['x-file-name'] || `${docType.toLowerCase()}-upload.pdf`;
+    let buffer = req.body;
+    let fileName = req.headers['x-file-name'] || `${docType.toLowerCase()}-upload.pdf`;
+
+    // Handle multipart/form-data (Multiple files from multer)
+    if (req.files && req.files.length > 0) {
+      if (req.files.length === 1) {
+        buffer = req.files[0].buffer;
+        fileName = req.files[0].originalname;
+      } else {
+        const mergedPdf = await PDFDocument.create();
+        for (const file of req.files) {
+          const pdfDoc = await PDFDocument.load(file.buffer);
+          const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+          copiedPages.forEach((page) => mergedPdf.addPage(page));
+        }
+        buffer = Buffer.from(await mergedPdf.save());
+        fileName = `merged-${req.files[0].originalname}`;
+      }
+    } else if (req.file) {
+      // Fallback if someone used upload.single
+      buffer = req.file.buffer;
+      fileName = req.file.originalname;
+    }
+
+    if (!buffer || buffer.length === 0 || (Buffer.isBuffer(buffer) === false && !(buffer instanceof Uint8Array) && typeof buffer !== 'string' && Object.keys(buffer).length === 0)) {
+      return res.status(400).json({ error: 'Validation Error: No PDF file provided' });
+    }
+
     let result;
 
     if (docType === 'EDS') {
       const edsService = require('../services/edsService');
-      result = await edsService.processEdsPdf({ buffer: req.body, fileName, docType });
+      result = await edsService.processEdsPdf({ buffer, fileName, docType });
     } else if (docType === 'IQ03') {
       const iq03Service = require('../services/iq03Service');
-      result = await iq03Service.processIq03Pdf({ buffer: req.body, fileName, docType });
+      result = await iq03Service.processIq03Pdf({ buffer, fileName, docType });
     } else {
-      result = await svrService.processSvrPdf({ buffer: req.body, fileName, docType });
+      result = await svrService.processSvrPdf({ buffer, fileName, docType });
     }
 
     return res.status(201).json({

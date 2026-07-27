@@ -2256,7 +2256,7 @@
     "/api/shop-visit-reports/upload/SVR": {
       "post": {
         "summary": "Upload PDF SVR Document",
-        "description": "Upload file PDF binary langsung (raw body). docType yang valid: **SVR, EDS, IQ03**",
+        "description": "Mendukung upload hingga 6 pecahan file PDF (multipart/form-data) yang akan otomatis digabungkan. Atau upload file PDF binary langsung (raw body).",
         "tags": [
           "Shop Visit Report (SVR)"
         ],
@@ -2269,8 +2269,8 @@
           {
             "name": "x-file-name",
             "in": "header",
-            "required": true,
-            "description": "Nama file PDF asli (misal: SVR_660235_2026.pdf)",
+            "required": false,
+            "description": "Nama file PDF asli (opsional jika menggunakan multipart/form-data, wajib jika raw binary)",
             "schema": {
               "type": "string",
               "example": "SVR_660235_2026.pdf"
@@ -2280,6 +2280,22 @@
         "requestBody": {
           "required": true,
           "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "description": "File PDF SVR (unggah hingga 6 pecahan file, akan digabung secara otomatis)",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "maxItems": 6
+                  }
+                }
+              }
+            },
             "application/pdf": {
               "schema": {
                 "type": "string",
