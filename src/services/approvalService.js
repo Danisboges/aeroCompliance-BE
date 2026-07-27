@@ -145,7 +145,11 @@ const submitReview = async ({ eesId, action, comment, nextAssignedToId, actorId,
   }
   
   const nextLevel = approval.approvalLevel;
-  const newAssignedTo = approval.assignedToId;
+  let newAssignedTo = approval.assignedToId;
+
+  if (finalStatus === 'REJECTED' || finalStatus === 'RETURNED') {
+    newAssignedTo = approval.submittedById;
+  }
 
   const result = await prisma.$transaction(async (tx) => {
     const updatedApproval = await tx.approval.update({

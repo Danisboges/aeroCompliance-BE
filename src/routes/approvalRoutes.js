@@ -23,4 +23,7 @@ router.post('/:eesId/submit', verifyToken, requireRole([Role.ENGINEER, Role.MANA
 // POST /api/approvals/:eesId/review (Engineer/Manager reviewing)
 router.post('/:eesId/review', verifyToken, requireRole([Role.ENGINEER, Role.MANAGER, Role.ADMIN]), uploadSignature.single('signature'), approvalController.postReview);
 
+// POST /api/approvals/:eesId/reject (Dedicated Reject Endpoint)
+router.post('/:eesId/reject', verifyToken, requireRole([Role.ENGINEER, Role.MANAGER, Role.ADMIN]), approvalController.rejectApproval);
+
 module.exports = router;

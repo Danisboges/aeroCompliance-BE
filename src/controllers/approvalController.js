@@ -99,6 +99,44 @@ const postReview = async (req, res) => {
 };
 
 /**
+ * POST /api/approvals/:eesId/reject
+ */
+const rejectApproval = async (req, res) => {
+  try {
+    const { eesId } = req.params;
+    const { comment } = req.body;
+
+    if (!comment) {
+      return res.status(400).json({ error: 'Comment is required when rejecting an EES' });
+    }
+
+    const result = await approvalService.submitReview({
+      eesId,
+      action: 'REJECTED',
+      comment,
+      nextAssignedToId: null, // Service handles re-assigning to submitter
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      signatureFile: null
+    });
+
+    return res.status(200).json({
+      message: 'EES has been rejected successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('[ApprovalController - Reject]', error);
+    if (error.message.includes('found')) {
+      return res.status(404).json({ error: 'Data tidak ada' });
+    }
+    if (error.message.includes('Invalid') || error.message.includes('no longer pending')) {
+      return res.status(400).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+/**
  * POST /api/approvals/:eesId/submit
  */
 const submitForApproval = async (req, res) => {
@@ -195,5 +233,6 @@ module.exports = {
   getPendingManager,
   getApprovalByEesId,
   postReview,
+  rejectApproval,
   submitForApproval
 };
