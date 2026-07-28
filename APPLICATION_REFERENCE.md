@@ -185,6 +185,13 @@ GMF-BE/
 | 2026-07-22 | 2.0 | **Pembedaan Rekomendasi SB (Kategori < 4 Manual vs >= 4 Auto AI), Unified Dashboard, & Evaluasi Applicability SVR/EDS**. Penegasan alur pengerjaan: SB Kategori < 4 mewajibkan input rekomendasi enjiniring secara MANUAL lalu langsung menuju Cek Kesesuaian Armada. Penyelarasan antarmuka Dashboard seragam untuk seluruh Operator. Integrasi OCR SVR & EDS untuk mengekstrak ESN dan menentukan status *Applicable*, *Not Applicable*, atau *Superseded*. |
 | 2026-07-28 | 2.2 | **Pemisahan Status Pemenuhan AD & SB**, penambahan model mandiri `AirworthinessDirective`, serta perbaikan bug *parsing* data LLP dari AI pada EDS/IQ03. |
 | 2026-07-28 | 2.3 | **Notifikasi Email Approval dengan SMTP & Nodemailer**. Mengintegrasikan pengiriman email permohonan (*Request*) dan penolakan (*Rejected*) persetujuan otomatis menggunakan SMTP Gmail, template HTML yang dikustomisasi, serta lampiran Logo (CID) dan PDF draf EES. |
+| 2026-07-28 | 2.4 | **Perbaikan Mapping PDF EES Garuda**. Penyesuaian tata letak kolom `AD Related`, mekanisme _fallback_ `ESN`, dan pelestarian parameter opsional AI (`warranty`, `rep`) guna menjaga konsistensi sinkronisasi dengan Frontend. |
+
+### Fitur Terbaru (2026-07-28 v2.4)
+- **Perbaikan Tabel PDF Garuda**:
+  - Menyisipkan kolom baru khusus **AD Related** di tengah-tengah tabel Evaluasi EES sesuai permintaan *Frontend*.
+  - Menambal hilangnya nilai variabel `warranty` dan `rep` yang sempat terhapus saat pemetaan dari data *Payload* menuju format normal.
+  - Memperkuat logika pengambilan nomor seri mesin (*Engine Serial Number* / ESN) sehingga sistem tidak lagi kesulitan memetakan baris komponen pada PDF hasil ekstrak.
 
 ### Fitur Terbaru (2026-07-28 v2.3)
 - **Email Notifications via Nodemailer**:
