@@ -175,6 +175,17 @@ model Engine {
 // --- DOCUMENTS (AD, SB, EES) ---
 
 // 1. Airworthiness Directive (AD)
+model AirworthinessDirective {
+  id        String         @id
+  adNumber  String         @unique
+  title     String?
+  issueDate DateTime?
+  status    DocumentStatus @default(ACTIVE)
+
+  createdAt         DateTime           @default(now())
+  complianceRecords ComplianceRecord[]
+}
+
 // 2. Service Bulletin (SB) - Sumber dokumen untuk OCR & Unified Model
 model ServiceBulletin {
   id         String         @id
@@ -368,6 +379,7 @@ model ShopVisitReport {
   llpStatus           DocumentLlpStatus[]
 
   sbStatus          DocumentSbStatus[]
+  adStatus          DocumentAdStatus[]
   accessoriesList   DocumentAccessoriesList[]
   complianceRecords ComplianceRecord[]
   engineHistoryLogs EngineHistoryLog[]
@@ -392,6 +404,7 @@ model EngineDataSubmittal {
   llpStatus           DocumentLlpStatus[]
 
   sbStatus          DocumentSbStatus[]
+  adStatus          DocumentAdStatus[]
   accessoriesList   DocumentAccessoriesList[]
   complianceRecords ComplianceRecord[]
   engineHistoryLogs EngineHistoryLog[]
@@ -416,6 +429,7 @@ model Iq03Report {
   llpStatus           DocumentLlpStatus[]
 
   sbStatus          DocumentSbStatus[]
+  adStatus          DocumentAdStatus[]
   accessoriesList   DocumentAccessoriesList[]
   complianceRecords ComplianceRecord[]
   engineHistoryLogs EngineHistoryLog[]
@@ -480,6 +494,25 @@ model DocumentLlpStatus {
   remark              String?
 }
 
+model DocumentAdStatus {
+  id                           String               @id @default(uuid())
+  svrId                        String?
+  svr                          ShopVisitReport?     @relation(fields: [svrId], references: [id], onDelete: Cascade)
+  edsId                        String?
+  eds                          EngineDataSubmittal? @relation(fields: [edsId], references: [id], onDelete: Cascade)
+  iq03Id                       String?
+  iq03                         Iq03Report?          @relation(fields: [iq03Id], references: [id], onDelete: Cascade)
+  engineSerialNumber           String?
+  adNumber                     String?
+  notificationDateOfCompliance String?
+  description                  String?
+  referenceSb                  String?
+  recurrInsp                   String?
+  moduleApplicability          String?
+  methodOfCompliance           String?
+  remarks                      String?              @db.Text
+}
+
 model DocumentSbStatus {
   id                           String               @id @default(uuid())
   svrId                        String?
@@ -521,11 +554,13 @@ model DocumentAccessoriesList {
 }
 
 model ComplianceRecord {
-  id       String           @id @default(uuid())
+  id       String                  @id @default(uuid())
   engineId String
-  engine   Engine           @relation(fields: [engineId], references: [id], onDelete: Cascade)
+  engine   Engine                  @relation(fields: [engineId], references: [id], onDelete: Cascade)
   sbId     String?
-  sb       ServiceBulletin? @relation(fields: [sbId], references: [id], onDelete: Cascade)
+  sb       ServiceBulletin?        @relation(fields: [sbId], references: [id], onDelete: Cascade)
+  adId     String?
+  ad       AirworthinessDirective? @relation(fields: [adId], references: [id], onDelete: Cascade)
 
   status         ComplianceStatus     @default(OPEN)
   complianceDate String? // Stored as string to preserve format
@@ -549,6 +584,7 @@ model ComplianceRecord {
   updatedAt DateTime @default(now()) @updatedAt
 
   @@unique([engineId, sbId])
+  @@unique([engineId, adId])
 }
 
 // --- RELATIONS & REQUIREMENT GROUPS ---

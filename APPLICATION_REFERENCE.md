@@ -183,6 +183,15 @@ GMF-BE/
 | 2026-07-21 | 1.8 | **Sistem Persetujuan Multi-Tier, Manajemen Tanda Tangan, & Optimasi API**. Menambahkan endpoint *Submit* dan *Review* EES berbasis ID dengan upload multipart gambar tanda tangan. Pemusnahan otomatis gambar tanda tangan sementara pasca pembuatan PDF Final. Optimasi drastis pada `GET /api/service-bulletins` (Lightweight DTO) menggunakan Prisma Select, serta penambahan endpoint baru `GET /api/ees`. |
 | 2026-07-22 | 1.9 | **Sistem Relasi SB, Group Pemenuhan (ANY_OF/ALL_OF), & Compliance Engine Per-Engine**. Implementasi model `SbRelation` (`CONCURRENT`, `SUPERSEDES`, `TERMINATES`), `SbRequirementGroup`, `SbRequirementMember`, `SbGroupResult`, dan `SbComplianceAudit`. Parsing otomatis `mro_schema.sb_relations` dari Webhook AI. Penambahan endpoint pohon silsilah (`GET /api/service-bulletins/:id/lineage`) dan ringkasan pemenuhan engine (`GET /api/engines/:engineId/compliance-summary`). |
 | 2026-07-22 | 2.0 | **Pembedaan Rekomendasi SB (Kategori < 4 Manual vs >= 4 Auto AI), Unified Dashboard, & Evaluasi Applicability SVR/EDS**. Penegasan alur pengerjaan: SB Kategori < 4 mewajibkan input rekomendasi enjiniring secara MANUAL lalu langsung menuju Cek Kesesuaian Armada. Penyelarasan antarmuka Dashboard seragam untuk seluruh Operator. Integrasi OCR SVR & EDS untuk mengekstrak ESN dan menentukan status *Applicable*, *Not Applicable*, atau *Superseded*. |
+| 2026-07-28 | 2.2 | **Pemisahan Status Pemenuhan AD & SB**, penambahan model mandiri `AirworthinessDirective`, serta perbaikan bug *parsing* data LLP dari AI pada EDS/IQ03. |
+
+### Fitur Terbaru (2026-07-28 v2.2)
+- **Pemisahan Entitas & Pemenuhan AD (Airworthiness Directive) dan SB (Service Bulletin)**:
+  - Pembaruan skema database (`prisma/schema.prisma`) dengan model master `AirworthinessDirective` dan `DocumentAdStatus` untuk mengakomodasi pemisahan laporan riwayat mesin.
+  - Layer *Service* dan *Repository* (`svr`, `eds`, `iq03`) direfaktor untuk mengurai dan menyimpan data `airworthiness_directive_status` dari AI secara independen dari `service_bulletin_status`.
+  - Pengecekan *compliance* (pemenuhan) berjalan secara paralel; satu alur memverifikasi pencapaian AD, alur lainnya memverifikasi SB. Relasi antara keduanya dilacak melalui field `reference_sb`.
+- **Bugfix Ekstraksi Data LLP (Limited Life Part)**:
+  - Menambal *bug* krusial pada `edsService.js` dan `iq03Service.js` yang sebelumnya gagal memetakan payload `limited_life_part_status` ke dalam `DocumentLlpStatus`, sehingga menjamin integritas rekam umur komponen (TSN/CSN) dari hasil AI.
 
 ### Fitur Terbaru (2026-07-23 v2.0)
 - **Algoritma Deterministik Penentuan SB Applicability (`effectedEsnGMF`) — 4 Rule Utama**:

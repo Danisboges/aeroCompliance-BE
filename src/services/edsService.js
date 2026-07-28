@@ -36,8 +36,10 @@ const matchedsCompliance = async (eds) => {
 
   // Fetch all active SBs and ADs from database
   const sbs = await prisma.serviceBulletin.findMany({ where: { status: 'ACTIVE' } });
+  const ads = await prisma.airworthinessDirective.findMany({ where: { status: 'ACTIVE' } });
 
-  for (const sbItem of eds.sbStatus) {
+  // --- Match Service Bulletins ---
+  for (const sbItem of eds.sbStatus || []) {
     const sbNumClean = cleanIdentifier(sbItem.sbNumber);
 
     if (!sbNumClean) continue;
@@ -56,12 +58,13 @@ const matchedsCompliance = async (eds) => {
       status = 'NOT_APPLICABLE';
     } else if (
       remarksLower.includes('not performed') || 
-      mocLower.includes('not performed')
+      mocLower.includes('not performed') ||
+      mocLower === 'open'
     ) {
       status = 'OPEN';
     }
 
-    // 2. Try to match with ServiceBulletin (SB) in DB
+    // Try to match with ServiceBulletin (SB) in DB
     let matchedSb = null;
     if (sbNumClean) {
       matchedSb = sbs.find(dbSb => {
@@ -82,27 +85,97 @@ const matchedsCompliance = async (eds) => {
         continue;
       }
 
+      const payloadData = {
+        status,
+        complianceDate: sbItem.notificationDateOfCompliance || null,
+        edsId: eds.id,
+        remarks: sbItem.remarks || sbItem.methodOfCompliance || null,
+        sourceDate: currentDocDate
+      };
+
       if (existingCompliance) {
         await prisma.complianceRecord.update({
           where: { id: existingCompliance.id },
-          data: {
-            status,
-            complianceDate: sbItem.notificationDateOfCompliance || null,
-            edsId: eds.id,
-            remarks: sbItem.remarks || sbItem.methodOfCompliance || null,
-            sourceDate: currentDocDate
-          }
+          data: payloadData
         });
       } else {
         await prisma.complianceRecord.create({
           data: {
+            ...payloadData,
             engineId: eds.engineId,
-            sbId: matchedSb.id,
-            status,
-            complianceDate: sbItem.notificationDateOfCompliance || null,
-            edsId: eds.id,
-            remarks: sbItem.remarks || sbItem.methodOfCompliance || null,
-            sourceDate: currentDocDate
+            sbId: matchedSb.id
+          }
+        });
+      }
+    }
+  }
+
+  // --- Match Airworthiness Directives ---
+  for (const adItem of eds.adStatus || []) {
+    const adNumClean = cleanIdentifier(adItem.adNumber);
+
+    if (!adNumClean) continue;
+
+    // Determine compliance status based on remarks/method
+    let status = 'COMPLIED'; // Default
+    const remarksLower = (adItem.remarks || '').toLowerCase();
+    const mocLower = (adItem.methodOfCompliance || '').toLowerCase();
+    const descLower = (adItem.description || '').toLowerCase();
+
+    if (
+      remarksLower.includes('not applicable') || 
+      mocLower.includes('not applicable') || 
+      descLower.includes('not applicable')
+    ) {
+      status = 'NOT_APPLICABLE';
+    } else if (
+      remarksLower.includes('not performed') || 
+      mocLower.includes('not performed') ||
+      mocLower === 'open'
+    ) {
+      status = 'OPEN';
+    }
+
+    // Try to match with AirworthinessDirective (AD) in DB
+    let matchedAd = null;
+    if (adNumClean) {
+      matchedAd = ads.find(dbAd => {
+        const dbAdClean = cleanIdentifier(dbAd.adNumber);
+        return dbAdClean && (adNumClean.includes(dbAdClean) || dbAdClean.includes(adNumClean));
+      });
+    }
+
+    if (matchedAd) {
+      console.log(`[EDS Compliance] Matched AD: ${matchedAd.adNumber} with EDS item: ${adItem.adNumber}`);
+      
+      const existingCompliance = await prisma.complianceRecord.findUnique({
+        where: { engineId_adId: { engineId: eds.engineId, adId: matchedAd.id } }
+      });
+
+      if (existingCompliance && existingCompliance.sourceDate && existingCompliance.sourceDate > currentDocDate) {
+        console.log(`[EDS Compliance] Skipping AD ${matchedAd.adNumber} because existing record is newer.`);
+        continue;
+      }
+
+      const payloadData = {
+        status,
+        complianceDate: adItem.notificationDateOfCompliance || null,
+        edsId: eds.id,
+        remarks: adItem.remarks || adItem.methodOfCompliance || null,
+        sourceDate: currentDocDate
+      };
+
+      if (existingCompliance) {
+        await prisma.complianceRecord.update({
+          where: { id: existingCompliance.id },
+          data: payloadData
+        });
+      } else {
+        await prisma.complianceRecord.create({
+          data: {
+            ...payloadData,
+            engineId: eds.engineId,
+            adId: matchedAd.id
           }
         });
       }
@@ -158,21 +231,45 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
     workAccompl: item.work_accompl || ''
   }));
 
-  // Map AD/SB items
-  const rawSbs = Array.isArray(data.airworthiness_directive_status) ? data.airworthiness_directive_status : [];
+  // Map LLP items
+  const rawLlps = Array.isArray(data.limited_life_part_status) ? data.limited_life_part_status : [];
+  edsData.llpStatus = rawLlps.map(item => ({
+    no: item.no !== undefined && item.no !== null ? String(item.no) : '',
+    description: item.part_name || item.description || '',
+    partNumber: item.part_number || '',
+    serialNumber: item.serial || item.serial_number || '',
+    totalHour: item.tsn !== undefined && item.tsn !== null ? String(item.tsn) : '',
+    totalCycle: item.csn !== undefined && item.csn !== null ? String(item.csn) : '',
+    remark: item.remark || ''
+  }));
+
+  // Map SB items
+  const rawSbs = Array.isArray(data.service_bulletin_status) ? data.service_bulletin_status : [];
   edsData.sbStatus = rawSbs
-    .filter(item => item.ad_number !== null || item.reference_sb !== null) // Filter out empty lines
+    .filter(item => item.sb_number !== null)
     .map(item => ({
-      sbNumber: item.ad_number || item.reference_sb || '',
+      sbNumber: item.sb_number || '',
+      notificationDateOfCompliance: item.notification_date_of_compliance || '',
+      description: item.description || '',
+      catType: item.cat_type || '',
+      moduleApplicability: item.module_applicability || '',
+      methodOfCompliance: item.method_of_compliance || '',
+      remarks: item.remarks || ''
+    }));
+
+  // Map AD items
+  const rawAds = Array.isArray(data.airworthiness_directive_status) ? data.airworthiness_directive_status : [];
+  edsData.adStatus = rawAds
+    .filter(item => item.ad_number !== null)
+    .map(item => ({
+      adNumber: item.ad_number || '',
+      referenceSb: item.reference_sb || '',
+      recurrInsp: item.recurr_insp || '',
       notificationDateOfCompliance: item.notification_date_of_compliance || '',
       description: item.description || '',
       moduleApplicability: item.module_applicability || '',
       methodOfCompliance: item.method_of_compliance || '',
-      remarks: [
-        item.remarks,
-        item.reference_sb ? `Ref SB: ${item.reference_sb}` : '',
-        item.recurr_insp ? `Recurr Insp: ${item.recurr_insp}` : ''
-      ].filter(Boolean).join(' | ')
+      remarks: item.remarks || ''
     }));
 
   // Save eds to Database (Murni untuk History Log)

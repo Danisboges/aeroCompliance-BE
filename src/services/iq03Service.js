@@ -22,6 +22,164 @@ const cleanIdentifier = (str) => {
 };
 
 /**
+ * Service Bulletin & AD matching logic.
+ */
+const matchIq03Compliance = async (iq03) => {
+  if (!iq03.engineId) {
+    console.log(`[IQ03 Compliance] IQ03 ${iq03.id} has no matching Engine. Skipping compliance matching.`);
+    return;
+  }
+
+  console.log(`[IQ03 Compliance] Running compliance matching for IQ03 ${iq03.id} (ESN: ${iq03.engineSerialNumber})`);
+
+  const currentDocDate = new Date(iq03.createdAt);
+
+  // Fetch all active SBs and ADs from database
+  const sbs = await prisma.serviceBulletin.findMany({ where: { status: 'ACTIVE' } });
+  const ads = await prisma.airworthinessDirective.findMany({ where: { status: 'ACTIVE' } });
+
+  // --- Match Service Bulletins ---
+  for (const sbItem of iq03.sbStatus || []) {
+    const sbNumClean = cleanIdentifier(sbItem.sbNumber);
+
+    if (!sbNumClean) continue;
+
+    let status = 'COMPLIED'; // Default
+    const remarksLower = (sbItem.remarks || '').toLowerCase();
+    const mocLower = (sbItem.methodOfCompliance || '').toLowerCase();
+    const descLower = (sbItem.description || '').toLowerCase();
+
+    if (
+      remarksLower.includes('not applicable') || 
+      mocLower.includes('not applicable') || 
+      descLower.includes('not applicable')
+    ) {
+      status = 'NOT_APPLICABLE';
+    } else if (
+      remarksLower.includes('not performed') || 
+      mocLower.includes('not performed') ||
+      mocLower === 'open'
+    ) {
+      status = 'OPEN';
+    }
+
+    let matchedSb = null;
+    if (sbNumClean) {
+      matchedSb = sbs.find(dbSb => {
+        const dbSbClean = cleanIdentifier(dbSb.sbNumber);
+        return dbSbClean && (sbNumClean.includes(dbSbClean) || dbSbClean.includes(sbNumClean));
+      });
+    }
+
+    if (matchedSb) {
+      console.log(`[IQ03 Compliance] Matched SB: ${matchedSb.sbNumber} with IQ03 item: ${sbItem.sbNumber}`);
+      
+      const existingCompliance = await prisma.complianceRecord.findUnique({
+        where: { engineId_sbId: { engineId: iq03.engineId, sbId: matchedSb.id } }
+      });
+
+      if (existingCompliance && existingCompliance.sourceDate && existingCompliance.sourceDate > currentDocDate) {
+        console.log(`[IQ03 Compliance] Skipping SB ${matchedSb.sbNumber} because existing record is newer.`);
+        continue;
+      }
+
+      const payloadData = {
+        status,
+        complianceDate: sbItem.notificationDateOfCompliance || null,
+        iq03Id: iq03.id,
+        remarks: sbItem.remarks || sbItem.methodOfCompliance || null,
+        sourceDate: currentDocDate
+      };
+
+      if (existingCompliance) {
+        await prisma.complianceRecord.update({
+          where: { id: existingCompliance.id },
+          data: payloadData
+        });
+      } else {
+        await prisma.complianceRecord.create({
+          data: {
+            ...payloadData,
+            engineId: iq03.engineId,
+            sbId: matchedSb.id
+          }
+        });
+      }
+    }
+  }
+
+  // --- Match Airworthiness Directives ---
+  for (const adItem of iq03.adStatus || []) {
+    const adNumClean = cleanIdentifier(adItem.adNumber);
+
+    if (!adNumClean) continue;
+
+    let status = 'COMPLIED'; // Default
+    const remarksLower = (adItem.remarks || '').toLowerCase();
+    const mocLower = (adItem.methodOfCompliance || '').toLowerCase();
+    const descLower = (adItem.description || '').toLowerCase();
+
+    if (
+      remarksLower.includes('not applicable') || 
+      mocLower.includes('not applicable') || 
+      descLower.includes('not applicable')
+    ) {
+      status = 'NOT_APPLICABLE';
+    } else if (
+      remarksLower.includes('not performed') || 
+      mocLower.includes('not performed') ||
+      mocLower === 'open'
+    ) {
+      status = 'OPEN';
+    }
+
+    let matchedAd = null;
+    if (adNumClean) {
+      matchedAd = ads.find(dbAd => {
+        const dbAdClean = cleanIdentifier(dbAd.adNumber);
+        return dbAdClean && (adNumClean.includes(dbAdClean) || dbAdClean.includes(adNumClean));
+      });
+    }
+
+    if (matchedAd) {
+      console.log(`[IQ03 Compliance] Matched AD: ${matchedAd.adNumber} with IQ03 item: ${adItem.adNumber}`);
+      
+      const existingCompliance = await prisma.complianceRecord.findUnique({
+        where: { engineId_adId: { engineId: iq03.engineId, adId: matchedAd.id } }
+      });
+
+      if (existingCompliance && existingCompliance.sourceDate && existingCompliance.sourceDate > currentDocDate) {
+        console.log(`[IQ03 Compliance] Skipping AD ${matchedAd.adNumber} because existing record is newer.`);
+        continue;
+      }
+
+      const payloadData = {
+        status,
+        complianceDate: adItem.notificationDateOfCompliance || null,
+        iq03Id: iq03.id,
+        remarks: adItem.remarks || adItem.methodOfCompliance || null,
+        sourceDate: currentDocDate
+      };
+
+      if (existingCompliance) {
+        await prisma.complianceRecord.update({
+          where: { id: existingCompliance.id },
+          data: payloadData
+        });
+      } else {
+        await prisma.complianceRecord.create({
+          data: {
+            ...payloadData,
+            engineId: iq03.engineId,
+            adId: matchedAd.id
+          }
+        });
+      }
+    }
+  }
+};
+
+/**
  * Normalizes raw JSON response/payload into database structures and saves.
  */
 const processIq03Json = async (rawPayload, originalFileName = 'payload.json', storedFileName = 'PENDING', docType = 'IQ03') => {
@@ -68,6 +226,47 @@ const processIq03Json = async (rawPayload, originalFileName = 'payload.json', st
     cso: item.cso !== undefined && item.cso !== null ? String(item.cso) : '',
     workAccompl: item.work_accompl || ''
   }));
+
+  // Map LLP items
+  const rawLlps = Array.isArray(data.limited_life_part_status) ? data.limited_life_part_status : [];
+  iq03Data.llpStatus = rawLlps.map(item => ({
+    no: item.no !== undefined && item.no !== null ? String(item.no) : '',
+    description: item.part_name || item.description || '',
+    partNumber: item.part_number || '',
+    serialNumber: item.serial || item.serial_number || '',
+    totalHour: item.tsn !== undefined && item.tsn !== null ? String(item.tsn) : '',
+    totalCycle: item.csn !== undefined && item.csn !== null ? String(item.csn) : '',
+    remark: item.remark || ''
+  }));
+
+  // Map SB items
+  const rawSbs = Array.isArray(data.service_bulletin_status) ? data.service_bulletin_status : [];
+  iq03Data.sbStatus = rawSbs
+    .filter(item => item.sb_number !== null)
+    .map(item => ({
+      sbNumber: item.sb_number || '',
+      notificationDateOfCompliance: item.notification_date_of_compliance || '',
+      description: item.description || '',
+      catType: item.cat_type || '',
+      moduleApplicability: item.module_applicability || '',
+      methodOfCompliance: item.method_of_compliance || '',
+      remarks: item.remarks || ''
+    }));
+
+  // Map AD items
+  const rawAds = Array.isArray(data.airworthiness_directive_status) ? data.airworthiness_directive_status : [];
+  iq03Data.adStatus = rawAds
+    .filter(item => item.ad_number !== null)
+    .map(item => ({
+      adNumber: item.ad_number || '',
+      referenceSb: item.reference_sb || '',
+      recurrInsp: item.recurr_insp || '',
+      notificationDateOfCompliance: item.notification_date_of_compliance || '',
+      description: item.description || '',
+      moduleApplicability: item.module_applicability || '',
+      methodOfCompliance: item.method_of_compliance || '',
+      remarks: item.remarks || ''
+    }));
 
   // Save iq03 to Database (Murni untuk History Log)
   const iq03 = await iq03Repository.createIq03Report(iq03Data);
@@ -127,6 +326,9 @@ const processIq03Json = async (rawPayload, originalFileName = 'payload.json', st
     }
   }
 
+  // Trigger compliance matching
+  await matchIq03Compliance(iq03);
+
   // Refetch iq03 to include newly created complianceRecords relation
   return iq03Repository.findIq03ReportById(iq03.id);
 };
@@ -173,5 +375,6 @@ const getiq03File = async (id) => {
 module.exports = {
   processIq03Json,
   processIq03Pdf,
-  getiq03File
+  getiq03File,
+  matchIq03Compliance
 };

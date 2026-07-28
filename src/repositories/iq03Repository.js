@@ -3,10 +3,13 @@ const prisma = require('../db');
 const includeRelations = {
   engine: true,
   configurationReport: true,
+  llpStatus: true,
+  sbStatus: true,
+  adStatus: true,
   complianceRecords: {
     include: {
       sb: true,
-      sb: true
+      ad: true
     }
   }
 };
@@ -15,7 +18,7 @@ const includeRelations = {
  * Creates a new Iq03Report record along with its child relations.
  */
 const createIq03Report = async (data) => {
-  const { configurationReport, llpStatus, sbStatus, ...headerData } = data;
+  const { configurationReport, llpStatus, sbStatus, adStatus, ...headerData } = data;
   
   // Find associated Engine in database by ESN (Engine Serial Number)
   let engineId = null;
@@ -31,12 +34,36 @@ const createIq03Report = async (data) => {
     engineSerialNumber: headerData.engineSerialNumber
   }));
 
+  const mappedLlps = (llpStatus || []).map(item => ({
+    ...item,
+    engineSerialNumber: headerData.engineSerialNumber
+  }));
+
+  const mappedSbs = (sbStatus || []).map(item => ({
+    ...item,
+    engineSerialNumber: headerData.engineSerialNumber
+  }));
+
+  const mappedAds = (adStatus || []).map(item => ({
+    ...item,
+    engineSerialNumber: headerData.engineSerialNumber
+  }));
+
   return prisma.iq03Report.create({
     data: {
       ...headerData,
       engineId,
       configurationReport: {
         create: mappedConfigs
+      },
+      llpStatus: {
+        create: mappedLlps
+      },
+      sbStatus: {
+        create: mappedSbs
+      },
+      adStatus: {
+        create: mappedAds
       }
     },
     include: includeRelations
@@ -47,7 +74,7 @@ const createIq03Report = async (data) => {
  * Retrieves a Iq03Report by ID.
  */
 const findIq03ReportById = async (id) => {
-  return prisma.Iq03Report.findUnique({
+  return prisma.iq03Report.findUnique({
     where: { id },
     include: includeRelations
   });
@@ -61,7 +88,7 @@ const listIq03Reports = async ({ skip = 0, take = 20, esn } = {}) => {
   if (esn) {
     where.engineSerialNumber = esn;
   }
-  return prisma.Iq03Report.findMany({
+  return prisma.iq03Report.findMany({
     where,
     skip: parseInt(skip, 10),
     take: parseInt(take, 10),
@@ -80,14 +107,14 @@ const countIq03Reports = async ({ esn } = {}) => {
   if (esn) {
     where.engineSerialNumber = esn;
   }
-  return prisma.Iq03Report.count({ where });
+  return prisma.iq03Report.count({ where });
 };
 
 /**
  * Deletes a Iq03Report record.
  */
 const deleteIq03Report = async (id) => {
-  return prisma.Iq03Report.delete({
+  return prisma.iq03Report.delete({
     where: { id },
     include: includeRelations
   });
