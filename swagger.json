@@ -399,9 +399,16 @@
               "enum": [
                 "ACTIVE",
                 "SUPERSEDED",
-                "CANCELLED"
+                "TERMINATED",
+                "CONCURRENT",
+                "CLOSED",
+                "DRAFT",
+                "REVIEW_REQUIRED",
+                "VALIDATED",
+                "GENERATED"
               ]
-            }
+            },
+            "description": "Mendukung **DocumentStatus** maupun **OcrDraftStatus**.\n\n**Status Utama Dokumen SB (DocumentStatus)**\n*   **ACTIVE:** Kondisi default saat SB baru dibuat/diunggah. Berlaku sah.\n*   **SUPERSEDED:** Berubah otomatis saat ada SB baru yang menggantikan (supersedes) SB lama ini.\n*   **TERMINATED:** Berubah otomatis saat ada SB baru yang membatalkan (terminates) SB lama ini.\n*   **CONCURRENT:** Berubah otomatis saat ada SB baru yang mengharuskan eksekusi bersamaan dengan SB lama ini.\n\n**Status Proses AI & Evaluasi (OcrDraftStatus)**\n*   **DRAFT:** File PDF baru saja diunggah ke AI (belum divalidasi engineer).\n*   **REVIEW_REQUIRED:** AI mendeteksi potensi anomali, butuh ulasan ekstra.\n*   **VALIDATED:** Engineer telah mengonfirmasi data AI siap dijadikan EES.\n*   **GENERATED:** Dokumen EES telah dicetak dari data AI (evaluasi selesai)."
           },
           {
             "name": "operatorId",
@@ -1110,7 +1117,10 @@
                       "id": "SB-DOC-XXXXXXXX",
                       "sbNumber": "SB 72-0685 R06",
                       "title": "ENGINE - FAN HUB FRAME",
-                      "operator": { "code": "GIA", "name": "Garuda Indonesia" },
+                      "operator": {
+                        "code": "GIA",
+                        "name": "Garuda Indonesia"
+                      },
                       "aircraftType": "B777-300ER"
                     },
                     "permissions": {
@@ -1943,7 +1953,9 @@
                     "description": "Alasan penolakan dokumen EES"
                   }
                 },
-                "required": ["comment"]
+                "required": [
+                  "comment"
+                ]
               }
             }
           }
@@ -2437,6 +2449,89 @@
         "responses": {
           "201": {
             "description": "SVR PDF received and processed by SVR pipeline"
+          }
+        }
+      }
+    },
+    "/api/service-bulletins/pending": {
+      "get": {
+        "tags": [
+          "🗂️ Step 1: Select SB"
+        ],
+        "summary": "List SB yang belum selesai dikerjakan (Pending)",
+        "description": "Mengambil daftar SB yang belum memiliki dokumen EES, ATAU EES-nya belum disetujui penuh (Status Approval bukan APPROVED).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Cari berdasarkan nomor SB atau judul",
+            "schema": {
+              "type": "string",
+              "example": "V25"
+            }
+          },
+          {
+            "name": "sbType",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "MANDATORY",
+                "RECOMMENDED",
+                "ALERT",
+                "ADVISORY"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "SUPERSEDED",
+                "TERMINATED",
+                "CONCURRENT",
+                "CLOSED",
+                "DRAFT",
+                "REVIEW_REQUIRED",
+                "VALIDATED",
+                "GENERATED"
+              ]
+            },
+            "description": "\n\nMendukung DocumentStatus (ACTIVE, SUPERSEDED, dll) maupun OcrDraftStatus (DRAFT, VALIDATED, dll)."
+          },
+          {
+            "name": "operatorId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "✅ Daftar SB pending berhasil diambil"
           }
         }
       }

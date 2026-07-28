@@ -370,6 +370,17 @@ const parseAiSbRelations = async (sourceSbId, sbRelations, supersedesObj) => {
         create: { requirementGroupId: reqGroup.id, targetSbNumber: fullTargetSb },
         update: {}
       });
+
+      // Update status target SB menjadi CONCURRENT jika ada di DB
+      const targetSbInDb = await prisma.serviceBulletin.findUnique({
+        where: { sbNumber: fullTargetSb }
+      });
+      if (targetSbInDb) {
+        await prisma.serviceBulletin.update({
+          where: { id: targetSbInDb.id },
+          data: { status: 'CONCURRENT' }
+        });
+      }
     }
   }
 
@@ -402,6 +413,16 @@ const parseAiSbRelations = async (sourceSbId, sbRelations, supersedesObj) => {
           await prisma.serviceBulletin.update({
             where: { id: targetSbInDb.id },
             data: { status: 'TERMINATED' }
+          });
+        }
+      } else if (relType === 'CONCURRENT') {
+        const targetSbInDb = await prisma.serviceBulletin.findUnique({
+          where: { sbNumber: fullTargetSb }
+        });
+        if (targetSbInDb) {
+          await prisma.serviceBulletin.update({
+            where: { id: targetSbInDb.id },
+            data: { status: 'CONCURRENT' }
           });
         }
       }

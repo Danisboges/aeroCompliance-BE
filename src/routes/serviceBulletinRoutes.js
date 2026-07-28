@@ -16,6 +16,8 @@ const pdfBodyParser = express.raw({ type: 'application/pdf', limit: '100mb' });
 router.get('/service-bulletins', verifyToken, sbListController.listServiceBulletins);
 // List SB yang belum di-review/generate (belum ada AI analisis / EES)
 router.get('/service-bulletins/unreviewed', verifyToken, sbListController.listUnreviewedServiceBulletins);
+// List SB yang belum selesai dikerjakan (pending)
+router.get('/service-bulletins/pending', verifyToken, sbListController.listPendingServiceBulletins);
 // Get single SB detail
 router.get('/service-bulletins/:id', verifyToken, sbListController.getServiceBulletin);
 // Sumber A: Upload PDF ke SB yang sudah ada di database → AI analisis otomatis

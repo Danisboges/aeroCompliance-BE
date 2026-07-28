@@ -205,8 +205,8 @@ async function markServiceBulletinAsRead(sbId, userId) {
  * Lists all SBs with optional text search and type/status filters (for Select SB step).
  * Supports pagination, operator filter, and date ranges.
  */
-async function findAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy = 'receivedAt', sortOrder = 'desc', page, limit, unreviewedOnly } = {}) {
-  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly });
+async function findAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy = 'receivedAt', sortOrder = 'desc', page, limit, unreviewedOnly, pendingOnly } = {}) {
+  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly });
   
   const queryOptions = {
     where,
@@ -229,22 +229,34 @@ async function findAllWithFilter({ search, sbType, status, operatorId, receivedF
 /**
  * Counts all SBs with optional filters (for pagination).
  */
-async function countAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly } = {}) {
-  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly });
+async function countAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly } = {}) {
+  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly });
   return prisma.serviceBulletin.count({ where });
 }
 
-function _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly }) {
-  const where = {};
+function _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly }) {
+  const where = { AND: [] };
+  
   if (search) {
-    where.OR = [
-      { sbNumber: { contains: search, mode: 'insensitive' } },
-      { title: { contains: search, mode: 'insensitive' } },
-      { effectivityType: { contains: search, mode: 'insensitive' } },
-    ];
+    where.AND.push({
+      OR: [
+        { sbNumber: { contains: search, mode: 'insensitive' } },
+        { title: { contains: search, mode: 'insensitive' } },
+        { effectivityType: { contains: search, mode: 'insensitive' } },
+      ]
+    });
   }
+  
   if (sbType) where.sbType = sbType;
-  if (status) where.status = status;
+  
+  if (status) {
+    if (['DRAFT', 'REVIEW_REQUIRED', 'VALIDATED', 'GENERATED'].includes(status)) {
+      where.ocrResult = { draftStatus: status };
+    } else {
+      where.status = status;
+    }
+  }
+  
   if (operatorId) where.operatorId = operatorId;
   
   if (receivedFrom || receivedTo) {
@@ -255,9 +267,20 @@ function _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, r
 
   if (unreviewedOnly) {
     // "Belum melakukan analisis AI dan belum masuk ke Alur Pembuatan Dokumen Evaluasi"
-    // This means generatedEes is null, and OCR is not generated.
-    // The most accurate way is generatedEes is null.
     where.generatedEes = { is: null };
+  }
+
+  if (pendingOnly) {
+    where.AND.push({
+      OR: [
+        { generatedEes: { is: null } },
+        { generatedEes: { reviewStatus: { not: 'APPROVED' } } }
+      ]
+    });
+  }
+
+  if (where.AND.length === 0) {
+    delete where.AND;
   }
 
   return where;

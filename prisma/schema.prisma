@@ -27,24 +27,20 @@ model Operator {
 }
 
 enum DocumentStatus {
-  DRAFT
-  OPEN
   ACTIVE
   SUPERSEDED
   TERMINATED
-  CANCELLED
-  CLOSED
+  CONCURRENT
 }
 
 enum ComplianceStatus {
-  NOT_APPLICABLE
   OPEN
+  NOT_APPLICABLE
   PENDING
   IN_PROGRESS
   COMPLIED
   NOT_REQUIRED
   DEFERRED
-  OVERDUE
 }
 
 enum SbRelationType {
