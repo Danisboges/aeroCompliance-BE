@@ -184,6 +184,14 @@ GMF-BE/
 | 2026-07-22 | 1.9 | **Sistem Relasi SB, Group Pemenuhan (ANY_OF/ALL_OF), & Compliance Engine Per-Engine**. Implementasi model `SbRelation` (`CONCURRENT`, `SUPERSEDES`, `TERMINATES`), `SbRequirementGroup`, `SbRequirementMember`, `SbGroupResult`, dan `SbComplianceAudit`. Parsing otomatis `mro_schema.sb_relations` dari Webhook AI. Penambahan endpoint pohon silsilah (`GET /api/service-bulletins/:id/lineage`) dan ringkasan pemenuhan engine (`GET /api/engines/:engineId/compliance-summary`). |
 | 2026-07-22 | 2.0 | **Pembedaan Rekomendasi SB (Kategori < 4 Manual vs >= 4 Auto AI), Unified Dashboard, & Evaluasi Applicability SVR/EDS**. Penegasan alur pengerjaan: SB Kategori < 4 mewajibkan input rekomendasi enjiniring secara MANUAL lalu langsung menuju Cek Kesesuaian Armada. Penyelarasan antarmuka Dashboard seragam untuk seluruh Operator. Integrasi OCR SVR & EDS untuk mengekstrak ESN dan menentukan status *Applicable*, *Not Applicable*, atau *Superseded*. |
 | 2026-07-28 | 2.2 | **Pemisahan Status Pemenuhan AD & SB**, penambahan model mandiri `AirworthinessDirective`, serta perbaikan bug *parsing* data LLP dari AI pada EDS/IQ03. |
+| 2026-07-28 | 2.3 | **Notifikasi Email Approval dengan SMTP & Nodemailer**. Mengintegrasikan pengiriman email permohonan (*Request*) dan penolakan (*Rejected*) persetujuan otomatis menggunakan SMTP Gmail, template HTML yang dikustomisasi, serta lampiran Logo (CID) dan PDF draf EES. |
+
+### Fitur Terbaru (2026-07-28 v2.3)
+- **Email Notifications via Nodemailer**:
+  - Mengimplementasikan `emailService.js` untuk mengirimkan notifikasi persetujuan (`sendApprovalRequestEmail` dan `sendApprovalRejectedEmail`) ke *Second Engineer* atau *Manager* atau *Creator*.
+  - Template HTML *custom* modern (`email-approval-request.html` & `email-approval-rejected.html`) dengan logo tertaut menggunakan metode CID (`cid:gmflogo`) agar email terhindar dari pemblokiran *Attachment Image*.
+  - File EES hasil *generate* disisipkan langsung sebagai lampiran PDF di badan pesan (Attachment).
+  - Terintegrasi dengan file konfigurasi `.env` untuk mengatur akun SMTP secara aman dan mendukung *fallback* virtual (Ethereal Email).
 
 ### Fitur Terbaru (2026-07-28 v2.2)
 - **Pemisahan Entitas & Pemenuhan AD (Airworthiness Directive) dan SB (Service Bulletin)**:

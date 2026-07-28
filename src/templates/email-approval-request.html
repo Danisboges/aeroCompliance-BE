@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Action Required: EES Approval</title>
+    <style>
+        body { font-family: 'Nunito', 'Segoe UI', 'Quicksand', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f7f6; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #0E1B93 0%, #0242DB 100%); color: white; padding: 20px; text-align: center; }
+        .header img { max-height: 60px; margin-bottom: 10px; }
+        .header h2 { margin: 0; font-size: 24px; font-weight: 600; }
+        .content { padding: 30px; }
+        .document-box { text-align: center; font-size: 1.2em; font-weight: bold; padding: 15px; margin: 20px 0; background-color: #e6f7ff; border-left: 4px solid #00C2FF; border-radius: 4px; color: #0E1B93; }
+        .btn { display: inline-block; padding: 12px 25px; background-color: #0242DB; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; transition: background-color 0.3s; }
+        .btn:hover { background-color: #00C2FF; }
+        .footer { margin-top: 20px; padding: 15px; font-size: 0.8em; color: #777; text-align: center; background-color: #f9f9f9; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="cid:gmflogo" alt="GMF AeroAsia Logo" />
+            <h2>EES Approval Required</h2>
+        </div>
+        <div class="content">
+            <h3 style="color: #0E1B93;">Hello,</h3>
+            <p>You have been assigned as <strong style="color: #0242DB;">{{assignedRole}}</strong> to review and approve the following Engine Evaluation Sheet (EES) document:</p>
+            
+            <div class="document-box">
+                {{documentNumber}}
+            </div>
+
+            <p>A draft copy of this EES document has been attached to this email for your preliminary review.</p>
+            
+            <p>Please review the document and provide your final approval decision through the dashboard.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{url}}" class="btn">Review and Approve</a>
+            </div>
+            
+            <p>Thank you,<br><strong style="color: #0E1B93;">ORBIT_GMF</strong></p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message. Please do not reply directly to this email.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,6 +1,7 @@
 const prisma = require('../db');
 const fs = require('fs');
 const path = require('path');
+const emailService = require('./emailService');
 
 const listApprovals = async ({ status, assigneeId, operatorId, minCat, maxCat, skip = 0, take = 20 }) => {
   const where = {};
@@ -105,6 +106,37 @@ const submitForApproval = async ({ eesId, assignedToId, submitterId }) => {
   const { notifyUser } = require('../socket');
   if (notifyUser) notifyUser(assignedToId, 'dashboard_updated', { trigger: 'new_approval' });
 
+  // Send Email Notification
+  try {
+    const eesDoc = await prisma.eesDocument.findUnique({
+      where: { id: eesId },
+      include: { sourceSb: { include: { operator: true } } }
+    });
+    const assignedUser = await prisma.user.findUnique({ where: { id: assignedToId } });
+    
+    if (eesDoc && assignedUser && assignedUser.email) {
+      // Generate draft PDF for attachment
+      const pdfGenService = require('./pdfGenerationService');
+      const opCode = eesDoc.sourceSb?.operator?.code === 'QG' ? 'CITILINK' : 'GARUDA';
+      const draftSb = { ...eesDoc.sourceSb, generatedEes: eesDoc };
+      const pdfBuffer = await pdfGenService.generateEesPdf({ sb: draftSb, templateType: opCode });
+
+      // Create a URL placeholder, e.g. frontend URL
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const approvalUrl = `${frontendUrl}/approvals/${eesId}`;
+      
+      await emailService.sendApprovalRequestEmail(
+        assignedUser.email, 
+        eesDoc.eesNumber, 
+        assignedUser.role, 
+        approvalUrl,
+        pdfBuffer
+      );
+    }
+  } catch (err) {
+    console.error("Error sending submit email:", err);
+  }
+
   return approval;
 };
 
@@ -189,6 +221,34 @@ const submitReview = async ({ eesId, action, comment, nextAssignedToId, actorId,
 
   const { notifyAll, notifyUser } = require('../socket');
   if (notifyAll) notifyAll('dashboard_updated', { trigger: 'approval_action' });
+
+  // Send Reject/Return Email Notification
+  if (finalStatus === 'REJECTED' || finalStatus === 'RETURNED') {
+    try {
+      const submitter = await prisma.user.findUnique({ where: { id: approval.submittedById } });
+      if (submitter && submitter.email) {
+        // Generate current draft PDF for attachment
+        const pdfGenService = require('./pdfGenerationService');
+        const eesDoc = approval.eesDocument;
+        const opCode = eesDoc.sourceSb?.operator?.code === 'QG' ? 'CITILINK' : 'GARUDA';
+        const draftSb = { ...eesDoc.sourceSb, generatedEes: eesDoc };
+        const pdfBuffer = await pdfGenService.generateEesPdf({ sb: draftSb, templateType: opCode });
+
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const eesUrl = `${frontendUrl}/ees/${eesId}`;
+        await emailService.sendApprovalRejectedEmail(
+          submitter.email,
+          eesDoc.eesNumber,
+          comment || 'No reason provided.',
+          actorRole,
+          eesUrl,
+          pdfBuffer
+        );
+      }
+    } catch (err) {
+      console.error("Error sending rejection email:", err);
+    }
+  }
 
   return result;
 };
