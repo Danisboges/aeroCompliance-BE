@@ -34,10 +34,12 @@ const formatSbResponse = (sb, originalUrl = '') => {
   const sbJson = JSON.parse(JSON.stringify(sb));
 
   const status = sbJson.ocrResult?.draftStatus || sbJson.status || 'DRAFT';
+  const syncStatus = sbJson.generatedEes ? 'SYNC' : 'UNSYNC';
   
   const result = {
     ...sbJson,
-    status
+    status,
+    syncStatus
   };
 
   if (status !== 'GENERATED') {
@@ -70,6 +72,7 @@ const formatSbListResponse = (sb) => {
     ...sbJson,
     ocrStatus: sbJson.ocrResult?.ocrStatus || 'UPLOADED',
     draftStatus: sbJson.ocrResult?.draftStatus || sbJson.status || 'DRAFT',
+    syncStatus: sbJson.generatedEes ? 'SYNC' : 'UNSYNC',
     ees: sbJson.generatedEes ? {
       id: sbJson.generatedEes.id,
       eesNumber: sbJson.generatedEes.eesNumber,
@@ -278,6 +281,15 @@ const generateEesPdf = async (req, res) => {
   }
 };
 
+const getServiceBulletinLogs = async (req, res) => {
+  try {
+    const logs = await serviceBulletinService.getServiceBulletinLogs(req.params.id);
+    return res.status(200).json({ data: logs });
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
 module.exports = {
   uploadPdf,
   createDraft,
@@ -298,6 +310,7 @@ module.exports = {
   updateAiSummary,
   getEesDocument,
   updateEesDocument,
+  getServiceBulletinLogs,
 };
 
 /**

@@ -2535,6 +2535,78 @@
           }
         }
       }
+    },
+    "/api/service-bulletins/{id}/logs": {
+      "get": {
+        "tags": [
+          "Service Bulletins"
+        ],
+        "summary": "Get chronological timeline (logs) of an SB",
+        "description": "Returns an array of events detailing the timeline of the SB (Upload, AI analysis, EES generation, approvals)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Service Bulletin ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "stage": {
+                            "type": "string",
+                            "example": "SB_UPLOADED"
+                          },
+                          "timestamp": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "message": {
+                            "type": "string",
+                            "example": "Dokumen SB berhasil diunggah"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "example": "engineer1",
+                            "nullable": true
+                          },
+                          "comment": {
+                            "type": "string",
+                            "example": "Looks good",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   }
 }

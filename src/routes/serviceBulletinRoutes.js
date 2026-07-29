@@ -20,6 +20,8 @@ router.get('/service-bulletins/unreviewed', verifyToken, sbListController.listUn
 router.get('/service-bulletins/pending', verifyToken, sbListController.listPendingServiceBulletins);
 // Get single SB detail
 router.get('/service-bulletins/:id', verifyToken, sbListController.getServiceBulletin);
+// Get logs/timeline of a single SB
+router.get('/service-bulletins/:id/logs', verifyToken, serviceBulletinController.getServiceBulletinLogs);
 // Sumber A: Upload PDF ke SB yang sudah ada di database → AI analisis otomatis
 router.post('/service-bulletins/:id/upload-pdf', verifyToken, pdfBodyParser, serviceBulletinController.uploadPdfToExistingSb);
 // Sumber B: Upload PDF SB baru (belum ada di database) → buat SB baru + AI analisis otomatis

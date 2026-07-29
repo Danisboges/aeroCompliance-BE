@@ -451,6 +451,7 @@ module.exports = {
   deleteServiceBulletin,
   getServiceBulletinFile,
   triggerAiAnalysis,
+  getServiceBulletinLogs,
 };
 
 /**
@@ -482,4 +483,91 @@ async function triggerAiAnalysis(sbId, updatedById = null) {
     extractedAt: new Date(),
     updatedById: updatedById || undefined,
   });
+}
+
+/**
+ * Get chronological timeline of SB processes (Upload, AI, EES, Approval, etc.)
+ */
+async function getServiceBulletinLogs(sbId) {
+  const sb = await prisma.serviceBulletin.findUnique({
+    where: { id: sbId },
+    include: {
+      ocrResult: true,
+      engineeringRec: true,
+      generatedEes: {
+        include: {
+          reviewActions: {
+            orderBy: { createdAt: 'asc' },
+            include: { actor: true }
+          }
+        }
+      }
+    }
+  });
+
+  if (!sb) {
+    throw new Error('Not Found: Service Bulletin does not exist');
+  }
+
+  const logs = [];
+  
+  // 1. Uploaded
+  logs.push({ 
+    stage: 'SB_UPLOADED', 
+    timestamp: sb.createdAt, 
+    message: 'Dokumen SB berhasil diunggah' 
+  });
+
+  // 2. OCR / AI Process
+  if (sb.ocrResult) {
+    if (sb.ocrResult.extractedAt) {
+      logs.push({ 
+        stage: 'AI_ANALYZED', 
+        timestamp: sb.ocrResult.extractedAt, 
+        message: 'Analisis dokumen oleh AI selesai' 
+      });
+    }
+    // DraftStatus changes to VALIDATED or GENERATED when user validates
+    if (sb.ocrResult.draftStatus === 'VALIDATED' || sb.ocrResult.draftStatus === 'GENERATED') {
+      logs.push({ 
+        stage: 'AI_VALIDATED', 
+        timestamp: sb.ocrResult.updatedAt, 
+        message: 'Hasil ekstraksi AI divalidasi oleh Engineer' 
+      });
+    }
+  }
+
+  // 3. Engineering Recommendation
+  if (sb.engineeringRec) {
+    logs.push({ 
+      stage: 'ENGINEERING_REC', 
+      timestamp: sb.engineeringRec.createdAt, 
+      message: `Rekomendasi teknis diberikan: ${sb.engineeringRec.recommendedAction}` 
+    });
+  }
+
+  // 4. EES Generation and Approval Actions
+  if (sb.generatedEes) {
+    logs.push({ 
+      stage: 'EES_GENERATED', 
+      timestamp: sb.generatedEes.createdAt, 
+      message: `Dokumen EES diterbitkan (${sb.generatedEes.eesNumber})` 
+    });
+    
+    // Approval actions loop
+    sb.generatedEes.reviewActions.forEach(action => {
+      logs.push({
+        stage: `EES_${action.action}`,
+        timestamp: action.createdAt,
+        message: `Status EES: ${action.action}`,
+        actor: action.actor?.username || action.actorId,
+        comment: action.comment || null
+      });
+    });
+  }
+
+  // Sort logs by timestamp ascending
+  logs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  return logs;
 }
