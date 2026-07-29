@@ -50,7 +50,10 @@ const createEesDocument = async (documentData, evaluations) => {
             requirementDesc: String(item.requirementDesc ?? ''),
             remarks: item.remarks ? String(item.remarks) : null,
             taskType: item.taskType ? String(item.taskType) : null,
-            references: item.references || null,
+            references: item.references || null,
+            adRelated: item.adRelated !== undefined && item.adRelated !== null
+              ? String(item.adRelated)
+              : null,
             warranty: item.warranty !== undefined ? Boolean(item.warranty) : null,
             rep: item.rep ? String(item.rep) : null,
             dueAt: item.dueAt ? new Date(item.dueAt) : null,
@@ -90,10 +93,10 @@ const listEesDocuments = async ({ skip = 0, take = 20 } = {}) => {
     orderBy: { createdAt: 'desc' },
     include: {
       sourceSb: {
-        select: { 
-          id: true, 
-          sbNumber: true, 
-          title: true, 
+        select: {
+          id: true,
+          sbNumber: true,
+          title: true,
           operator: true,
           createdBy: {
             select: { id: true, username: true, role: true, email: true }

@@ -143,6 +143,12 @@
                 },
                 "remark": {
                   "type": "string"
+                },
+                "adRelated": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Hubungan dengan Airworthiness Directive. Backend juga menerima alias `ad_related`.",
+                  "example": "N"
                 }
               }
             }
@@ -157,6 +163,12 @@
                 },
                 "remark": {
                   "type": "string"
+                },
+                "adRelated": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Hubungan dengan Airworthiness Directive. Backend juga menerima alias `ad_related`.",
+                  "example": "N"
                 }
               }
             }
@@ -823,13 +835,15 @@
                   "problem_evidence": [
                     {
                       "requirement_desc": "Root technical issue...",
-                      "remark": "Revised SB aims to address..."
+                      "remark": "Revised SB aims to address...",
+                      "adRelated": "N"
                     }
                   ],
                   "description": [
                     {
                       "requirement_desc": "Corrective actions include...",
-                      "remark": "Updates TGB assembly..."
+                      "remark": "Updates TGB assembly...",
+                      "adRelated": "N"
                     }
                   ]
                 }
@@ -1107,7 +1121,15 @@
                     "reviewStatus": "PENDING",
                     "taskType": "REP",
                     "createdAt": "2024-03-20T10:00:00.000Z",
-                    "evaluations": [],
+                    "evaluations": [
+                      {
+                        "itemNo": "1",
+                        "requirementDesc": "Inspect the affected component.",
+                        "adRelated": "N",
+                        "warranty": false,
+                        "isApplicable": true
+                      }
+                    ],
                     "approval": {
                       "status": "PENDING",
                       "assignedToId": "USR-123"
@@ -1173,7 +1195,8 @@
                   "problem_evidence": [
                     {
                       "requirement_desc": "Edited description...",
-                      "remark": "Updated note"
+                      "remark": "Updated note",
+                      "adRelated": "N"
                     }
                   ]
                 }
@@ -1521,13 +1544,15 @@
                     "problem_evidence": [
                       {
                         "requirement_desc": "Material change in TGB roller bearing inner race.",
-                        "remark": "Address potential issues."
+                        "remark": "Address potential issues.",
+                        "adRelated": "N"
                       }
                     ],
                     "description": [
                       {
                         "requirement_desc": "Corrective actions include inspecting roller bearing.",
-                        "remark": "Updates TGB assembly."
+                        "remark": "Updates TGB assembly.",
+                        "adRelated": "N"
                       }
                     ],
                     "references": "GE90-100 Engine Manual (EM)"

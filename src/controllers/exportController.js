@@ -59,7 +59,10 @@ const exportGarudaPdf = async (req, res) => {
     const sb = await getSbOrFail(req.params.id, res);
     if (!sb) return;
 
-    if (sb.generatedEes?.storedGarudaPdfPath) {
+    if (
+      sb.generatedEes?.reviewStatus === 'APPROVED' &&
+      sb.generatedEes?.storedGarudaPdfPath
+    ) {
       const filePath = path.join(__dirname, '../..', sb.generatedEes.storedGarudaPdfPath);
       if (fs.existsSync(filePath)) {
         res.setHeader('Content-Type', 'application/pdf');
@@ -95,7 +98,10 @@ const downloadGarudaPdf = async (req, res) => {
     const sb = await getSbOrFail(req.params.id, res);
     if (!sb) return;
 
-    if (sb.generatedEes?.storedGarudaPdfPath) {
+    if (
+      sb.generatedEes?.reviewStatus === 'APPROVED' &&
+      sb.generatedEes?.storedGarudaPdfPath
+    ) {
       const filePath = path.join(__dirname, '../..', sb.generatedEes.storedGarudaPdfPath);
       if (fs.existsSync(filePath)) {
         res.setHeader('Content-Type', 'application/pdf');

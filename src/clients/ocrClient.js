@@ -66,6 +66,12 @@ const analyzePdf = async ({ fileName, checksum, buffer, storagePath }) => {
     const mergeInto = (paragraph, entry) => {
       const taskType = schema.task_type || routing.workflow_action || 'REP';
       const reference = schema.references || '';
+      const adRelated =
+        entry.adRelated ??
+        entry.ad_related ??
+        schema.adRelated ??
+        schema.ad_related ??
+        null;
 
       if (mergedMap.has(paragraph)) {
         const existing = mergedMap.get(paragraph);
@@ -76,13 +82,17 @@ const analyzePdf = async ({ fileName, checksum, buffer, storagePath }) => {
         if (entry.remark) {
           existing.remarks += '\n\n' + entry.remark;
         }
+        if (existing.adRelated === null && adRelated !== null) {
+          existing.adRelated = adRelated;
+        }
       } else {
         mergedMap.set(paragraph, {
           paragraph,
           requirementDesc: entry.requirement_desc || '',
           taskType,
           reference,
-          remarks: entry.remark || ''
+          remarks: entry.remark || '',
+          adRelated,
         });
       }
     };

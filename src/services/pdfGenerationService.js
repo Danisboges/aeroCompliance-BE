@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer');
-const { normalizeOcrPayload } = require('./eesService');
+const { normalizeAdRelated, normalizeOcrPayload } = require('./eesService');
+const { createBrowserLaunchOptions } = require('../config/runtimeConfig');
 const serviceBulletinRepository = require('../repositories/serviceBulletinRepository');
 const prisma = require('../db');
 
@@ -26,22 +27,18 @@ const getPayloadData = (sb) => {
  */
 const extractPdfItems = (sb, dynamicEsnVal = '-') => {
   const payload = getPayloadData(sb);
-  let rawItems = [];
-  if (Array.isArray(payload.evaluations)) {
-    rawItems = payload.evaluations;
-  } else if (Array.isArray(payload.items)) {
-    rawItems = payload.items;
-  } else if (payload.items && typeof payload.items === 'object') {
-    for (const key of Object.keys(payload.items)) {
-      if (Array.isArray(payload.items[key])) {
-        rawItems = rawItems.concat(payload.items[key]);
-      }
-    }
-  }
+  let rawItems = Array.isArray(sb.generatedEes?.evaluations)
+    ? sb.generatedEes.evaluations
+    : [];
 
-  // Fallback to database evaluations if rawPayload is empty
-  if (rawItems.length === 0 && sb.generatedEes && Array.isArray(sb.generatedEes.evaluations)) {
-    rawItems = sb.generatedEes.evaluations;
+  // The generated EES is the canonical source after a user edit. Fall back to
+  // normalized OCR data only when an EES has not been persisted yet.
+  if (rawItems.length === 0 && Object.keys(payload).length > 0) {
+    try {
+      rawItems = normalizeOcrPayload(payload).evaluations;
+    } catch {
+      rawItems = [];
+    }
   }
 
   const esnVal = sb.generatedEes?.esn ? sb.generatedEes.esn : dynamicEsnVal;
@@ -59,9 +56,14 @@ const extractPdfItems = (sb, dynamicEsnVal = '-') => {
       par: item.paragraph || '-',
       desc: item.requirementDesc || '-',
       taskType: item.taskType || '-',
-      ref: item.ref || item.reference || globalRef,
+      ref: item.ref || item.reference || item.references || globalRef,
       app: isApplicable ? 'Y' : 'N',
-      adRelated: item.adRelated ?? payload.adRelated ?? '-',
+      adRelated: normalizeAdRelated(
+        item.adRelated ??
+        item.ad_related ??
+        payload.adRelated ??
+        payload.ad_related
+      ) || '-',
       warranty: warrantyVal,
       affectedAcEngine: item.affectedAcEngine || payload.esn || esnVal || '-',
       rep: item.rep || '-',
@@ -349,10 +351,7 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
   }
 
   // Launch Puppeteer headless browser
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+  const browser = await puppeteer.launch(createBrowserLaunchOptions(puppeteer));
 
   try {
     const page = await browser.newPage();

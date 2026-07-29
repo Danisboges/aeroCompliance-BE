@@ -7,6 +7,8 @@
     "start": "node src/server.js",
     "dev": "nodemon -e js,json src/server.js",
     "seed": "node prisma/seed.js",
+    "seed:sb-72-0846": "node prisma/seedSb720846.js",
+    "config:doctor": "node scripts/runtimeDoctor.js",
     "test": "jest"
   },
   "keywords": [],

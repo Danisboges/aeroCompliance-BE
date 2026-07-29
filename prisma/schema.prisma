@@ -27,9 +27,13 @@ model Operator {
 }
 
 enum DocumentStatus {
+  DRAFT
+  OPEN
   ACTIVE
   SUPERSEDED
   TERMINATED
+  CANCELLED
+  CLOSED
   CONCURRENT
 }
 
@@ -41,6 +45,7 @@ enum ComplianceStatus {
   COMPLIED
   NOT_REQUIRED
   DEFERRED
+  OVERDUE
 }
 
 enum SbRelationType {
@@ -113,15 +118,19 @@ enum EngRecAction {
 
 // --- AUTH & USER ---
 model User {
-  id         String    @id
-  email      String    @unique
-  username   String    @unique
-  password   String
-  role       Role      @default(TECHNICIAN)
-  operatorId String?
-  operator   Operator? @relation(fields: [operatorId], references: [id])
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @default(now()) @updatedAt
+  id             String    @id
+  employeeNumber String?   @unique
+  name           String?
+  email          String    @unique
+  username       String    @unique
+  password       String
+  role           Role      @default(TECHNICIAN)
+  operatorId     String?
+  operator       Operator? @relation(fields: [operatorId], references: [id])
+  unit           String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
 
   uploadedServiceBulletins ServiceBulletin[]           @relation("ServiceBulletinCreator")
   updatedServiceBulletins  ServiceBulletin[]           @relation("ServiceBulletinUpdater")
@@ -291,6 +300,7 @@ model EesEvaluationItem {
   references      Json?
   taskType        String?
 
+  adRelated    String?
   warranty     Boolean?
   rep          String?
   dueAt        DateTime?

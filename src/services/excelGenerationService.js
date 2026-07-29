@@ -13,7 +13,7 @@ const generateEesExcel = async ({ sb, items, eesNumber, sbNumber }) => {
   });
 
   // ── Header ────────────────────────────────────────────────────────────────
-  sheet.mergeCells('A1:K1');
+  sheet.mergeCells('A1:L1');
   sheet.getCell('A1').value = 'AD/SB Alert/SB Mandatory Engineering Evaluation Sheet';
   sheet.getCell('A1').font = { bold: true, size: 13 };
   sheet.getCell('A1').alignment = { horizontal: 'center' };
@@ -22,7 +22,7 @@ const generateEesExcel = async ({ sb, items, eesNumber, sbNumber }) => {
   sheet.getCell('A2').value = `AD/SB Alert/SB Mandatory EES No: ${eesNumber}`;
   sheet.getCell('A2').font = { bold: true, size: 10 };
 
-  sheet.mergeCells('H2:K2');
+  sheet.mergeCells('H2:L2');
   sheet.getCell('H2').value = `AD/SB Alert/SB Mandatory No: ${sbNumber}`;
   sheet.getCell('H2').font = { bold: true, size: 10 };
   sheet.getCell('H2').alignment = { horizontal: 'right' };
@@ -32,7 +32,7 @@ const generateEesExcel = async ({ sb, items, eesNumber, sbNumber }) => {
   // ── Column Headers ─────────────────────────────────────────────────────────
   const headerRow = sheet.addRow([
     'No', 'Par', 'Requirement Descriptions & Evaluation',
-    'Task Type', 'Ref', 'App (Y/N)', 'Warranty (Y/N)',
+    'Task Type', 'Ref', 'App (Y/N)', 'AD Related', 'Warranty (Y/N)',
     'Affected A/C or Engine (ESN)', 'Rep (Y/N)', 'Due At', 'Remark'
   ]);
 
@@ -58,6 +58,7 @@ const generateEesExcel = async ({ sb, items, eesNumber, sbNumber }) => {
     { width: 10 },  // Task Type
     { width: 7 },   // Ref
     { width: 8 },   // App Y/N
+    { width: 10 },  // AD Related
     { width: 12 },  // Warranty Y/N
     { width: 22 },  // Affected A/C or Engine
     { width: 9 },   // Rep Y/N
@@ -97,6 +98,7 @@ const generateEesExcel = async ({ sb, items, eesNumber, sbNumber }) => {
       item.taskType,
       item.ref,
       item.app,
+      item.adRelated,
       item.warranty,
       item.affectedAcEngine,
       item.rep,
@@ -117,7 +119,7 @@ const generateEesExcel = async ({ sb, items, eesNumber, sbNumber }) => {
     // Justify-align the description and remarks column
     dataRow.getCell(3).alignment = { horizontal: 'justify', vertical: 'middle', wrapText: true };
     dataRow.getCell(5).alignment = { horizontal: 'justify', vertical: 'middle', wrapText: true };
-    dataRow.getCell(11).alignment = { horizontal: 'justify', vertical: 'middle', wrapText: true };
+    dataRow.getCell(12).alignment = { horizontal: 'justify', vertical: 'middle', wrapText: true };
 
     // Apply vertical merges for grouped columns
     if (item.isFirstInGroup && item.groupLength > 1) {
@@ -126,10 +128,11 @@ const generateEesExcel = async ({ sb, items, eesNumber, sbNumber }) => {
       sheet.mergeCells(rowIndex, 2, endRow, 2); // Par
       sheet.mergeCells(rowIndex, 4, endRow, 4); // Task Type
       sheet.mergeCells(rowIndex, 6, endRow, 6); // App Y/N
-      sheet.mergeCells(rowIndex, 7, endRow, 7); // Warranty Y/N
-      sheet.mergeCells(rowIndex, 8, endRow, 8); // Affected A/C
-      sheet.mergeCells(rowIndex, 9, endRow, 9); // Rep Y/N
-      sheet.mergeCells(rowIndex, 10, endRow, 10); // Due At
+      sheet.mergeCells(rowIndex, 7, endRow, 7); // AD Related
+      sheet.mergeCells(rowIndex, 8, endRow, 8); // Warranty Y/N
+      sheet.mergeCells(rowIndex, 9, endRow, 9); // Affected A/C
+      sheet.mergeCells(rowIndex, 10, endRow, 10); // Rep Y/N
+      sheet.mergeCells(rowIndex, 11, endRow, 11); // Due At
     }
   });
 
@@ -152,7 +155,7 @@ const generateEesExcel = async ({ sb, items, eesNumber, sbNumber }) => {
   // Merge signature cells
   sheet.mergeCells(`A${sigRow.number}:C${sigRow.number}`);
   sheet.mergeCells(`D${sigRow.number}:F${sigRow.number}`);
-  sheet.mergeCells(`G${sigRow.number}:K${sigRow.number}`);
+  sheet.mergeCells(`G${sigRow.number}:L${sigRow.number}`);
 
   // Return the buffer
   const buffer = await workbook.xlsx.writeBuffer();

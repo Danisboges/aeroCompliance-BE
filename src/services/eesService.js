@@ -1,6 +1,18 @@
 const prisma = require('../db');
 const eesRepository = require('../repositories/eesRepository');
 
+const normalizeAdRelated = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  if (value === true || value === 1) return 'Y';
+  if (value === false || value === 0) return 'N';
+
+  const normalized = String(value).trim();
+  const lower = normalized.toLowerCase();
+  if (['true', 'yes', 'y', '1'].includes(lower)) return 'Y';
+  if (['false', 'no', 'n', '0'].includes(lower)) return 'N';
+  return normalized || null;
+};
+
 /**
  * Validates and processes the EES webhook payload.
  *
@@ -182,6 +194,12 @@ const normalizeOcrPayload = (rawPayload) => {
       remarks: item.remark || item.remarks || '',
       taskType: item.taskType || payload.task_type || '',
       references: item.references || null,
+      adRelated: normalizeAdRelated(
+        item.adRelated ??
+        item.ad_related ??
+        payload.adRelated ??
+        payload.ad_related
+      ),
       warranty: normalizeBoolean(item.warranty ?? payload.warranty),
       rep: item.rep ?? payload.rep ?? null,
       isApplicable,
@@ -466,7 +484,7 @@ const parseAiSbRelations = async (sourceSbId, sbRelations, supersedesObj) => {
 module.exports = {
   processEesWebhook,
   normalizeOcrPayload,
+  normalizeAdRelated,
   listEesDocuments,
   parseAiSbRelations
 };
-

@@ -6,5 +6,6 @@ scratch/
 api_integration_test.js
 *.test.js
 *.spec.js
+!__tests__/*.test.js
 *.log
 docker-compose.yml
