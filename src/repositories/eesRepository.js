@@ -97,12 +97,14 @@ const listEesDocuments = async ({ skip = 0, take = 20 } = {}) => {
           id: true,
           sbNumber: true,
           title: true,
+          complianceCategory: true,
           operator: true,
           createdBy: {
             select: { id: true, username: true, role: true, email: true }
           }
         }
-      }
+      },
+      approval: true
     }
   });
 };

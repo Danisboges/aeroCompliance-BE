@@ -320,8 +320,38 @@ const listEesDocuments = async (query = {}) => {
     eesRepository.countEesDocuments()
   ]);
 
+  // Extract unique assignedToIds
+  const assignedToIds = [...new Set(items.map(i => i.approval?.assignedToId).filter(Boolean))];
+  
+  let userMap = {};
+  if (assignedToIds.length > 0) {
+    const users = await prisma.user.findMany({
+      where: { id: { in: assignedToIds } },
+      select: { id: true, username: true, email: true, role: true }
+    });
+    userMap = users.reduce((acc, user) => {
+      acc[user.id] = user;
+      return acc;
+    }, {});
+  }
+
+  // Format the output items
+  const formattedItems = items.map(item => {
+    const assignedEngineer = item.approval?.assignedToId ? userMap[item.approval.assignedToId] : null;
+    
+    return {
+      ...item,
+      category: item.sourceSb?.complianceCategory,
+      assignedEngineer: assignedEngineer ? {
+        id: assignedEngineer.id,
+        username: assignedEngineer.username,
+        role: assignedEngineer.role
+      } : null
+    };
+  });
+
   return {
-    items,
+    items: formattedItems,
     pagination: {
       page,
       limit,
