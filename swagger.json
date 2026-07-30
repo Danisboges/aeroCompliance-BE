@@ -1484,6 +1484,32 @@
                                 }
                               }
                             }
+                          },
+                          "category": {
+                            "type": "integer",
+                            "description": "Kategori compliance dari Service Bulletin sumber",
+                            "example": 3
+                          },
+                          "assignedEngineer": {
+                            "type": "object",
+                            "description": "Data engineer yang ditugaskan untuk review EES ini (jika ada)",
+                            "nullable": true,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "username": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              }
+                            },
+                            "example": {
+                              "id": "USR-12345",
+                              "username": "johndoe",
+                              "role": "ENGINEER"
+                            }
                           }
                         }
                       }
