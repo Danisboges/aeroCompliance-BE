@@ -38,7 +38,21 @@ const listEesDocuments = async (req, res) => {
   }
 };
 
+const getEesDocument = async (req, res) => {
+  try {
+    const ees = await eesService.getEesDocumentById(req.params.id);
+    return res.status(200).json({ data: ees });
+  } catch (error) {
+    console.error('Error getting EES by ID:', error);
+    if (error.message.startsWith('Not Found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   handleEesWebhook,
-  listEesDocuments
+  listEesDocuments,
+  getEesDocument
 };

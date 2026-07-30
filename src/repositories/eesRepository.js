@@ -79,6 +79,17 @@ const getEesDocumentBySbId = async (sourceSbId) => {
   });
 };
 
+const getEesDocumentById = async (id) => {
+  return await prisma.eesDocument.findUnique({
+    where: { id },
+    include: {
+      evaluations: true,
+      sourceSb: true,
+      approval: true
+    }
+  });
+};
+
 const updateEesDocumentPdfPath = async (id, storedPdfPath) => {
   return await prisma.eesDocument.update({
     where: { id },
@@ -116,6 +127,7 @@ const countEesDocuments = async () => {
 module.exports = {
   createEesDocument,
   getEesDocumentBySbId,
+  getEesDocumentById,
   updateEesDocumentPdfPath,
   listEesDocuments,
   countEesDocuments

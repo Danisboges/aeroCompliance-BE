@@ -19,4 +19,7 @@ router.post('/webhooks/ees', handleEesWebhook);
 // GET /api/ees (Get all EES documents)
 router.get('/ees', verifyToken, eesController.listEesDocuments);
 
+// GET /api/ees/:id (Get single EES document by ID)
+router.get('/ees/:id', verifyToken, eesController.getEesDocument);
+
 module.exports = router;

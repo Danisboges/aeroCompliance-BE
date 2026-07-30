@@ -2658,6 +2658,54 @@
           }
         }
       }
+    },
+    "/api/ees/{id}": {
+      "get": {
+        "tags": [
+          "EES"
+        ],
+        "summary": "Get single EES Document by ID",
+        "description": "Returns the full details of an EES Document, including its evaluation items and relations.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "EES Document ID (e.g. EES-DOC-12345)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/EesDocument"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   }
 }

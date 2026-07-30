@@ -361,6 +361,29 @@ const listEesDocuments = async (query = {}) => {
   };
 };
 
+const getEesDocumentById = async (id) => {
+  const doc = await eesRepository.getEesDocumentById(id);
+  if (!doc) {
+    throw new Error('Not Found: EES Document does not exist');
+  }
+
+  // Fetch assigned engineer if exists
+  let assignedEngineer = null;
+  if (doc.approval && doc.approval.assignedToId) {
+    const user = await prisma.user.findUnique({
+      where: { id: doc.approval.assignedToId },
+      select: { id: true, username: true, role: true }
+    });
+    assignedEngineer = user;
+  }
+
+  return {
+    ...doc,
+    category: doc.sourceSb?.complianceCategory,
+    assignedEngineer
+  };
+};
+
 const parseAiSbRelations = async (sourceSbId, sbRelations, supersedesObj) => {
   if (!sourceSbId) return;
 
@@ -516,5 +539,6 @@ module.exports = {
   normalizeOcrPayload,
   normalizeAdRelated,
   listEesDocuments,
+  getEesDocumentById,
   parseAiSbRelations
 };
