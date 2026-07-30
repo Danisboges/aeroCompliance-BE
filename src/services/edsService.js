@@ -376,9 +376,55 @@ const getedsFile = async (id) => {
   };
 };
 
+/**
+ * List all EDS with pagination.
+ */
+const listEngineDataSubmittals = async (query = {}) => {
+  const { page = 1, limit = 20, esn } = query;
+  const skip = (page - 1) * limit;
+
+  const [items, total] = await Promise.all([
+    edsRepository.listengineDataSubmittals({ skip, take: limit, esn }),
+    edsRepository.countengineDataSubmittals({ esn })
+  ]);
+
+  const formattedItems = items.map(eds => {
+    return {
+      id: eds.id,
+      engineSerialNumber: eds.engineSerialNumber,
+      engineType: eds.engineType,
+      createdAt: eds.createdAt,
+      originalFileName: eds.originalFileName
+    };
+  });
+
+  return {
+    items: formattedItems,
+    pagination: {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      total,
+      totalPages: Math.ceil(total / limit) || 1
+    }
+  };
+};
+
+/**
+ * Get detailed EDS by ID.
+ */
+const getEngineDataSubmittalById = async (id) => {
+  const eds = await edsRepository.findengineDataSubmittalById(id);
+  if (!eds) {
+    throw new Error('Not Found: Engine Data Submittal does not exist');
+  }
+  return eds;
+};
+
 module.exports = {
   processEdsJson,
   processEdsPdf,
   getedsFile,
-  matchedsCompliance
+  matchedsCompliance,
+  listEngineDataSubmittals,
+  getEngineDataSubmittalById
 };

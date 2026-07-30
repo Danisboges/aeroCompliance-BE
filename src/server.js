@@ -14,6 +14,8 @@ const svrRoutes = require('./routes/svrRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const approvalRoutes = require('./routes/approvalRoutes');
 const sbRelationRoutes = require('./routes/sbRelationRoutes');
+const edsRoutes = require('./routes/edsRoutes');
+const engineRoutes = require('./routes/engineRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +38,8 @@ app.use('/api', svrRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api', sbRelationRoutes);
+app.use('/api/eds', edsRoutes);
+app.use('/api/engines', engineRoutes);
 
 const { initSocket } = require('./socket');
 

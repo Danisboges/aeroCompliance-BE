@@ -2706,6 +2706,106 @@
           }
         }
       }
+    },
+    "/api/eds": {
+      "get": {
+        "tags": [
+          "Engine Data Submittal (EDS)"
+        ],
+        "summary": "Get all EDS documents",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/api/eds/{id}": {
+      "get": {
+        "tags": [
+          "Engine Data Submittal (EDS)"
+        ],
+        "summary": "Get EDS document by ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "EDS Document ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/engines": {
+      "get": {
+        "tags": [
+          "Engines"
+        ],
+        "summary": "Get all Engines",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/api/engines/{id_or_esn}": {
+      "get": {
+        "tags": [
+          "Engines"
+        ],
+        "summary": "Get Engine by ID or ESN",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_or_esn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Engine UUID or ESN"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   }
 }
