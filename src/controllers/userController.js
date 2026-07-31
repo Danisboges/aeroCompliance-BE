@@ -1,4 +1,22 @@
 const prisma = require('../db');
+const userService = require('../services/userService');
+
+const getApprovalCandidates = async (req, res) => {
+  try {
+    const data = await userService.listApprovalCandidates({
+      operator: req.query.operator,
+      role: req.query.role,
+      excludeUserId: req.user.id,
+    });
+    return res.status(200).json({ data });
+  } catch (error) {
+    console.error('[UserController - getApprovalCandidates]', error);
+    if (error.message.startsWith('Validation Error')) {
+      return res.status(400).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
 
 /**
  * GET /api/users
@@ -139,6 +157,7 @@ const getUserById = async (req, res) => {
 };
 
 module.exports = {
+  getApprovalCandidates,
   getUsers,
   getMe,
   getUserById

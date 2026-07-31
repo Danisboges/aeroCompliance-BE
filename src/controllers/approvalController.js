@@ -33,6 +33,9 @@ const getApprovals = async (req, res) => {
     });
   } catch (error) {
     console.error('[ApprovalController]', error);
+    if (error.message.startsWith('Validation Error')) {
+      return res.status(400).json({ error: error.message });
+    }
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -66,6 +69,9 @@ const getInbox = async (req, res) => {
     });
   } catch (error) {
     console.error('[ApprovalController - Inbox]', error);
+    if (error.message.startsWith('Validation Error')) {
+      return res.status(400).json({ error: error.message });
+    }
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -190,8 +196,11 @@ const postReview = async (req, res) => {
     if (error.message.includes('found')) {
       return res.status(404).json({ error: 'Data tidak ada' });
     }
-    if (error.message.includes('Invalid') || error.message.includes('not assigned')) {
+    if (error.message.includes('Invalid') || error.message.includes('not assigned') || error.message.startsWith('Validation Error')) {
       return res.status(400).json({ error: error.message });
+    }
+    if (error.message.startsWith('Conflict')) {
+      return res.status(409).json({ error: error.message });
     }
     if (error.message.includes('Forbidden') || error.message.includes('Unauthorized')) {
       return res.status(403).json({ error: error.message });
@@ -231,7 +240,7 @@ const rejectApproval = async (req, res) => {
     if (error.message.includes('found')) {
       return res.status(404).json({ error: 'Data tidak ada' });
     }
-    if (error.message.includes('Invalid') || error.message.includes('no longer pending')) {
+    if (error.message.includes('Invalid') || error.message.includes('no longer pending') || error.message.startsWith('Validation Error')) {
       return res.status(400).json({ error: error.message });
     }
     if (error.message.includes('Forbidden') || error.message.includes('Unauthorized')) {
@@ -249,14 +258,12 @@ const submitForApproval = async (req, res) => {
     const { eesId } = req.params;
     const { assignedToId } = req.body;
 
-    if (!assignedToId) {
-      return res.status(400).json({ error: 'assignedToId is required' });
-    }
-
     const result = await approvalService.submitForApproval({
       eesId,
       assignedToId,
-      submitterId: req.user.id
+      submitterId: req.user.id,
+      submitterRole: req.user.role,
+      signatureFile: req.file,
     });
 
     return res.status(200).json({
@@ -265,11 +272,17 @@ const submitForApproval = async (req, res) => {
     });
   } catch (error) {
     console.error('[ApprovalController]', error);
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'Approval process already initiated for this EES' });
+    }
     if (error.message.includes('found')) {
       return res.status(404).json({ error: 'Data tidak ada' });
     }
-    if (error.message.includes('already')) {
+    if (error.message.startsWith('Validation Error')) {
       return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('already')) {
+      return res.status(409).json({ error: error.message });
     }
     return res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -284,14 +297,12 @@ const resubmitForApproval = async (req, res) => {
     const { assignedToId } = req.body;
     const submitterId = req.user.id;
 
-    if (!assignedToId) {
-      return res.status(400).json({ error: 'assignedToId is required for resubmission' });
-    }
-
     const result = await approvalService.resubmitForApproval({
       eesId,
       assignedToId,
-      submitterId
+      submitterId,
+      submitterRole: req.user.role,
+      signatureFile: req.file,
     });
 
     return res.status(200).json({
@@ -306,7 +317,10 @@ const resubmitForApproval = async (req, res) => {
     if (error.message.includes('Forbidden') || error.message.includes('not authorized') || error.message.includes('Unauthorized')) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message.includes('already') || error.message.includes('cannot be resubmitted') || error.message.includes('Invalid')) {
+    if (error.message.startsWith('Validation Error') || error.message.includes('Invalid')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('already') || error.message.includes('cannot be resubmitted') || error.message.startsWith('Conflict')) {
       return res.status(409).json({ error: error.message }); // Conflict
     }
     return res.status(500).json({ error: 'Internal Server Error' });

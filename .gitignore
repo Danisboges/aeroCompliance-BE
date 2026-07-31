@@ -8,4 +8,5 @@ api_integration_test.js
 *.spec.js
 !__tests__/*.test.js
 *.log
+*.dump
 docker-compose.yml

@@ -61,9 +61,33 @@ const createUser = async (userData) => {
   });
 };
 
+const findApprovalCandidates = async ({ operatorCode, role, excludeUserId }) => {
+  return prisma.user.findMany({
+    where: {
+      active: true,
+      role,
+      ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+      operator: { code: operatorCode },
+    },
+    orderBy: [{ name: 'asc' }, { email: 'asc' }],
+    select: {
+      id: true,
+      employeeNumber: true,
+      name: true,
+      username: true,
+      email: true,
+      role: true,
+      unit: true,
+      active: true,
+      operator: { select: { code: true, name: true } },
+    },
+  });
+};
+
 module.exports = {
   findUserByEmail,
   findUserByUsername,
   findUserByEmailOrUsername,
-  createUser
+  createUser,
+  findApprovalCandidates
 };

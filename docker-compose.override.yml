@@ -3,3 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.cross-platform
+    environment:
+      APPLY_DATABASE_MIGRATIONS: ${APPLY_DATABASE_MIGRATIONS:-true}
+      SYNC_DATABASE_SCHEMA: ${SYNC_DATABASE_SCHEMA:-false}
+      RUN_DATABASE_SEED: ${RUN_DATABASE_SEED:-false}

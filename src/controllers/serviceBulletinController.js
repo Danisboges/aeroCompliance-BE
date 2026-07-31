@@ -413,6 +413,12 @@ async function getEesDocument(req, res) {
     if (!sb.generatedEes) {
       return res.status(404).json({ error: 'Not Found: No EES document generated for this SB yet' });
     }
+    const approval = sb.generatedEes.approval;
+    const approvalIsPending = approval && ['PENDING', 'PARTIALLY_APPROVED'].includes(approval.status);
+    const isMaker = approval?.submittedById === req.user?.id;
+    const isAssignee = approval?.assignedToId === req.user?.id;
+    const canRevise = approval && ['REJECTED', 'RETURNED'].includes(approval.status) &&
+      (isMaker || req.user?.role === 'ADMIN');
     const eesData = {
       ...sb.generatedEes,
       serviceBulletin: {
@@ -427,9 +433,10 @@ async function getEesDocument(req, res) {
         applicabilitySummary: sb.applicabilitySummary
       },
       permissions: {
-        canEdit: sb.generatedEes.reviewStatus === 'PENDING' || sb.generatedEes.reviewStatus === 'RETURNED',
-        canReview: req.user?.role === 'ENGINEER' && sb.generatedEes.reviewStatus === 'PENDING',
-        canApprove: req.user?.role === 'MANAGER' && sb.generatedEes.reviewStatus === 'IN_REVIEW'
+        canEdit: (!approval && sb.generatedEes.reviewStatus === 'PENDING') || canRevise,
+        canReview: approvalIsPending && isAssignee && req.user?.role === 'ENGINEER',
+        canApprove: approvalIsPending && isAssignee && req.user?.role === 'MANAGER',
+        canResubmit: canRevise,
       }
     };
     return res.status(200).json({ data: eesData });
@@ -446,13 +453,26 @@ async function updateEesDocument(req, res) {
   try {
     const existingEes = await eesRepository.getEesDocumentBySbId(req.params.id);
 
-    if (
-      existingEes &&
-      ["APPROVED", "IN_REVIEW"].includes(existingEes.reviewStatus)
-    ) {
+    if (existingEes?.approval) {
+      const approval = existingEes.approval;
+      if (['PENDING', 'PARTIALLY_APPROVED', 'APPROVED'].includes(approval.status)) {
+        return res.status(409).json({
+          error: 'Conflict',
+          details: 'EES yang sedang atau sudah selesai diproses tidak dapat diregenerate.',
+        });
+      }
+      const isOriginalMaker = approval.submittedById === req.user?.id;
+      if (!isOriginalMaker && req.user?.role !== 'ADMIN') {
+        return res.status(403).json({
+          error: 'Forbidden',
+          details: 'Hanya maker awal yang dapat merevisi EES yang dikembalikan atau ditolak.',
+        });
+      }
+    }
+    if (!existingEes?.approval && existingEes?.reviewStatus === 'APPROVED') {
       return res.status(409).json({
-        error: "Conflict",
-        details: "EES yang sudah masuk proses approval tidak dapat diregenerate.",
+        error: 'Conflict',
+        details: 'EES yang sudah disetujui tidak dapat diregenerate.',
       });
     }
 

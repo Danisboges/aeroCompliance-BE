@@ -37,11 +37,15 @@ const verifyToken = async (req, res, next) => {
     // Validasi keberadaan user di DB dan ambil operatorId aktual
     const userExists = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, role: true, operatorId: true }
+      select: { id: true, role: true, operatorId: true, active: true }
     });
     
     if (!userExists) {
       return res.status(401).json({ message: 'Unauthorized: User does not exist. Please log in again.' });
+    }
+
+    if (!userExists.active) {
+      return res.status(403).json({ message: 'Forbidden: User account is inactive' });
     }
 
     // Timpa req.user dengan data otorisasi terpercaya dari database (menghindari parameter injeksi)

@@ -1950,7 +1950,7 @@
                 "type": "object",
                 "properties": {
                   "assignedToId": {
-                    "type": "integer",
+                    "type": "string",
                     "description": "User ID untuk Second Engineer atau Manager yang dituju"
                   },
                   "signature": {
@@ -1958,7 +1958,10 @@
                     "format": "binary",
                     "description": "File gambar tanda tangan (Wajib untuk Garuda)"
                   }
-                }
+                },
+                "required": [
+                  "assignedToId"
+                ]
               }
             }
           }
@@ -3058,14 +3061,23 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
                   "assignedToId": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "ID aktual user reviewer yang dipilih"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Signature maker yang baru; wajib untuk Garuda"
                   }
-                }
+                },
+                "required": [
+                  "assignedToId"
+                ]
               }
             }
           }
@@ -3085,6 +3097,80 @@
           },
           "409": {
             "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/users/approval-candidates": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Get active approval candidates",
+        "description": "Mengembalikan kandidat aktif sesuai operator dan role. User yang sedang login tidak disertakan.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "operator",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["GARUDA", "CITILINK"]
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["ENGINEER", "MANAGER"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approval candidates retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "employeeNumber": { "type": "string", "nullable": true },
+                          "name": { "type": "string", "nullable": true },
+                          "username": { "type": "string" },
+                          "email": { "type": "string", "format": "email" },
+                          "role": { "type": "string", "enum": ["ENGINEER", "MANAGER"] },
+                          "unit": { "type": "string", "nullable": true },
+                          "active": { "type": "boolean" },
+                          "operator": {
+                            "type": "object",
+                            "properties": {
+                              "code": { "type": "string", "enum": ["GARUDA", "CITILINK"] },
+                              "name": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid operator or role"
           }
         }
       }

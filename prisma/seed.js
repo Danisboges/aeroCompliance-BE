@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 const { generateId } = require('../src/utils/idGenerator');
+const { seedApprovalUsers } = require('./seedApprovalUsers');
 
 async function copySampleFiles() {
   const uploadDir = path.join(__dirname, '../uploads');
@@ -84,6 +85,15 @@ async function main() {
   const tech = await prisma.user.create({ data: { id: generateId('USR'), email: 'technician@gmf.co.id', username: 'technician', password: pass, role: 'TECHNICIAN', operatorId: opGaruda.id } });
 
   const firstEngCiti = await prisma.user.create({ data: { id: generateId('USR'), email: 'firsteng.citilink@gmf.co.id', username: 'first_eng_citi', password: pass, role: 'ENGINEER', operatorId: opCitilink.id } });
+
+  const approvalCandidateUsers = await seedApprovalUsers(prisma, {
+    operators: { GA: opGaruda, QG: opCitilink },
+  });
+  console.log('✅ Approval candidate users:', approvalCandidateUsers.map((user) => ({
+    preferredId: user.preferredId,
+    actualId: user.actualId,
+    email: user.email,
+  })));
 
   console.log('✈️ Seeding Aircraft Fleet...');
   const aircrafts = [

@@ -35,6 +35,17 @@ const uploadSignature = multer({
   }
 });
 
+const uploadSingleSignature = (req, res, next) => {
+  uploadSignature.single('signature')(req, res, (error) => {
+    if (!error) return next();
+    const message = error.code === 'LIMIT_FILE_SIZE'
+      ? 'Signature file exceeds the 5 MB limit.'
+      : error.message;
+    return res.status(400).json({ error: `Validation Error: ${message}` });
+  });
+};
+
 module.exports = {
-  uploadSignature
+  uploadSignature,
+  uploadSingleSignature
 };

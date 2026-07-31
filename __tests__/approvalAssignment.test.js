@@ -19,6 +19,16 @@ jest.mock('../src/socket', () => ({
   notifyAll: jest.fn(),
 }));
 
+jest.mock('../src/services/emailService', () => ({
+  sendApprovalRequestEmail: jest.fn(async () => ({ messageId: 'test' })),
+  sendApprovalRejectedEmail: jest.fn(async () => ({ messageId: 'test' })),
+}));
+
+jest.mock('../src/services/pdfGenerationService', () => ({
+  generateEesPdf: jest.fn(async () => Buffer.from('test-pdf')),
+  finalizeGarudaPdf: jest.fn(async () => undefined),
+}));
+
 jest.mock('fs', () => ({
   openSync: jest.fn(() => 1),
   readSync: jest.fn((_descriptor, buffer) => {
@@ -33,6 +43,7 @@ jest.mock('fs', () => ({
 
 const {
   submitForApproval,
+  resubmitForApproval,
 } = require('../src/services/approvalService');
 const {
   APPROVAL_DUMMY_USERS,
@@ -96,6 +107,9 @@ const arrangeSubmission = ({
     },
     reviewAction: {
       create: jest.fn(async ({ data }) => ({ id: 'REV-TEST', ...data })),
+    },
+    notification: {
+      create: jest.fn(async ({ data }) => ({ id: 'NOTIF-TEST', ...data })),
     },
   };
   mockPrisma.$transaction.mockImplementation(async (callback) => callback(tx));
@@ -240,6 +254,68 @@ describe('approval candidate listing', () => {
         }),
       })
     );
+  });
+});
+
+describe('approval resubmission', () => {
+  const arrangeResubmission = ({ status = 'REJECTED', role = 'ENGINEER', active = true, changedCount = 1 } = {}) => {
+    mockPrisma.approval.findUnique.mockResolvedValue({
+      id: 'APP-EXISTING',
+      eesId: 'EES-TEST',
+      status,
+      submittedById: 'USR-SUBMITTER',
+      eesDocument: {
+        eesNumber: 'EES-GA-TEST',
+        sourceSb: {
+          complianceCategory: 4,
+          operator: { id: 'OP-GA', code: 'GA', name: 'Garuda Indonesia' },
+        },
+      },
+    });
+    mockPrisma.user.findUnique.mockResolvedValue(
+      makeAssignee({ role, operatorCode: 'GA', active })
+    );
+
+    const tx = {
+      approval: {
+        updateMany: jest.fn(async () => ({ count: changedCount })),
+        findUnique: jest.fn(async () => ({ id: 'APP-EXISTING', status: 'PENDING' })),
+      },
+      eesDocument: { update: jest.fn(async ({ data }) => data) },
+      reviewAction: { create: jest.fn(async ({ data }) => ({ id: 'REV-RESUBMIT', ...data })) },
+      notification: { create: jest.fn(async ({ data }) => ({ id: 'NOTIF-RESUBMIT', ...data })) },
+    };
+    mockPrisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    return tx;
+  };
+
+  test('reuses the existing approval and records a resubmit action', async () => {
+    const tx = arrangeResubmission();
+    const result = await resubmitForApproval({
+      eesId: 'EES-TEST',
+      assignedToId: 'USR-ASSIGNEE',
+      submitterId: 'USR-SUBMITTER',
+      submitterRole: 'ENGINEER',
+      signatureFile: PNG_SIGNATURE,
+    });
+
+    expect(result.approval).toMatchObject({ id: 'APP-EXISTING', status: 'PENDING' });
+    expect(tx.approval.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'APP-EXISTING', submittedById: 'USR-SUBMITTER' }),
+    }));
+    expect(tx.reviewAction.create).toHaveBeenCalled();
+    expect(tx.notification.create).toHaveBeenCalled();
+  });
+
+  test('rejects a duplicate concurrent resubmit', async () => {
+    arrangeResubmission({ changedCount: 0 });
+    await expect(resubmitForApproval({
+      eesId: 'EES-TEST',
+      assignedToId: 'USR-ASSIGNEE',
+      submitterId: 'USR-SUBMITTER',
+      submitterRole: 'ENGINEER',
+      signatureFile: PNG_SIGNATURE,
+    })).rejects.toThrow('already resubmitted or changed');
   });
 });
 
