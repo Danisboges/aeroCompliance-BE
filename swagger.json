@@ -2718,9 +2718,40 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 20
+            }
+          },
+          {
+            "name": "esn",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter berdasarkan Engine Serial Number"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Successful response"
+            "description": "Daftar EDS beserta ringkasan relasi dan pagination"
           }
         }
       }
@@ -2749,10 +2780,90 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful response"
+            "description": "Detail EDS beserta engine, aircraft, operator, configuration, LLP, SB, AD, accessories, dan compliance records"
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/eds/{id}/view": {
+      "get": {
+        "tags": [
+          "Engine Data Submittal (EDS)"
+        ],
+        "summary": "Preview EDS PDF inline",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "EDS Document ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "EDS PDF stream",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "EDS record or PDF file not found"
+          }
+        }
+      }
+    },
+    "/api/eds/{id}/download": {
+      "get": {
+        "tags": [
+          "Engine Data Submittal (EDS)"
+        ],
+        "summary": "Download EDS PDF",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "EDS Document ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "EDS PDF attachment",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "EDS record or PDF file not found"
           }
         }
       }

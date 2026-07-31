@@ -1,11 +1,20 @@
 const prisma = require('../db');
 
 const includeRelations = {
-  engine: true,
+  engine: {
+    include: {
+      aircraft: {
+        include: {
+          operator: true
+        }
+      }
+    }
+  },
   configurationReport: true,
   llpStatus: true,
   sbStatus: true,
   adStatus: true,
+  accessoriesList: true,
   complianceRecords: {
     include: {
       sb: true,
@@ -18,7 +27,14 @@ const includeRelations = {
  * Creates a new engineDataSubmittal record along with its child relations.
  */
 const createengineDataSubmittal = async (data) => {
-  const { configurationReport, llpStatus, sbStatus, adStatus, ...headerData } = data;
+  const {
+    configurationReport,
+    llpStatus,
+    sbStatus,
+    adStatus,
+    accessoriesList,
+    ...headerData
+  } = data;
   
   // Find associated Engine in database by ESN (Engine Serial Number)
   let engineId = null;
@@ -49,6 +65,11 @@ const createengineDataSubmittal = async (data) => {
     engineSerialNumber: headerData.engineSerialNumber
   }));
 
+  const mappedAccessories = (accessoriesList || []).map(item => ({
+    ...item,
+    engineSerialNumber: headerData.engineSerialNumber
+  }));
+
   return prisma.engineDataSubmittal.create({
     data: {
       ...headerData,
@@ -64,6 +85,9 @@ const createengineDataSubmittal = async (data) => {
       },
       adStatus: {
         create: mappedAds
+      },
+      accessoriesList: {
+        create: mappedAccessories
       }
     },
     include: includeRelations
@@ -127,4 +151,3 @@ module.exports = {
   countengineDataSubmittals,
   deleteengineDataSubmittal
 };
-

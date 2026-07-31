@@ -272,6 +272,30 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
       remarks: item.remarks || ''
     }));
 
+  // Map accessories installed/removed during the EDS configuration update
+  const rawAccessories = Array.isArray(data.accessories_list) ? data.accessories_list : [];
+  edsData.accessoriesList = rawAccessories.map(item => ({
+    no: item.no !== undefined && item.no !== null ? String(item.no) : '',
+    description: item.description || '',
+    receivedPn: item.received?.pn || '',
+    receivedSn: item.received?.sn || '',
+    receivedTsn: item.received?.tsn !== undefined && item.received?.tsn !== null
+      ? String(item.received.tsn)
+      : '',
+    receivedTso: item.received?.tso !== undefined && item.received?.tso !== null
+      ? String(item.received.tso)
+      : '',
+    installedPn: item.installed?.pn || '',
+    installedSn: item.installed?.sn || '',
+    installedTsn: item.installed?.tsn !== undefined && item.installed?.tsn !== null
+      ? String(item.installed.tsn)
+      : '',
+    installedTso: item.installed?.tso !== undefined && item.installed?.tso !== null
+      ? String(item.installed.tso)
+      : '',
+    maintenancePerformed: item.maintenance_performed || ''
+  }));
+
   // Save eds to Database (Murni untuk History Log)
   const eds = await edsRepository.createengineDataSubmittal(edsData);
 
@@ -394,7 +418,19 @@ const listEngineDataSubmittals = async (query = {}) => {
       engineSerialNumber: eds.engineSerialNumber,
       engineType: eds.engineType,
       createdAt: eds.createdAt,
-      originalFileName: eds.originalFileName
+      updatedAt: eds.updatedAt,
+      originalFileName: eds.originalFileName,
+      storedFileName: eds.storedFileName,
+      hasPdf: Boolean(eds.storedFileName && eds.storedFileName !== 'PENDING'),
+      engine: eds.engine,
+      summary: {
+        configurationItems: eds.configurationReport.length,
+        llpItems: eds.llpStatus.length,
+        serviceBulletins: eds.sbStatus.length,
+        airworthinessDirectives: eds.adStatus.length,
+        accessories: eds.accessoriesList.length,
+        complianceRecords: eds.complianceRecords.length
+      }
     };
   });
 

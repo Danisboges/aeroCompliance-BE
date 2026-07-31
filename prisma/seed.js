@@ -18,7 +18,9 @@ async function copySampleFiles() {
   const filesToCopy = [
     { src: path.join(artifactDir, 'SB_GE90_72_0685.pdf'), dest: path.join(ocrDir, 'SB_GE90_72_0685.pdf') },
     { src: path.join(artifactDir, 'SB_LEAP_1A_72_0449.pdf'), dest: path.join(ocrDir, 'SB_LEAP_1A_72_0449.pdf') },
-    { src: path.join(artifactDir, 'SVR_660235_2026.pdf'), dest: path.join(svrDir, 'SVR_660235_2026.pdf') }
+    { src: path.join(artifactDir, 'SVR_660235_2026.pdf'), dest: path.join(svrDir, 'SVR_660235_2026.pdf') },
+    { src: path.join(artifactDir, 'SVR_660235_2026.pdf'), dest: path.join(svrDir, 'SVR_906101_2026.pdf') },
+    { src: path.join(artifactDir, 'SVR_660235_2026.pdf'), dest: path.join(svrDir, 'SVR_ESN_GTA01_2026.pdf') }
   ];
 
   for (const file of filesToCopy) {
@@ -222,36 +224,600 @@ async function main() {
   });
 
   console.log('🏭 Seeding Shop Visit Report...');
+  const svrRawPayload = {
+    svr_schema: {
+      engine_type: 'CFM56-7B26E',
+      engine_serial_number: '660235',
+      shop_in_date: '23 FEB 2026',
+      shop_out_date: '04 MAR 2026',
+      report_date: '05 MAR 2026',
+      reason_for_shop_visit: 'Performance restoration and scheduled LLP inspection',
+      tsn: '42,650 FH',
+      csn: '28,410 FC',
+      tslv: '8,250 FH',
+      cslv: '5,420 FC',
+      authorized_release_status: 'RELEASED',
+      configuration_report: [
+        {
+          module: 'FAN',
+          part_name: 'FAN BLADE',
+          in_out: 'IN',
+          part_number: '340-001-026-0',
+          serial: 'FB12345',
+          qty: '24',
+          tsn: '15,230',
+          csn: '9,870',
+          tso: '0',
+          cso: '0',
+          work_accompl: 'Inspected, blended and reinstalled'
+        },
+        {
+          module: 'HPC',
+          part_name: 'HPC ROTOR STAGE 1',
+          in_out: 'IN',
+          part_number: '338-001-501-0',
+          serial: 'HPC660235',
+          qty: '1',
+          tsn: '42,650',
+          csn: '28,410',
+          tso: '8,250',
+          cso: '5,420',
+          work_accompl: 'Dimensional inspection satisfactory'
+        }
+      ],
+      life_limited_part_status: [
+        {
+          no: '1',
+          description: 'FAN DISK',
+          part_number: '340-123-01',
+          serial_number: 'FD555',
+          total_hour: '42,650',
+          total_cycle: '28,410',
+          total_cycles_category: { flight: 28410 },
+          life_limit_cycles: { flight: 30000 },
+          remaining_cycles: { flight: 1590 },
+          remark: 'Serviceable'
+        }
+      ],
+      service_bulletin_status: [
+        {
+          sb_number: 'GE90 SB 72-0685 R06',
+          notification_date_of_compliance: '04 MAR 2026',
+          description: 'Fan Hub Frame Assembly inspection',
+          cat_type: 'CATEGORY 3',
+          module_applicability: 'FAN MODULE',
+          method_of_compliance: 'INSPECTED PER SB',
+          remarks: 'Complied during shop visit'
+        }
+      ],
+      airworthiness_directive_status: [
+        {
+          ad_number: 'FAA AD 2020-04-04',
+          reference_sb: 'CFM SB 72-1050',
+          recurr_insp: 'NO',
+          notification_date_of_compliance: '02 MAR 2026',
+          description: 'HPT rotor inspection',
+          module_applicability: 'HPT MODULE',
+          method_of_compliance: 'INSPECTION ACCOMPLISHED',
+          remarks: 'No finding'
+        }
+      ],
+      accessories_list: [
+        {
+          no: '1',
+          description: 'HYDROMECHANICAL UNIT',
+          received: {
+            pn: '442324',
+            sn: 'HMU-660235',
+            tsn: '18,120',
+            tso: '6,300'
+          },
+          installed: {
+            pn: '442324',
+            sn: 'HMU-778812',
+            tsn: '9,450',
+            tso: '0'
+          },
+          maintenance_performed: 'Replacement and functional test satisfactory'
+        }
+      ]
+    }
+  };
+
   const svr1 = await prisma.shopVisitReport.create({
     data: {
       id: generateId('SVR'),
       engine: { connect: { id: engMap['660235'] } },
       engineSerialNumber: '660235',
+      engineType: 'CFM56-7B26E',
+      shopInDate: '23 FEB 2026',
+      shopOutDate: '04 MAR 2026',
+      reportDate: '05 MAR 2026',
+      reasonForShopVisit: 'Performance restoration and scheduled LLP inspection',
+      tsn: '42,650 FH',
+      csn: '28,410 FC',
+      tslv: '8,250 FH',
+      cslv: '5,420 FC',
+      authorizedReleaseStatus: 'RELEASED',
       originalFileName: 'SVR_660235_2026.pdf',
       storedFileName: 'SVR_660235_2026.pdf',
-      rawPayload: JSON.stringify({
-        "engine_type": "CFM56-7B26E",
-        "engine_serial_number": "660235",
-        "shop_in_date": "23 FEB 2026",
-        "shop_out_date": "04 MAR 2026"
-      }),
+      rawPayload: svrRawPayload,
       configurationReport: {
         create: [
-          { engineSerialNumber: '660235', module: 'FAN', partName: 'FAN BLADE', inOut: 'IN', partNumber: '340-001-026-0', serial: 'FB12345' }
+          {
+            engineSerialNumber: '660235',
+            module: 'FAN',
+            partName: 'FAN BLADE',
+            inOut: 'IN',
+            partNumber: '340-001-026-0',
+            serial: 'FB12345',
+            qty: '24',
+            tsn: '15,230',
+            csn: '9,870',
+            tso: '0',
+            cso: '0',
+            workAccompl: 'Inspected, blended and reinstalled'
+          },
+          {
+            engineSerialNumber: '660235',
+            module: 'HPC',
+            partName: 'HPC ROTOR STAGE 1',
+            inOut: 'IN',
+            partNumber: '338-001-501-0',
+            serial: 'HPC660235',
+            qty: '1',
+            tsn: '42,650',
+            csn: '28,410',
+            tso: '8,250',
+            cso: '5,420',
+            workAccompl: 'Dimensional inspection satisfactory'
+          }
         ]
       },
       llpStatus: {
         create: [
-          { engineSerialNumber: '660235', no: '1', description: 'FAN DISK', partNumber: '340-123-01', serialNumber: 'FD555' }
+          {
+            engineSerialNumber: '660235',
+            no: '1',
+            description: 'FAN DISK',
+            partNumber: '340-123-01',
+            serialNumber: 'FD555',
+            totalHour: '42,650',
+            totalCycle: '28,410',
+            totalCyclesCategory: { flight: 28410 },
+            lifeLimitCycles: { flight: 30000 },
+            remainingCycles: { flight: 1590 },
+            remark: 'Serviceable'
+          }
         ]
       },
-      sbStatus: { // Replaced adStatus with sbStatus
+      sbStatus: {
         create: [
-          { engineSerialNumber: '660235', sbNumber: '2020-0044', notificationDateOfCompliance: '01 JAN 2026', methodOfCompliance: 'INSPECTED PER SB' }
+          {
+            engineSerialNumber: '660235',
+            sbNumber: sb1.sbNumber,
+            notificationDateOfCompliance: '04 MAR 2026',
+            description: 'Fan Hub Frame Assembly inspection',
+            catType: `CATEGORY ${sb1.complianceCategory}`,
+            moduleApplicability: 'FAN MODULE',
+            methodOfCompliance: 'INSPECTED PER SB',
+            remarks: 'Complied during shop visit'
+          }
+        ]
+      },
+      adStatus: {
+        create: [
+          {
+            engineSerialNumber: '660235',
+            adNumber: 'FAA AD 2020-04-04',
+            referenceSb: 'CFM SB 72-1050',
+            recurrInsp: 'NO',
+            notificationDateOfCompliance: '02 MAR 2026',
+            description: 'HPT rotor inspection',
+            moduleApplicability: 'HPT MODULE',
+            methodOfCompliance: 'INSPECTION ACCOMPLISHED',
+            remarks: 'No finding'
+          }
+        ]
+      },
+      accessoriesList: {
+        create: [
+          {
+            engineSerialNumber: '660235',
+            no: '1',
+            description: 'HYDROMECHANICAL UNIT',
+            receivedPn: '442324',
+            receivedSn: 'HMU-660235',
+            receivedTsn: '18,120',
+            receivedTso: '6,300',
+            installedPn: '442324',
+            installedSn: 'HMU-778812',
+            installedTsn: '9,450',
+            installedTso: '0',
+            maintenancePerformed: 'Replacement and functional test satisfactory'
+          }
         ]
       }
     }
   });
+
+  const svr2 = await prisma.shopVisitReport.create({
+    data: {
+      id: generateId('SVR'),
+      engine: { connect: { id: engMap['906101'] } },
+      engineSerialNumber: '906101',
+      engineType: 'GE90-115B',
+      shopInDate: '12 APR 2026',
+      shopOutDate: '30 MAY 2026',
+      reportDate: '01 JUN 2026',
+      reasonForShopVisit: 'HPC module inspection and performance restoration',
+      tsn: '36,820 FH',
+      csn: '7,940 FC',
+      tslv: '9,120 FH',
+      cslv: '1,860 FC',
+      authorizedReleaseStatus: 'RELEASED',
+      originalFileName: 'SVR_906101_2026.pdf',
+      storedFileName: 'SVR_906101_2026.pdf',
+      rawPayload: {
+        svr_schema: {
+          engine_type: 'GE90-115B',
+          engine_serial_number: '906101',
+          shop_in_date: '12 APR 2026',
+          shop_out_date: '30 MAY 2026',
+          report_date: '01 JUN 2026',
+          reason_for_shop_visit: 'HPC module inspection and performance restoration',
+          tsn: '36,820 FH',
+          csn: '7,940 FC',
+          tslv: '9,120 FH',
+          cslv: '1,860 FC',
+          authorized_release_status: 'RELEASED',
+          configuration_report: [
+            {
+              module: 'HPC',
+              part_name: 'HPC STATOR STAGE 5',
+              in_out: 'IN',
+              part_number: '2305M89G01',
+              serial: 'HPCS5-906101',
+              qty: '1',
+              tsn: '18,450',
+              csn: '3,920',
+              tso: '0',
+              cso: '0',
+              work_accompl: 'Borescope inspection and dimensional check'
+            }
+          ],
+          life_limited_part_status: [
+            {
+              no: '1',
+              description: 'HPT ROTOR STAGE 1 DISK',
+              part_number: '1847M90P01',
+              serial_number: 'HPTD-906101',
+              total_hour: '36,820',
+              total_cycle: '7,940',
+              total_cycles_category: { flight: 7940 },
+              life_limit_cycles: { flight: 15000 },
+              remaining_cycles: { flight: 7060 },
+              remark: 'Continue in service'
+            }
+          ],
+          service_bulletin_status: [
+            {
+              sb_number: 'GE90 SB 72-0686 R01',
+              notification_date_of_compliance: '28 MAY 2026',
+              description: 'Fan Hub Frame Assembly routine inspection',
+              cat_type: 'CATEGORY 4',
+              module_applicability: 'FAN MODULE',
+              method_of_compliance: 'INSPECTION ACCOMPLISHED',
+              remarks: 'No defect found'
+            }
+          ],
+          airworthiness_directive_status: [
+            {
+              ad_number: 'FAA AD 2023-12-09',
+              reference_sb: 'GE90 SB 72-0686 R01',
+              recurr_insp: 'YES',
+              notification_date_of_compliance: '28 MAY 2026',
+              description: 'Fan hub frame recurring inspection',
+              module_applicability: 'FAN MODULE',
+              method_of_compliance: 'REPETITIVE INSPECTION ACCOMPLISHED',
+              remarks: 'Next inspection due in 1,500 cycles'
+            }
+          ],
+          accessories_list: [
+            {
+              no: '1',
+              description: 'FUEL PUMP',
+              received: {
+                pn: '1838M10P01',
+                sn: 'FP-906101-A',
+                tsn: '21,700',
+                tso: '9,120'
+              },
+              installed: {
+                pn: '1838M10P01',
+                sn: 'FP-906101-B',
+                tsn: '8,200',
+                tso: '0'
+              },
+              maintenance_performed: 'Replaced and leak tested'
+            }
+          ]
+        }
+      },
+      configurationReport: {
+        create: [
+          {
+            engineSerialNumber: '906101',
+            module: 'HPC',
+            partName: 'HPC STATOR STAGE 5',
+            inOut: 'IN',
+            partNumber: '2305M89G01',
+            serial: 'HPCS5-906101',
+            qty: '1',
+            tsn: '18,450',
+            csn: '3,920',
+            tso: '0',
+            cso: '0',
+            workAccompl: 'Borescope inspection and dimensional check'
+          }
+        ]
+      },
+      llpStatus: {
+        create: [
+          {
+            engineSerialNumber: '906101',
+            no: '1',
+            description: 'HPT ROTOR STAGE 1 DISK',
+            partNumber: '1847M90P01',
+            serialNumber: 'HPTD-906101',
+            totalHour: '36,820',
+            totalCycle: '7,940',
+            totalCyclesCategory: { flight: 7940 },
+            lifeLimitCycles: { flight: 15000 },
+            remainingCycles: { flight: 7060 },
+            remark: 'Continue in service'
+          }
+        ]
+      },
+      sbStatus: {
+        create: [
+          {
+            engineSerialNumber: '906101',
+            sbNumber: sb2.sbNumber,
+            notificationDateOfCompliance: '28 MAY 2026',
+            description: 'Fan Hub Frame Assembly routine inspection',
+            catType: `CATEGORY ${sb2.complianceCategory}`,
+            moduleApplicability: 'FAN MODULE',
+            methodOfCompliance: 'INSPECTION ACCOMPLISHED',
+            remarks: 'No defect found'
+          }
+        ]
+      },
+      adStatus: {
+        create: [
+          {
+            engineSerialNumber: '906101',
+            adNumber: 'FAA AD 2023-12-09',
+            referenceSb: sb2.sbNumber,
+            recurrInsp: 'YES',
+            notificationDateOfCompliance: '28 MAY 2026',
+            description: 'Fan hub frame recurring inspection',
+            moduleApplicability: 'FAN MODULE',
+            methodOfCompliance: 'REPETITIVE INSPECTION ACCOMPLISHED',
+            remarks: 'Next inspection due in 1,500 cycles'
+          }
+        ]
+      },
+      accessoriesList: {
+        create: [
+          {
+            engineSerialNumber: '906101',
+            no: '1',
+            description: 'FUEL PUMP',
+            receivedPn: '1838M10P01',
+            receivedSn: 'FP-906101-A',
+            receivedTsn: '21,700',
+            receivedTso: '9,120',
+            installedPn: '1838M10P01',
+            installedSn: 'FP-906101-B',
+            installedTsn: '8,200',
+            installedTso: '0',
+            maintenancePerformed: 'Replaced and leak tested'
+          }
+        ]
+      }
+    }
+  });
+
+  const svr3 = await prisma.shopVisitReport.create({
+    data: {
+      id: generateId('SVR'),
+      engine: { connect: { id: engMap['ESN-GTA01'] } },
+      engineSerialNumber: 'ESN-GTA01',
+      engineType: 'LEAP-1A26',
+      shopInDate: '08 JUN 2026',
+      shopOutDate: '21 JUN 2026',
+      reportDate: '22 JUN 2026',
+      reasonForShopVisit: 'LPTACC cooling manifold modification',
+      tsn: '12,480 FH',
+      csn: '7,360 FC',
+      tslv: '4,100 FH',
+      cslv: '2,450 FC',
+      authorizedReleaseStatus: 'RELEASED',
+      originalFileName: 'SVR_ESN_GTA01_2026.pdf',
+      storedFileName: 'SVR_ESN_GTA01_2026.pdf',
+      rawPayload: {
+        svr_schema: {
+          engine_type: 'LEAP-1A26',
+          engine_serial_number: 'ESN-GTA01',
+          shop_in_date: '08 JUN 2026',
+          shop_out_date: '21 JUN 2026',
+          report_date: '22 JUN 2026',
+          reason_for_shop_visit: 'LPTACC cooling manifold modification',
+          tsn: '12,480 FH',
+          csn: '7,360 FC',
+          tslv: '4,100 FH',
+          cslv: '2,450 FC',
+          authorized_release_status: 'RELEASED',
+          configuration_report: [
+            {
+              module: 'LPT',
+              part_name: 'LPTACC COOLING MANIFOLD',
+              in_out: 'IN',
+              part_number: '2445M17G01',
+              serial: 'LPTACC-GTA01',
+              qty: '1',
+              tsn: '0',
+              csn: '0',
+              tso: '0',
+              cso: '0',
+              work_accompl: 'New manifold installed per service bulletin'
+            }
+          ],
+          life_limited_part_status: [
+            {
+              no: '1',
+              description: 'FAN DISK',
+              part_number: '2625M31P01',
+              serial_number: 'LEAP-FD-GTA01',
+              total_hour: '12,480',
+              total_cycle: '7,360',
+              total_cycles_category: { flight: 7360 },
+              life_limit_cycles: { flight: 30000 },
+              remaining_cycles: { flight: 22640 },
+              remark: 'Serviceable'
+            }
+          ],
+          service_bulletin_status: [
+            {
+              sb_number: 'LEAP-1A-72-00-0449',
+              notification_date_of_compliance: '20 JUN 2026',
+              description: 'Introduction of new LPTACC cooling manifold',
+              cat_type: 'CATEGORY 3',
+              module_applicability: 'LPT MODULE',
+              method_of_compliance: 'MODIFICATION ACCOMPLISHED',
+              remarks: 'New configuration installed'
+            }
+          ],
+          airworthiness_directive_status: [
+            {
+              ad_number: 'EASA AD 2024-0102',
+              reference_sb: 'LEAP-1A-72-00-0449',
+              recurr_insp: 'NO',
+              notification_date_of_compliance: '20 JUN 2026',
+              description: 'LPTACC manifold modification',
+              module_applicability: 'LPT MODULE',
+              method_of_compliance: 'TERMINATING ACTION ACCOMPLISHED',
+              remarks: 'AD requirement closed'
+            }
+          ],
+          accessories_list: [
+            {
+              no: '1',
+              description: 'STARTER AIR VALVE',
+              received: {
+                pn: '2458M90P01',
+                sn: 'SAV-GTA01-A',
+                tsn: '12,480',
+                tso: '4,100'
+              },
+              installed: {
+                pn: '2458M90P02',
+                sn: 'SAV-GTA01-B',
+                tsn: '0',
+                tso: '0'
+              },
+              maintenance_performed: 'Modified configuration installed and tested'
+            }
+          ]
+        }
+      },
+      configurationReport: {
+        create: [
+          {
+            engineSerialNumber: 'ESN-GTA01',
+            module: 'LPT',
+            partName: 'LPTACC COOLING MANIFOLD',
+            inOut: 'IN',
+            partNumber: '2445M17G01',
+            serial: 'LPTACC-GTA01',
+            qty: '1',
+            tsn: '0',
+            csn: '0',
+            tso: '0',
+            cso: '0',
+            workAccompl: 'New manifold installed per service bulletin'
+          }
+        ]
+      },
+      llpStatus: {
+        create: [
+          {
+            engineSerialNumber: 'ESN-GTA01',
+            no: '1',
+            description: 'FAN DISK',
+            partNumber: '2625M31P01',
+            serialNumber: 'LEAP-FD-GTA01',
+            totalHour: '12,480',
+            totalCycle: '7,360',
+            totalCyclesCategory: { flight: 7360 },
+            lifeLimitCycles: { flight: 30000 },
+            remainingCycles: { flight: 22640 },
+            remark: 'Serviceable'
+          }
+        ]
+      },
+      sbStatus: {
+        create: [
+          {
+            engineSerialNumber: 'ESN-GTA01',
+            sbNumber: sb3.sbNumber,
+            notificationDateOfCompliance: '20 JUN 2026',
+            description: 'Introduction of new LPTACC cooling manifold',
+            catType: `CATEGORY ${sb3.complianceCategory}`,
+            moduleApplicability: 'LPT MODULE',
+            methodOfCompliance: 'MODIFICATION ACCOMPLISHED',
+            remarks: 'New configuration installed'
+          }
+        ]
+      },
+      adStatus: {
+        create: [
+          {
+            engineSerialNumber: 'ESN-GTA01',
+            adNumber: 'EASA AD 2024-0102',
+            referenceSb: sb3.sbNumber,
+            recurrInsp: 'NO',
+            notificationDateOfCompliance: '20 JUN 2026',
+            description: 'LPTACC manifold modification',
+            moduleApplicability: 'LPT MODULE',
+            methodOfCompliance: 'TERMINATING ACTION ACCOMPLISHED',
+            remarks: 'AD requirement closed'
+          }
+        ]
+      },
+      accessoriesList: {
+        create: [
+          {
+            engineSerialNumber: 'ESN-GTA01',
+            no: '1',
+            description: 'STARTER AIR VALVE',
+            receivedPn: '2458M90P01',
+            receivedSn: 'SAV-GTA01-A',
+            receivedTsn: '12,480',
+            receivedTso: '4,100',
+            installedPn: '2458M90P02',
+            installedSn: 'SAV-GTA01-B',
+            installedTsn: '0',
+            installedTso: '0',
+            maintenancePerformed: 'Modified configuration installed and tested'
+          }
+        ]
+      }
+    }
+  });
+
+  console.log(`✅ Seeded 3 SVR examples: ${svr1.id}, ${svr2.id}, ${svr3.id}`);
 
   console.log('🔗 Seeding Compliance Record...');
   const cmp1 = await prisma.complianceRecord.create({
