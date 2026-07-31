@@ -138,6 +138,7 @@ model User {
   reviewActions            ReviewAction[]
   sbComplianceAudits       SbComplianceAudit[]
   engineHistoryLogs        EngineHistoryLog[]
+  notifications            Notification[]
 }
 
 // --- ASSETS ---
@@ -721,4 +722,17 @@ model ReviewAction {
 
   @@index([action, createdAt])
   @@index([eesId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+  
+  @@index([userId, createdAt])
 }

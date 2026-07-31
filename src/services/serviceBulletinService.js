@@ -149,6 +149,7 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
           effectivityRange: Array.isArray(aiResult.payload.effected_model) 
                               ? aiResult.payload.effected_model.join(', ') 
                               : (aiResult.payload.effected_model || existingSb.effectivityRange),
+          impactType: aiResult.payload.impactType || aiResult.payload.impact_type || existingSb.impactType,
                               
           ocrStatus: 'EXTRACTED',
           draftStatus: 'REVIEW_REQUIRED',
@@ -175,6 +176,7 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
           effectivityRange: Array.isArray(aiResult.payload.effected_model) 
                               ? aiResult.payload.effected_model.join(', ') 
                               : (aiResult.payload.effected_model || null),
+          impactType: aiResult.payload.impactType || aiResult.payload.impact_type || null,
                               
           ocrStatus: 'EXTRACTED',
           draftStatus: 'REVIEW_REQUIRED',

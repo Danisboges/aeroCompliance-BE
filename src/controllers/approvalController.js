@@ -7,7 +7,6 @@ const getApprovals = async (req, res) => {
   try {
     const { status, assigneeId, page = 1, limit = 20 } = req.query;
     
-    // Scoping to current operator
     const operatorId = req.user?.operatorId;
 
     const p = parseInt(page, 10);
@@ -39,22 +38,122 @@ const getApprovals = async (req, res) => {
 };
 
 /**
+ * GET /api/approvals/inbox
+ */
+const getInbox = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search, status, sort } = req.query;
+    const user = req.user;
+
+    const p = parseInt(page, 10);
+    const l = parseInt(limit, 10);
+    const validPage = isNaN(p) ? 1 : Math.max(1, p);
+    const validLimit = isNaN(l) ? 20 : Math.min(100, Math.max(1, l));
+    const skip = (validPage - 1) * validLimit;
+    const take = validLimit;
+
+    const result = await approvalService.getInbox(user, { skip, take, search, status, sort });
+
+    return res.status(200).json({
+      data: result.data,
+      meta: {
+        page: validPage,
+        limit: take,
+        total: result.total,
+        pendingCount: result.pendingCount,
+        totalPages: Math.ceil(result.total / take) || 1
+      }
+    });
+  } catch (error) {
+    console.error('[ApprovalController - Inbox]', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+/**
+ * GET /api/approvals/my-submissions
+ */
+const getMySubmissions = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const user = req.user;
+
+    const p = parseInt(page, 10);
+    const l = parseInt(limit, 10);
+    const validPage = isNaN(p) ? 1 : Math.max(1, p);
+    const validLimit = isNaN(l) ? 20 : Math.min(100, Math.max(1, l));
+    const skip = (validPage - 1) * validLimit;
+    const take = validLimit;
+
+    const result = await approvalService.getMySubmissions(user, { skip, take });
+
+    return res.status(200).json({
+      data: result.data,
+      meta: {
+        page: validPage,
+        limit: take,
+        total: result.total,
+        totalPages: Math.ceil(result.total / take) || 1
+      }
+    });
+  } catch (error) {
+    console.error('[ApprovalController - My Submissions]', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+/**
+ * GET /api/approvals/history
+ */
+const getHistory = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const user = req.user;
+
+    const p = parseInt(page, 10);
+    const l = parseInt(limit, 10);
+    const validPage = isNaN(p) ? 1 : Math.max(1, p);
+    const validLimit = isNaN(l) ? 20 : Math.min(100, Math.max(1, l));
+    const skip = (validPage - 1) * validLimit;
+    const take = validLimit;
+
+    const result = await approvalService.getHistory(user, { skip, take });
+
+    return res.status(200).json({
+      data: result.data,
+      meta: {
+        page: validPage,
+        limit: take,
+        total: result.total,
+        totalPages: Math.ceil(result.total / take) || 1
+      }
+    });
+  } catch (error) {
+    console.error('[ApprovalController - History]', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+/**
  * GET /api/approvals/:eesId
  */
 const getApprovalByEesId = async (req, res) => {
   try {
     const { eesId } = req.params;
-    const operatorId = req.user?.operatorId;
+    const user = req.user;
 
-    const result = await approvalService.getApprovalByEesId(eesId, operatorId);
+    const result = await approvalService.getApprovalByEesId(eesId, user);
 
     return res.status(200).json({
       data: result
     });
   } catch (error) {
     console.error('[ApprovalController]', error);
-    if (error.message.includes('not found') || error.message.includes('Unauthorized') || error.message.includes('No active approval found')) {
+    if (error.message.includes('not found') || error.message.includes('No active approval')) {
       return res.status(404).json({ error: 'Data tidak ada' });
+    }
+    if (error.message.includes('Unauthorized') || error.message.includes('Forbidden')) {
+      return res.status(403).json({ error: error.message });
     }
     return res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -67,6 +166,7 @@ const postReview = async (req, res) => {
   try {
     const { eesId } = req.params;
     const { action, comment, nextAssignedToId } = req.body;
+    const user = req.user;
 
     if (!action) {
       return res.status(400).json({ error: 'Action is required (APPROVED, REJECTED, RETURNED)' });
@@ -77,8 +177,7 @@ const postReview = async (req, res) => {
       action,
       comment,
       nextAssignedToId,
-      actorId: req.user.id,
-      actorRole: req.user.role,
+      user,
       signatureFile: req.file
     });
 
@@ -91,8 +190,11 @@ const postReview = async (req, res) => {
     if (error.message.includes('found')) {
       return res.status(404).json({ error: 'Data tidak ada' });
     }
-    if (error.message.includes('Invalid')) {
+    if (error.message.includes('Invalid') || error.message.includes('not assigned')) {
       return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('Forbidden') || error.message.includes('Unauthorized')) {
+      return res.status(403).json({ error: error.message });
     }
     return res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -105,6 +207,7 @@ const rejectApproval = async (req, res) => {
   try {
     const { eesId } = req.params;
     const { comment } = req.body;
+    const user = req.user;
 
     if (!comment) {
       return res.status(400).json({ error: 'Comment is required when rejecting an EES' });
@@ -114,9 +217,8 @@ const rejectApproval = async (req, res) => {
       eesId,
       action: 'REJECTED',
       comment,
-      nextAssignedToId: null, // Service handles re-assigning to submitter
-      actorId: req.user.id,
-      actorRole: req.user.role,
+      nextAssignedToId: null,
+      user,
       signatureFile: null
     });
 
@@ -131,6 +233,9 @@ const rejectApproval = async (req, res) => {
     }
     if (error.message.includes('Invalid') || error.message.includes('no longer pending')) {
       return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('Forbidden') || error.message.includes('Unauthorized')) {
+      return res.status(403).json({ error: error.message });
     }
     return res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -169,8 +274,47 @@ const submitForApproval = async (req, res) => {
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
 /**
- * GET /api/approvals/pending-second-engineer
+ * POST /api/approvals/:eesId/resubmit
+ */
+const resubmitForApproval = async (req, res) => {
+  try {
+    const { eesId } = req.params;
+    const { assignedToId } = req.body;
+    const submitterId = req.user.id;
+
+    if (!assignedToId) {
+      return res.status(400).json({ error: 'assignedToId is required for resubmission' });
+    }
+
+    const result = await approvalService.resubmitForApproval({
+      eesId,
+      assignedToId,
+      submitterId
+    });
+
+    return res.status(200).json({
+      message: 'Approval resubmitted successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('[ApprovalController - Resubmit]', error);
+    if (error.message.includes('found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message.includes('Forbidden') || error.message.includes('not authorized') || error.message.includes('Unauthorized')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (error.message.includes('already') || error.message.includes('cannot be resubmitted') || error.message.includes('Invalid')) {
+      return res.status(409).json({ error: error.message }); // Conflict
+    }
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+/**
+ * GET /api/approvals/pending-second-engineer (DEPRECATED)
  */
 const getPendingSecondEngineer = async (req, res) => {
   try {
@@ -199,7 +343,7 @@ const getPendingSecondEngineer = async (req, res) => {
 };
 
 /**
- * GET /api/approvals/pending-manager
+ * GET /api/approvals/pending-manager (DEPRECATED)
  */
 const getPendingManager = async (req, res) => {
   try {
@@ -229,10 +373,14 @@ const getPendingManager = async (req, res) => {
 
 module.exports = {
   getApprovals,
-  getPendingSecondEngineer,
-  getPendingManager,
+  getInbox,
+  getMySubmissions,
+  getHistory,
   getApprovalByEesId,
   postReview,
   rejectApproval,
-  submitForApproval
+  submitForApproval,
+  resubmitForApproval,
+  getPendingSecondEngineer,
+  getPendingManager
 };
