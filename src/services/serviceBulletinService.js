@@ -354,6 +354,9 @@ const validateServiceBulletin = async (id, validatedPayload, updatedById = null)
                         ? payload.effected_model.join(', ') 
                         : (payload.effected_model || sb.effectivityRange),
     compliancePeriod: payload.compliance_period || sb.compliancePeriod,
+    revision: payload.revision_number || payload.revision || sb.revision,
+    impactType: payload.impact || payload.impactType || payload.impact_type || sb.impactType,
+    issueDate: payload.issueDate || payload.issued_date ? new Date(payload.issueDate || payload.issued_date) : sb.issueDate,
     rawPayload: payload,
     draftStatus: 'VALIDATED',
     updatedById: updatedById || undefined

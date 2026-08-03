@@ -232,7 +232,7 @@ const normalizeOcrPayload = (rawPayload) => {
     partNumber: payload.part_number || payload.partNumber || (payload.mro_schema && payload.mro_schema.mro_schema ? payload.mro_schema.mro_schema.part_number : '') || '',
     componentType: payload.component_type || payload.componentType || null,
     complianceTimeType: payload.compliance_time_type || payload.complianceTimeType || null,
-    isRepetitive: normalizeBoolean(payload.repetitive || payload.isRepetitive),
+    isRepetitive: normalizeBoolean(payload.repetitive !== undefined ? payload.repetitive : payload.isRepetitive),
     note: payload.note || payload.remarks || payload.remark || null,
     requiresManualEes,
     isManualEdited: normalizeBoolean(payload.isManualEdited) || false,
