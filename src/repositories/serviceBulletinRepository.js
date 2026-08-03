@@ -49,7 +49,7 @@ const listSelect = {
  * Creates a new ServiceBulletin record.
  */
 const createServiceBulletin = async (data) => {
-  const { ocrStatus, draftStatus, rawPayload, extractedAt, ...sbData } = data;
+  const { ocrStatus, draftStatus, rawPayload, extractedAt, confidenceScore, modelConfidenceScore, ...sbData } = data;
   return prisma.serviceBulletin.create({
     data: {
       id: generateId('SB-DOC'),
@@ -59,7 +59,9 @@ const createServiceBulletin = async (data) => {
           ...(ocrStatus !== undefined && { ocrStatus }),
           ...(draftStatus !== undefined && { draftStatus }),
           ...(rawPayload !== undefined && { rawPayload }),
-          ...(extractedAt !== undefined && { extractedAt })
+          ...(extractedAt !== undefined && { extractedAt }),
+          ...(confidenceScore !== undefined && { confidenceScore }),
+          ...(modelConfidenceScore !== undefined && { modelConfidenceScore })
         }
       }
     },
@@ -71,12 +73,14 @@ const createServiceBulletin = async (data) => {
  * Updates an existing ServiceBulletin record.
  */
 const updateServiceBulletin = async (id, data) => {
-  const { ocrStatus, draftStatus, rawPayload, extractedAt, ...sbData } = data;
+  const { ocrStatus, draftStatus, rawPayload, extractedAt, confidenceScore, modelConfidenceScore, ...sbData } = data;
   const ocrUpdates = {};
   if (ocrStatus !== undefined) ocrUpdates.ocrStatus = ocrStatus;
   if (draftStatus !== undefined) ocrUpdates.draftStatus = draftStatus;
   if (rawPayload !== undefined) ocrUpdates.rawPayload = rawPayload;
   if (extractedAt !== undefined) ocrUpdates.extractedAt = extractedAt;
+  if (confidenceScore !== undefined) ocrUpdates.confidenceScore = confidenceScore;
+  if (modelConfidenceScore !== undefined) ocrUpdates.modelConfidenceScore = modelConfidenceScore;
 
   return prisma.serviceBulletin.update({
     where: { id },
@@ -205,8 +209,8 @@ async function markServiceBulletinAsRead(sbId, userId) {
  * Lists all SBs with optional text search and type/status filters (for Select SB step).
  * Supports pagination, operator filter, and date ranges.
  */
-async function findAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy = 'receivedAt', sortOrder = 'desc', page, limit, unreviewedOnly, pendingOnly } = {}) {
-  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly });
+async function findAllWithFilter({ search, status, operatorId, receivedFrom, receivedTo, sortBy = 'receivedAt', sortOrder = 'desc', page, limit, unreviewedOnly, pendingOnly } = {}) {
+  const where = _buildFilterWhere({ search, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly });
   
   const queryOptions = {
     where,
@@ -229,12 +233,12 @@ async function findAllWithFilter({ search, sbType, status, operatorId, receivedF
 /**
  * Counts all SBs with optional filters (for pagination).
  */
-async function countAllWithFilter({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly } = {}) {
-  const where = _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly });
+async function countAllWithFilter({ search, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly } = {}) {
+  const where = _buildFilterWhere({ search, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly });
   return prisma.serviceBulletin.count({ where });
 }
 
-function _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly }) {
+function _buildFilterWhere({ search, status, operatorId, receivedFrom, receivedTo, unreviewedOnly, pendingOnly }) {
   const where = { AND: [] };
   
   if (search) {
@@ -247,7 +251,7 @@ function _buildFilterWhere({ search, sbType, status, operatorId, receivedFrom, r
     });
   }
   
-  if (sbType) where.sbType = sbType;
+
   
   if (status) {
     if (['DRAFT', 'REVIEW_REQUIRED', 'VALIDATED', 'GENERATED'].includes(status)) {

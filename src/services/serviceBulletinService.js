@@ -69,7 +69,7 @@ const parsePagination = ({ page = 1, limit = 20, ocrStatus, draftStatus } = {}) 
 /**
  * Upload PDF → Save to DB (TEMP) → Store physically → Run AI → Resolve and Save/Merge SB.
  */
-const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', createdById = null, aircraftType = null, existingSbId = null }) => {
+const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', createdById = null, aircraftType = null, existingSbId = null, operatorId = null, inputSource = 'SYSTEM' }) => {
   assertPdfBuffer(buffer);
 
   if (aircraftType) {
@@ -96,7 +96,9 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
     storedFileName: 'PENDING',
     ocrStatus: 'UPLOADED',
     aircraftType,
-    createdById: createdById ?? null
+    createdById: createdById ?? null,
+    operatorId,
+    inputSource
   });
 
   let storedFile = null;
@@ -142,18 +144,24 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
           originalFileName,
           storedFileName: storedFile.storedFileName,
           ...(aircraftType && { aircraftType }),
+          ...(operatorId && { operatorId }),
+          inputSource,
           
+          revision: aiResult.payload.revision_number || aiResult.payload.revision || existingSb.revision,
+          compliancePeriod: aiResult.payload.compliance_period || existingSb.compliancePeriod,
           // Map AI extracted payload to root SB fields if they are available
           complianceCategory: aiResult.payload.compliance_category ? parseInt(aiResult.payload.compliance_category) : existingSb.complianceCategory,
           effectivityType: aiResult.payload.effected_type || existingSb.effectivityType,
           effectivityRange: Array.isArray(aiResult.payload.effected_model) 
                               ? aiResult.payload.effected_model.join(', ') 
                               : (aiResult.payload.effected_model || existingSb.effectivityRange),
-          impactType: aiResult.payload.impactType || aiResult.payload.impact_type || existingSb.impactType,
+          impactType: aiResult.payload.impact || aiResult.payload.impactType || aiResult.payload.impact_type || existingSb.impactType,
                               
           ocrStatus: 'EXTRACTED',
           draftStatus: 'REVIEW_REQUIRED',
           rawPayload: aiResult.payload,
+          confidenceScore: aiResult.confidence_score || null,
+          modelConfidenceScore: aiResult.model_confidence_score || null,
           extractedAt: new Date(),
           createdById: createdById ?? existingSb.createdById
         });
@@ -165,22 +173,28 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
         // Jika SB asli belum ada, update temp record menjadi SB asli sesungguhnya
         finalSb = await serviceBulletinRepository.updateServiceBulletin(sb.id, {
           sbNumber: normalized.bulletinNumber,
-          title: aiResult.payload.title || `Service Bulletin ${normalized.bulletinNumber}`,
-          issuer: aiResult.payload.issuer || aiResult.payload.effected_type || 'Unknown Issuer',
-          issueDate: aiResult.payload.issueDate ? new Date(aiResult.payload.issueDate) : new Date(),
+          revision: aiResult.payload.revision_number || aiResult.payload.revision || null,
+          title: aiResult.payload.title || aiResult.payload.tittle || `Service Bulletin ${normalized.bulletinNumber}`,
+          issuer: aiResult.payload.manufacturer || aiResult.payload.issuer || aiResult.payload.effected_type || 'Unknown Issuer',
+          issueDate: aiResult.payload.issueDate || aiResult.payload.issued_date ? new Date(aiResult.payload.issueDate || aiResult.payload.issued_date) : new Date(),
           
           // Map AI extracted payload to root SB fields
           ...(aircraftType && { aircraftType }),
+          ...(operatorId && { operatorId }),
+          inputSource,
           complianceCategory: aiResult.payload.compliance_category ? parseInt(aiResult.payload.compliance_category) : null,
+          compliancePeriod: aiResult.payload.compliance_period || null,
           effectivityType: aiResult.payload.effected_type || null,
           effectivityRange: Array.isArray(aiResult.payload.effected_model) 
                               ? aiResult.payload.effected_model.join(', ') 
                               : (aiResult.payload.effected_model || null),
-          impactType: aiResult.payload.impactType || aiResult.payload.impact_type || null,
+          impactType: aiResult.payload.impact || aiResult.payload.impactType || aiResult.payload.impact_type || null,
                               
           ocrStatus: 'EXTRACTED',
           draftStatus: 'REVIEW_REQUIRED',
           rawPayload: aiResult.payload,
+          confidenceScore: aiResult.confidence_score || null,
+          modelConfidenceScore: aiResult.model_confidence_score || null,
           extractedAt: new Date()
         });
         console.log(`[OCR Service] Created new ServiceBulletin via AI detection: ${normalized.bulletinNumber}`);
@@ -382,6 +396,18 @@ const generateEes = async (id, updatedById = null, customData = {}) => {
     }
     payload.aircraftType = customData.aircraftType;
   }
+
+  // Resolve Template
+  let templateToUse = sb.selectedEesTemplate;
+  if (!templateToUse) {
+    if (sb.inputSource === 'USER_UPLOAD') {
+      throw new Error('Validation Error: Template EES belum dipilih. Harap pilih template (GARUDA/CITILINK) sebelum memproses.');
+    } else {
+      const opCode = sb.operator?.code || '';
+      templateToUse = opCode === 'QG' ? 'CITILINK' : 'GARUDA';
+    }
+  }
+  payload.eesTemplate = templateToUse;
 
   if (!payload || typeof payload !== 'object') {
     throw new Error('Validation Error: cannot generate EES from empty OCR payload');

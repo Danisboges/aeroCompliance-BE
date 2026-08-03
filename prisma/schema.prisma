@@ -101,12 +101,17 @@ enum OcrDraftStatus {
   GENERATED
 }
 
-// SB Category Type for UI badge display
-enum SbType {
-  MANDATORY
-  RECOMMENDED
-  ALERT
-  ADVISORY
+
+
+// Input Source for SB
+enum SbInputSource {
+  SYSTEM
+  USER_UPLOAD
+}
+
+enum EesTemplate {
+  GARUDA
+  CITILINK
 }
 
 // Engineering recommendation action
@@ -204,13 +209,15 @@ model ServiceBulletin {
   status     DocumentStatus @default(ACTIVE)
 
   // Applicability / Classification fields (from company DB or AI)
-  sbType             SbType?
+
   complianceCategory Int?
   effectivityType    String?
   effectivityRange   Json?
   compliancePeriod   String?
   aircraftType       String?
   impactType         String?
+  inputSource        SbInputSource @default(SYSTEM)
+  selectedEesTemplate EesTemplate?
 
   // Operator Context
   operatorId String?
@@ -247,6 +254,8 @@ model OcrResult {
   ocrStatus   OcrProcessingStatus @default(UPLOADED)
   draftStatus OcrDraftStatus      @default(DRAFT)
   rawPayload  Json?
+  confidenceScore      Json?
+  modelConfidenceScore Json?
   extractedAt DateTime?
 
   createdAt DateTime @default(now())
@@ -282,6 +291,7 @@ model EesDocument {
 
   reviewStatus   ApprovalStatus @default(PENDING)
   isManualEdited Boolean        @default(false)
+  eesTemplate    EesTemplate?
 
   evaluations       EesEvaluationItem[]
   reviewActions     ReviewAction[]

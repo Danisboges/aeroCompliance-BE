@@ -43,5 +43,10 @@
   },
   "prisma": {
     "seed": "node prisma/seed.js"
+  },
+  "jest": {
+    "testMatch": [
+      "**/*.test.js"
+    ]
   }
 }

@@ -25,6 +25,7 @@ Sistem backend untuk mengelola proses evaluasi **Service Bulletin (SB)** pada me
 
 ```
 GMF-BE/
+├── __tests__/               # Automated Unit & Integration Tests (Jest)
 ├── prisma/
 │   ├── schema.prisma          # Skema database terintegrasi
 │   ├── seed.js                # Seeder user, SB & fleet
@@ -53,6 +54,7 @@ GMF-BE/
 ### 3.1 Alur Ingest SB (Dua Sumber Input)
 1. **Sumber A (Database Existing)**: SB sudah ada di DB $\rightarrow$ User upload PDF SB $\rightarrow$ Trigger AI Extraction.
 2. **Sumber B (Upload Manual)**: User upload PDF SB baru $\rightarrow$ Auto-create SB Temp $\rightarrow$ AI Extract $\rightarrow$ Merge ke SB asli atau Simpan SB Baru.
+*Catatan: Proses ekstraksi AI kini juga menghasilkan metrik `confidenceScore` dan `modelConfidenceScore` yang memvalidasi tingkat akurasi ekstraksi data dokumen.*
 
 ### 3.2 Alur 6-Langkah EES Generator Flow
 
@@ -70,6 +72,7 @@ GMF-BE/
 - **Transient Signatures**: Gambar tanda tangan (`.png`) diunggah sementara, disematkan ke PDF EES Final, lalu **langsung dihapus dari server (`fs.unlinkSync`)**.
 
 ### 3.4 Engine Relasi Multi-Tier SB (`SbRelation` & Graph Lineage)
+- *Catatan Histori*: Penggunaan parameter lawas `SbType` (seperti MANDATORY, RECOMMENDED, dll) telah di-deprecate sepenuhnya karena perannya telah digantikan oleh `complianceCategory` (1-9) dan relasi multi-dokumen.
 - Mencatat 3 jenis hubungan di tabel `SbRelation`:
   1. `CONCURRENT`: Harus dikerjakan bersamaan / alternatif.
   2. `SUPERSEDES`: Menggantikan dokumen SB lama secara total.

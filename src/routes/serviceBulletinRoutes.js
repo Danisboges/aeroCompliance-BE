@@ -26,6 +26,8 @@ router.get('/service-bulletins/:id/logs', verifyToken, serviceBulletinController
 router.post('/service-bulletins/:id/upload-pdf', verifyToken, pdfBodyParser, serviceBulletinController.uploadPdfToExistingSb);
 // Sumber B: Upload PDF SB baru (belum ada di database) → buat SB baru + AI analisis otomatis
 router.post('/service-bulletins/upload-new', verifyToken, pdfBodyParser, serviceBulletinController.uploadNewSb);
+// Set EES template for SB
+router.patch('/service-bulletins/:id/ees-template', verifyToken, express.json(), serviceBulletinController.updateEesTemplate);
 // View original SB PDF document inline
 router.get('/service-bulletins/:id/view', verifyToken, serviceBulletinController.viewPdf);
 // Download original SB PDF document

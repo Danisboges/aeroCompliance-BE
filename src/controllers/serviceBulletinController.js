@@ -39,7 +39,9 @@ const formatSbResponse = (sb, originalUrl = '') => {
   const result = {
     ...sbJson,
     status,
-    syncStatus
+    syncStatus,
+    confidenceScore: sbJson.ocrResult?.confidenceScore || null,
+    modelConfidenceScore: sbJson.ocrResult?.modelConfidenceScore || null
   };
 
   if (status !== 'GENERATED') {
@@ -55,6 +57,8 @@ const formatSbResponse = (sb, originalUrl = '') => {
     issuer: sbJson.issuer,
     issueDate: sbJson.issueDate,
     status,
+    inputSource: sbJson.inputSource,
+    selectedEesTemplate: sbJson.selectedEesTemplate,
     generatedEes: sbJson.generatedEes
   };
 
@@ -73,10 +77,15 @@ const formatSbListResponse = (sb) => {
     ocrStatus: sbJson.ocrResult?.ocrStatus || 'UPLOADED',
     draftStatus: sbJson.ocrResult?.draftStatus || sbJson.status || 'DRAFT',
     syncStatus: sbJson.generatedEes ? 'SYNC' : 'UNSYNC',
+    inputSource: sbJson.inputSource,
+    selectedEesTemplate: sbJson.selectedEesTemplate,
+    confidenceScore: sbJson.ocrResult?.confidenceScore || null,
+    modelConfidenceScore: sbJson.ocrResult?.modelConfidenceScore || null,
     ees: sbJson.generatedEes ? {
       id: sbJson.generatedEes.id,
       eesNumber: sbJson.generatedEes.eesNumber,
       reviewStatus: sbJson.generatedEes.reviewStatus,
+      eesTemplate: sbJson.generatedEes.eesTemplate,
       createdAt: sbJson.generatedEes.createdAt
     } : null
   };
@@ -311,6 +320,7 @@ module.exports = {
   getEesDocument,
   updateEesDocument,
   getServiceBulletinLogs,
+  updateEesTemplate,
 };
 
 /**
@@ -500,6 +510,38 @@ async function updateEesDocument(req, res) {
 }
 
 /**
+ * PATCH /api/service-bulletins/:id/ees-template
+ * Menyimpan pilihan template manual.
+ */
+async function updateEesTemplate(req, res) {
+  try {
+    const { id } = req.params;
+    const { eesTemplate } = req.body;
+
+    if (!eesTemplate || !['GARUDA', 'CITILINK'].includes(eesTemplate)) {
+      return res.status(400).json({ error: 'Validation Error: eesTemplate must be GARUDA or CITILINK' });
+    }
+
+    const sb = await serviceBulletinService.getServiceBulletinById(id);
+    if (!sb) {
+      return res.status(404).json({ error: 'Service Bulletin not found' });
+    }
+
+    const updatedSb = await serviceBulletinService.updateServiceBulletin(id, {
+      selectedEesTemplate: eesTemplate
+    });
+
+    return res.status(200).json({
+      message: 'EES template selection saved',
+      data: formatSbResponse(updatedSb, req.originalUrl)
+    });
+  } catch (error) {
+    console.error('Error updating ees template:', error);
+    return handleControllerError(res, error);
+  }
+}
+
+/**
  * POST /api/service-bulletins/upload-new
  * Sumber B: Upload PDF SB baru yang belum ada di database.
  * Buat record SB baru → simpan file → jalankan AI → SB siap untuk Step 2-6.
@@ -508,12 +550,21 @@ async function uploadNewSb(req, res) {
   try {
     const fileName = req.headers['x-file-name'];
     const aircraftType = req.headers['x-aircraft-type'] || req.query.aircraftType;
+    let templateType = req.headers['x-ees-template'] || req.query.eesTemplate || null;
+
+    if (templateType && !['GARUDA', 'CITILINK'].includes(templateType.toUpperCase())) {
+      return res.status(400).json({ error: 'Validation Error: eesTemplate must be GARUDA or CITILINK' });
+    }
+
     const result = await serviceBulletinService.processPdf({
       buffer: req.body,
       fileName,
       mimeType: req.headers['content-type'] || 'application/pdf',
       createdById: req.user?.id ?? null,
-      aircraftType
+      aircraftType,
+      operatorId: req.user?.operatorId ?? null,
+      inputSource: 'USER_UPLOAD',
+      selectedEesTemplate: templateType ? templateType.toUpperCase() : null
     });
 
     return res.status(201).json({

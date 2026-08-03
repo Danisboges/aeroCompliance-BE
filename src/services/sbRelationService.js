@@ -14,9 +14,22 @@ const getSbRelations = async (sbId) => {
   }
 
   // Relations where this SB is the source
-  const outgoing = await prisma.sbRelation.findMany({
+  const outgoingRaw = await prisma.sbRelation.findMany({
     where: { sourceSbId: sbId, isActive: true }
   });
+
+  const outgoing = await Promise.all(outgoingRaw.map(async (rel) => {
+    const targetSb = await prisma.serviceBulletin.findUnique({
+      where: { sbNumber: rel.targetSbNumber },
+      select: { id: true, sbNumber: true, revision: true, title: true, status: true }
+    });
+
+    return {
+      ...rel,
+      targetSb: targetSb || null,
+      syncStatus: targetSb ? 'SYNCED' : 'UNREGISTERED'
+    };
+  }));
 
   // Relations where this SB is the target (by sbNumber)
   const incoming = await prisma.sbRelation.findMany({
@@ -77,6 +90,7 @@ const getSbLineageTree = async (sbId) => {
       depth,
       targetSbNumber: rel.targetSbNumber,
       targetSb: targetSbInDb || null,
+      syncStatus: targetSbInDb ? 'SYNCED' : 'UNREGISTERED',
       conditionType: rel.conditionType,
       relationType: rel.relationType
     });
@@ -101,14 +115,35 @@ const getSbLineageTree = async (sbId) => {
     }
   });
 
-  // 3. Concurrent & Terminated SBs
-  const concurrentRels = await prisma.sbRelation.findMany({
+  const concurrentRelsRaw = await prisma.sbRelation.findMany({
     where: { sourceSbId: sbId, relationType: 'CONCURRENT', isActive: true }
   });
+  const concurrent = await Promise.all(concurrentRelsRaw.map(async (rel) => {
+    const targetSb = await prisma.serviceBulletin.findUnique({
+      where: { sbNumber: rel.targetSbNumber },
+      select: { id: true, sbNumber: true, status: true, issueDate: true }
+    });
+    return {
+      ...rel,
+      targetSb: targetSb || null,
+      syncStatus: targetSb ? 'SYNCED' : 'UNREGISTERED'
+    };
+  }));
 
-  const terminatedRels = await prisma.sbRelation.findMany({
+  const terminatedRelsRaw = await prisma.sbRelation.findMany({
     where: { sourceSbId: sbId, relationType: 'TERMINATES', isActive: true }
   });
+  const terminated = await Promise.all(terminatedRelsRaw.map(async (rel) => {
+    const targetSb = await prisma.serviceBulletin.findUnique({
+      where: { sbNumber: rel.targetSbNumber },
+      select: { id: true, sbNumber: true, status: true, issueDate: true }
+    });
+    return {
+      ...rel,
+      targetSb: targetSb || null,
+      syncStatus: targetSb ? 'SYNCED' : 'UNREGISTERED'
+    };
+  }));
 
   // 4. Requirement Groups where this SB is a member or source
   const reqMembers = await prisma.sbRequirementMember.findMany({
@@ -129,8 +164,8 @@ const getSbLineageTree = async (sbId) => {
       conditionType: supersededByRel.conditionType
     } : null,
     supersededChain,
-    concurrentRelations: concurrentRels,
-    terminatedRelations: terminatedRels,
+    concurrentRelations: concurrent,
+    terminatedRelations: terminated,
     requirementGroups: reqMembers.map(m => m.requirementGroup)
   };
 };

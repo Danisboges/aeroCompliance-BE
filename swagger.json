@@ -391,19 +391,6 @@
             }
           },
           {
-            "name": "sbType",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "MANDATORY",
-                "RECOMMENDED",
-                "ALERT",
-                "ADVISORY"
-              ]
-            }
-          },
-          {
             "name": "status",
             "in": "query",
             "schema": {
@@ -2530,19 +2517,6 @@
             }
           },
           {
-            "name": "sbType",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "MANDATORY",
-                "RECOMMENDED",
-                "ALERT",
-                "ADVISORY"
-              ]
-            }
-          },
-          {
             "name": "status",
             "in": "query",
             "schema": {
@@ -3120,7 +3094,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "enum": ["GARUDA", "CITILINK"]
+              "enum": [
+                "GARUDA",
+                "CITILINK"
+              ]
             }
           },
           {
@@ -3129,7 +3106,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "enum": ["ENGINEER", "MANAGER"]
+              "enum": [
+                "ENGINEER",
+                "MANAGER"
+              ]
             }
           }
         ],
@@ -3146,19 +3126,51 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "id": { "type": "string" },
-                          "employeeNumber": { "type": "string", "nullable": true },
-                          "name": { "type": "string", "nullable": true },
-                          "username": { "type": "string" },
-                          "email": { "type": "string", "format": "email" },
-                          "role": { "type": "string", "enum": ["ENGINEER", "MANAGER"] },
-                          "unit": { "type": "string", "nullable": true },
-                          "active": { "type": "boolean" },
+                          "id": {
+                            "type": "string"
+                          },
+                          "employeeNumber": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "username": {
+                            "type": "string"
+                          },
+                          "email": {
+                            "type": "string",
+                            "format": "email"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "ENGINEER",
+                              "MANAGER"
+                            ]
+                          },
+                          "unit": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
                           "operator": {
                             "type": "object",
                             "properties": {
-                              "code": { "type": "string", "enum": ["GARUDA", "CITILINK"] },
-                              "name": { "type": "string" }
+                              "code": {
+                                "type": "string",
+                                "enum": [
+                                  "GARUDA",
+                                  "CITILINK"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              }
                             }
                           }
                         }

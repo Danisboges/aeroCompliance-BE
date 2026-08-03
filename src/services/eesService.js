@@ -221,19 +221,19 @@ const normalizeOcrPayload = (rawPayload) => {
     eesNumber,
     bulletinNumber,
     title: payload.tittle || payload.title || '',
-    issuer: payload.effected_type || payload.issuer || '',
-    taskType: payload.task_type || '',
+    issuer: payload.manufacturer || payload.effected_type || payload.issuer || '',
+    taskType: payload.task_type || payload.taskType || '',
     references: payload.references || null,
-    effectedType: payload.effected_type || '',
+    effectedType: payload.effected_type || payload.effectivityType || '',
     effectedModel,
     aircraftType: payload.aircraftType,
     aircraftId: payload.aircraftId,
     manufacturer,
-    partNumber: payload.part_number || (payload.mro_schema && payload.mro_schema.mro_schema ? payload.mro_schema.mro_schema.part_number : '') || '',
-    componentType: payload.component_type || null,
-    complianceTimeType: payload.compliance_time_type || null,
-    isRepetitive: normalizeBoolean(payload.repetitive),
-    note: payload.note || null,
+    partNumber: payload.part_number || payload.partNumber || (payload.mro_schema && payload.mro_schema.mro_schema ? payload.mro_schema.mro_schema.part_number : '') || '',
+    componentType: payload.component_type || payload.componentType || null,
+    complianceTimeType: payload.compliance_time_type || payload.complianceTimeType || null,
+    isRepetitive: normalizeBoolean(payload.repetitive || payload.isRepetitive),
+    note: payload.note || payload.remarks || payload.remark || null,
     requiresManualEes,
     isManualEdited: normalizeBoolean(payload.isManualEdited) || false,
     esn: payload.esn || null,
@@ -263,6 +263,7 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
     note,
     isManualEdited,
     esn,
+    eesTemplate,
   } = normalized;
 
   let sourceSbId = explicitSourceSbId;
@@ -304,7 +305,8 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
   return await eesRepository.createEesDocument(
     { 
       eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, aircraftType, 
-      partNumber, componentType, complianceTimeType, isRepetitive, note, isManualEdited, esn 
+      partNumber, componentType, complianceTimeType, isRepetitive, note, isManualEdited, esn,
+      eesTemplate
     },
     evaluations
   );

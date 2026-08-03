@@ -17,8 +17,8 @@ const handleControllerError = (res, error) => {
  */
 const listServiceBulletins = async (req, res) => {
   try {
-    const { search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit } = req.query;
-    const filters = { search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit };
+    const { search, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit } = req.query;
+    const filters = { search, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit };
 
     // Validasi & injeksi scope operator dari user login
     if (req.user && req.user.operatorId) {
@@ -71,8 +71,8 @@ const getServiceBulletin = async (req, res) => {
  */
 const listUnreviewedServiceBulletins = async (req, res) => {
   try {
-    const { search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit } = req.query;
-    const filters = { search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit, unreviewedOnly: true };
+    const { search, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit } = req.query;
+    const filters = { search, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit, unreviewedOnly: true };
 
     if (req.user && req.user.operatorId) {
       if (operatorId && operatorId !== req.user.operatorId) {
@@ -101,8 +101,8 @@ const listUnreviewedServiceBulletins = async (req, res) => {
  */
 const listPendingServiceBulletins = async (req, res) => {
   try {
-    const { search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit } = req.query;
-    const filters = { search, sbType, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit, pendingOnly: true };
+    const { search, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit } = req.query;
+    const filters = { search, status, operatorId, receivedFrom, receivedTo, sortBy, sortOrder, page, limit, pendingOnly: true };
 
     if (req.user && req.user.operatorId) {
       if (operatorId && operatorId !== req.user.operatorId) {

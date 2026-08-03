@@ -549,7 +549,7 @@ const submitForApproval = async ({
 
     if (assignedUser.email) {
       const pdfGenService = require('./pdfGenerationService');
-      const opCode = eesDoc.sourceSb?.operator?.code === 'QG' ? 'CITILINK' : 'GARUDA';
+      const opCode = eesDoc.eesTemplate || (eesDoc.sourceSb?.operator?.code === 'QG' ? 'CITILINK' : 'GARUDA');
       const draftSb = { ...eesDoc.sourceSb, generatedEes: eesDoc };
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const approvalUrl = `${frontendUrl}/approvals/${eesId}`;
@@ -593,7 +593,7 @@ const submitReview = async ({ eesId, action, comment, nextAssignedToId, user, si
   }
 
   const operatorCode = approval.eesDocument.sourceSb.operator.code;
-  const isGaruda = operatorCode === 'GA';
+  const isGaruda = eesDoc.eesTemplate === 'GARUDA' || (!eesDoc.eesTemplate && operatorCode === 'GA');
 
   if (user.role !== 'ADMIN') {
     const requiredRole = getRequiredApprovalRole({
@@ -727,7 +727,7 @@ const submitReview = async ({ eesId, action, comment, nextAssignedToId, user, si
       if (submitter && submitter.email) {
         const pdfGenService = require('./pdfGenerationService');
         const eesDoc = approval.eesDocument;
-        const opCode = eesDoc.sourceSb?.operator?.code === 'QG' ? 'CITILINK' : 'GARUDA';
+        const opCode = eesDoc.eesTemplate || (eesDoc.sourceSb?.operator?.code === 'QG' ? 'CITILINK' : 'GARUDA');
         const draftSb = { ...eesDoc.sourceSb, generatedEes: eesDoc };
         const pdfBuffer = await pdfGenService.generateEesPdf({ sb: draftSb, templateType: opCode });
 

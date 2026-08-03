@@ -243,7 +243,7 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkMethod3 = (!isMod && !isInsp) ? 'X' : '';
 
     const checkReason7 = 'X'; // Improve Reliability
-    const checkReason8 = sb.sbType === 'ALERT' ? 'X' : ''; // Safety
+    const checkReason8 = ''; // Safety
 
     const compType = (payload.compliance_time_type || '').toUpperCase();
     const checkMaint1 = compType === 'DATE' ? 'X' : '';
