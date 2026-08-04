@@ -58,11 +58,7 @@ const exportGarudaPdf = async (req, res) => {
   try {
     const sb = await getSbOrFail(req.params.id, res);
     
-    // Validasi template yang tersimpan
-    const savedTemplate = sb?.generatedEes?.eesTemplate;
-    if (savedTemplate && savedTemplate !== 'GARUDA') {
-      return res.status(400).json({ error: `Validation Error: EES ini menggunakan template ${savedTemplate}, tidak dapat diekspor sebagai GARUDA.` });
-    }
+    // Allow downloading any template format, ignore savedTemplate strict validation
     if (!sb) return;
 
     if (
@@ -103,11 +99,7 @@ const downloadGarudaPdf = async (req, res) => {
   try {
     const sb = await getSbOrFail(req.params.id, res);
     
-    // Validasi template yang tersimpan
-    const savedTemplate = sb?.generatedEes?.eesTemplate;
-    if (savedTemplate && savedTemplate !== 'GARUDA') {
-      return res.status(400).json({ error: `Validation Error: EES ini menggunakan template ${savedTemplate}, tidak dapat diunduh sebagai GARUDA.` });
-    }
+    // Allow downloading any template format, ignore savedTemplate strict validation
     if (!sb) return;
 
     if (
@@ -148,11 +140,7 @@ const exportCitilinkPdf = async (req, res) => {
   try {
     const sb = await getSbOrFail(req.params.id, res);
 
-    // Validasi template yang tersimpan
-    const savedTemplate = sb?.generatedEes?.eesTemplate;
-    if (savedTemplate && savedTemplate !== 'CITILINK') {
-      return res.status(400).json({ error: `Validation Error: EES ini menggunakan template ${savedTemplate}, tidak dapat diekspor sebagai CITILINK.` });
-    }
+    // Allow downloading any template format, ignore savedTemplate strict validation
     if (!sb) return;
 
     const pdfBuffer = await pdfGenerationService.generateEesPdf({ 

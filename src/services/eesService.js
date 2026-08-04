@@ -266,7 +266,7 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
     note,
     isManualEdited,
     esn,
-    eesTemplate,
+    
   } = normalized;
 
   let sourceSbId = explicitSourceSbId;

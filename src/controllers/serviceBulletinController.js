@@ -201,7 +201,7 @@ const generateEes = async (req, res) => {
     const customData = {
       eesNumber: req.body?.eesNumber,
       aircraftType: req.body?.aircraftType,
-      eesTemplate: req.headers['x-ees-template'] || req.body?.eesTemplate || req.query.eesTemplate,
+      
       payload: req.body?.payload
     };
     const result = await serviceBulletinService.generateEes(req.params.id, req.user?.id, customData);
@@ -566,7 +566,7 @@ async function uploadNewSb(req, res) {
       aircraftType,
       operatorId: req.user?.operatorId ?? null,
       inputSource: 'USER_UPLOAD',
-      selectedEesTemplate: templateType ? templateType.toUpperCase() : null
+      
     });
 
     return res.status(201).json({

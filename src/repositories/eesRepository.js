@@ -41,7 +41,7 @@ const mapEvaluations = (evaluations) => evaluations.map((item) => ({
  * Persists EesDocument along with its nested EesEvaluationItems.
  */
 const createEesDocument = async (documentData, evaluations) => {
-  const { eesNumber, sourceSbId, taskType, recommendedAction, references, effectedType, effectedModel, esn, aircraftType, partNumber, componentType, complianceTimeType, isRepetitive, note, isManualEdited, eesTemplate } = documentData;
+  const { eesNumber, sourceSbId, taskType, recommendedAction, references, effectedType, effectedModel, esn, aircraftType, partNumber, componentType, complianceTimeType, isRepetitive, note, isManualEdited } = documentData;
 
   return await prisma.$transaction(async (tx) => {
     const existingForSource = await tx.eesDocument.findUnique({
@@ -70,8 +70,7 @@ const createEesDocument = async (documentData, evaluations) => {
       complianceTimeType: complianceTimeType || null,
       isRepetitive: toNullableBoolean(isRepetitive),
       note: note || null,
-      isManualEdited: Boolean(isManualEdited),
-      eesTemplate: eesTemplate || null,
+      isManualEdited: isManualEdited || false
     };
     const evaluationData = mapEvaluations(Array.isArray(evaluations) ? evaluations : []);
 
