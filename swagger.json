@@ -1078,7 +1078,7 @@
                   },
                   "payload": {
                     "type": "object",
-                    "description": "Opsional. Seluruh JSON AI Summary yang sudah diedit. Jika diberikan, Backend akan menggunakan payload ini untuk membuat EES, sehingga rawPayload AI tetap utuh."
+                    "description": "Opsional. Seluruh JSON AI Summary yang sudah diedit (tambahkan recommendedAction: COMPLY/DEFER/NA di dalamnya jika untuk Citilink). Jika diberikan, Backend akan menggunakan payload ini untuk membuat EES, sehingga rawPayload AI tetap utuh."
                   }
                 }
               },
