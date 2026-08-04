@@ -69,7 +69,7 @@ const parsePagination = ({ page = 1, limit = 20, ocrStatus, draftStatus } = {}) 
 /**
  * Upload PDF → Save to DB (TEMP) → Store physically → Run AI → Resolve and Save/Merge SB.
  */
-const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', createdById = null, aircraftType = null, existingSbId = null, operatorId = null, inputSource = 'SYSTEM', selectedEesTemplate = null }) => {
+const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', createdById = null, aircraftType = null, existingSbId = null, operatorId = null, inputSource = 'SYSTEM'}) => {
   assertPdfBuffer(buffer);
 
   if (aircraftType) {
@@ -147,7 +147,7 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
           ...(aircraftType && { aircraftType }),
           ...(operatorId && { operatorId }),
           inputSource,
-          ...(selectedEesTemplate && { selectedEesTemplate }),
+          
           
           revision: aiResult.payload.revision_number || aiResult.payload.revision || existingSb.revision,
           title: aiResult.payload.title || aiResult.payload.tittle || existingSb.title,
@@ -187,7 +187,7 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
           ...(aircraftType && { aircraftType }),
           ...(operatorId && { operatorId }),
           inputSource,
-          ...(selectedEesTemplate && { selectedEesTemplate }),
+          
           complianceCategory: aiResult.payload.compliance_category ? parseInt(aiResult.payload.compliance_category) : null,
           compliancePeriod: aiResult.payload.compliance_period || null,
           effectivityType: aiResult.payload.effected_type || null,
@@ -407,7 +407,7 @@ const generateEes = async (id, updatedById = null, customData = {}) => {
   }
 
   // Resolve Template
-  let templateToUse = customData.eesTemplate || sb.selectedEesTemplate;
+  
   if (!templateToUse) {
     if (sb.inputSource === 'USER_UPLOAD') {
       throw new Error('Validation Error: Template EES belum dipilih. Harap pilih template (GARUDA/CITILINK) sebelum memproses.');
@@ -416,7 +416,7 @@ const generateEes = async (id, updatedById = null, customData = {}) => {
       templateToUse = opCode === 'QG' ? 'CITILINK' : 'GARUDA';
     }
   }
-  payload.eesTemplate = templateToUse;
+  
 
   if (!payload || typeof payload !== 'object') {
     throw new Error('Validation Error: cannot generate EES from empty OCR payload');

@@ -170,7 +170,7 @@ const downloadCitilinkPdf = async (req, res) => {
     const sb = await getSbOrFail(req.params.id, res);
 
     // Validasi template yang tersimpan
-    const savedTemplate = sb?.generatedEes?.eesTemplate;
+    
     if (savedTemplate && savedTemplate !== 'CITILINK') {
       return res.status(400).json({ error: `Validation Error: EES ini menggunakan template ${savedTemplate}, tidak dapat diunduh sebagai CITILINK.` });
     }

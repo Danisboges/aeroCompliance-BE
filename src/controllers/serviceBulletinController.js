@@ -58,7 +58,7 @@ const formatSbResponse = (sb, originalUrl = '') => {
     issueDate: sbJson.issueDate,
     status,
     inputSource: sbJson.inputSource,
-    selectedEesTemplate: sbJson.selectedEesTemplate,
+    
     generatedEes: sbJson.generatedEes
   };
 
@@ -78,14 +78,14 @@ const formatSbListResponse = (sb) => {
     draftStatus: sbJson.ocrResult?.draftStatus || sbJson.status || 'DRAFT',
     syncStatus: sbJson.generatedEes ? 'SYNC' : 'UNSYNC',
     inputSource: sbJson.inputSource,
-    selectedEesTemplate: sbJson.selectedEesTemplate,
+    
     confidenceScore: sbJson.ocrResult?.confidenceScore || null,
     modelConfidenceScore: sbJson.ocrResult?.modelConfidenceScore || null,
     ees: sbJson.generatedEes ? {
       id: sbJson.generatedEes.id,
       eesNumber: sbJson.generatedEes.eesNumber,
       reviewStatus: sbJson.generatedEes.reviewStatus,
-      eesTemplate: sbJson.generatedEes.eesTemplate,
+      
       createdAt: sbJson.generatedEes.createdAt
     } : null
   };
@@ -322,7 +322,7 @@ module.exports = {
   getEesDocument,
   updateEesDocument,
   getServiceBulletinLogs,
-  updateEesTemplate,
+  
 };
 
 /**
@@ -515,13 +515,7 @@ async function updateEesDocument(req, res) {
  * PATCH /api/service-bulletins/:id/ees-template
  * Menyimpan pilihan template manual.
  */
-async function updateEesTemplate(req, res) {
-  try {
-    const { id } = req.params;
-    const { eesTemplate } = req.body;
-
-    if (!eesTemplate || !['GARUDA', 'CITILINK'].includes(eesTemplate)) {
-      return res.status(400).json({ error: 'Validation Error: eesTemplate must be GARUDA or CITILINK' });
+);
     }
 
     const sb = await serviceBulletinService.getServiceBulletinById(id);

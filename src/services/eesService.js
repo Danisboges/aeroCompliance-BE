@@ -238,7 +238,7 @@ const normalizeOcrPayload = (rawPayload) => {
     requiresManualEes,
     isManualEdited: normalizeBoolean(payload.isManualEdited) || false,
     esn: payload.esn || null,
-    eesTemplate: payload.eesTemplate || null,
+    
     evaluations,
   };
 };
