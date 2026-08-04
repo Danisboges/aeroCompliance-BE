@@ -222,7 +222,11 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
   const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
   if (templateType.toUpperCase() === 'CITILINK') {
-    const recAction = (sb.generatedEes?.recommendedAction || payload.recommendedAction || payload.recommended_action || '').toUpperCase();
+    const ea = payload.engineeringAction || [];
+    let recAction = (sb.generatedEes?.recommendedAction || payload.recommendedAction || payload.recommended_action || '').toUpperCase();
+    if (ea.includes('Yes')) recAction = 'COMPLY';
+    if (ea.includes('No')) recAction = 'NA';
+    if (ea.includes('Hold/Postpone')) recAction = 'DEFER';
     const isComply = recAction === 'COMPLY';
     const isDefer = recAction === 'DEFER';
     const isNA = recAction === 'NA';
@@ -235,7 +239,11 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkConseq1 = isConseqAffected ? 'X' : '';
     const checkConseq2 = !isConseqAffected ? 'X' : '';
 
-    const taskTypeClean = (sb.generatedEes?.taskType || payload.task_type || '').toUpperCase();
+    const am = payload.accomplishmentMethod || [];
+    let taskTypeClean = (sb.generatedEes?.taskType || payload.task_type || '').toUpperCase();
+    if (am.includes('Modification')) taskTypeClean = 'MOD';
+    if (am.includes('Inspection')) taskTypeClean = 'INSP';
+    if (am.includes('Other')) taskTypeClean = 'OTHER';
     const isInsp = taskTypeClean.includes('INSP');
     const isMod = !isInsp && (taskTypeClean.includes('MOD') || taskTypeClean.includes('SOFTWARE_UPDATE') || taskTypeClean.includes('REP'));
     const checkMethod1 = isMod ? 'X' : '';
@@ -245,7 +253,12 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkReason7 = 'X'; // Improve Reliability
     const checkReason8 = ''; // Safety
 
-    const compType = (sb.generatedEes?.complianceTimeType || payload.compliance_time_type || '').toUpperCase();
+    const ml = payload.maintenanceLevel || [];
+    let compType = (sb.generatedEes?.complianceTimeType || payload.compliance_time_type || '').toUpperCase();
+    if (ml.includes('To be performed prior to certain date')) compType = 'DATE';
+    if (ml.includes('To be performed prior to certain hours/cycles')) compType = 'HOUR_CYCLE';
+    if (ml.includes('To be performed at next maint. Scheduled')) compType = 'SCHEDULED';
+    if (ml.includes('To be performed at attrition basis')) compType = 'ATTRITION';
     const checkMaint1 = compType === 'DATE' ? 'X' : '';
     const checkMaint2 = compType === 'HOUR_CYCLE' ? 'X' : '';
     const checkMaint3 = compType === 'SCHEDULED' || (sb.compliancePeriod && sb.compliancePeriod.toLowerCase().includes('scheduled')) ? 'X' : '';
@@ -255,7 +268,11 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkInsp1 = !isRecurring ? 'X' : '';
     const checkInsp2 = isRecurring ? 'X' : '';
     
-    const componentType = (sb.generatedEes?.componentType || payload.component_type || 'COMPONENT').toUpperCase();
+    const pc = payload.partClassification || [];
+    let componentType = (sb.generatedEes?.componentType || payload.component_type || 'COMPONENT').toUpperCase();
+    if (pc.includes('Tool and Equipment')) componentType = 'TOOL';
+    if (pc.includes('Part')) componentType = 'PART';
+    if (pc.includes('Component')) componentType = 'COMPONENT';
     const checkComponent = componentType === 'COMPONENT' ? 'X' : '';
     const checkTool = componentType === 'TOOL' ? 'X' : '';
     const checkPart = componentType === 'PART' ? 'X' : '';
@@ -297,21 +314,21 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       .replace(/\{\{warrantyNote\}\}/g, payload.warranty_note || '-')
       .replace(/\{\{evaluationContent\}\}/g, evaluationContent)
       .replace(/\{\{evaluatorName\}\}/g, evaluatorName || sb.updatedBy?.username || sb.createdBy?.username || 'M Badruz Zaman')
-      .replace(/\{\{checkTEA1\}\}/g, '')
-      .replace(/\{\{checkTEA2\}\}/g, 'X')
-      .replace(/\{\{checkTEA3\}\}/g, '')
-      .replace(/\{\{checkTEA4\}\}/g, '')
-      .replace(/\{\{checkTEA5\}\}/g, '')
-      .replace(/\{\{checkTEA6\}\}/g, '')
+      .replace(/\\{\\{checkTEA1\\}\\}/g, checkTEA1)
+      .replace(/\\{\\{checkTEA2\\}\\}/g, checkTEA2)
+      .replace(/\\{\\{checkTEA3\\}\\}/g, checkTEA3)
+      .replace(/\\{\\{checkTEA4\\}\\}/g, checkTEA4)
+      .replace(/\\{\\{checkTEA5\\}\\}/g, checkTEA5)
+      .replace(/\\{\\{checkTEA6\\}\\}/g, checkTEA6)
       .replace(/\{\{checkComponent\}\}/g, checkComponent)
       .replace(/\{\{checkTool\}\}/g, checkTool)
       .replace(/\{\{checkPart\}\}/g, checkPart)
-      .replace(/\{\{checkReason1\}\}/g, '')
-      .replace(/\{\{checkReason2\}\}/g, '')
-      .replace(/\{\{checkReason3\}\}/g, '')
-      .replace(/\{\{checkReason4\}\}/g, 'X')
-      .replace(/\{\{checkReason5\}\}/g, '')
-      .replace(/\{\{checkReason6\}\}/g, '')
+      .replace(/\\{\\{checkReason1\\}\\}/g, checkReason1)
+      .replace(/\\{\\{checkReason2\\}\\}/g, checkReason2)
+      .replace(/\\{\\{checkReason3\\}\\}/g, checkReason3)
+      .replace(/\\{\\{checkReason4\\}\\}/g, checkReason4)
+      .replace(/\\{\\{checkReason5\\}\\}/g, checkReason5)
+      .replace(/\\{\\{checkReason6\\}\\}/g, checkReason6)
       .replace(/\{\{checkReason7\}\}/g, checkReason7)
       .replace(/\{\{checkReason8\}\}/g, checkReason8)
       .replace(/\{\{checkMaint1\}\}/g, checkMaint1)
@@ -329,14 +346,14 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       .replace(/\{\{checkActionYes\}\}/g, checkActionYes)
       .replace(/\{\{checkActionNo\}\}/g, checkActionNo)
       .replace(/\{\{checkActionHold\}\}/g, checkActionHold)
-      .replace(/\{\{checkImpl1\}\}/g, '')
-      .replace(/\{\{checkImpl2\}\}/g, '')
-      .replace(/\{\{checkImpl3\}\}/g, '')
-      .replace(/\{\{checkImpl4\}\}/g, '')
-      .replace(/\{\{checkImpl5\}\}/g, 'X')
-      .replace(/\{\{checkApproval1\}\}/g, 'X')
-      .replace(/\{\{checkApproval2\}\}/g, '')
-      .replace(/\{\{checkApproval3\}\}/g, '');
+      .replace(/\\{\\{checkImpl1\\}\\}/g, checkImpl1)
+      .replace(/\\{\\{checkImpl2\\}\\}/g, checkImpl2)
+      .replace(/\\{\\{checkImpl3\\}\\}/g, checkImpl3)
+      .replace(/\\{\\{checkImpl4\\}\\}/g, checkImpl4)
+      .replace(/\\{\\{checkImpl5\\}\\}/g, checkImpl5)
+      .replace(/\\{\\{checkApproval1\\}\\}/g, checkApproval1)
+      .replace(/\\{\\{checkApproval2\\}\\}/g, checkApproval2)
+      .replace(/\\{\\{checkApproval3\\}\\}/g, checkApproval3);
   } else {
     htmlContent = htmlContent
       .replace(/\{\{eesNumber\}\}/g, eesNumber)
