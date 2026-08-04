@@ -405,18 +405,6 @@ const generateEes = async (id, updatedById = null, customData = {}) => {
     payload.aircraftType = customData.aircraftType;
   }
 
-  // Resolve Template
-  
-  if (!templateToUse) {
-    if (sb.inputSource === 'USER_UPLOAD') {
-      throw new Error('Validation Error: Template EES belum dipilih. Harap pilih template (GARUDA/CITILINK) sebelum memproses.');
-    } else {
-      const opCode = sb.operator?.code || '';
-      templateToUse = opCode === 'QG' ? 'CITILINK' : 'GARUDA';
-    }
-  }
-  
-
   if (!payload || typeof payload !== 'object') {
     throw new Error('Validation Error: cannot generate EES from empty OCR payload');
   }
