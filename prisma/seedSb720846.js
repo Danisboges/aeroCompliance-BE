@@ -267,7 +267,7 @@ async function seed() {
         issueDate: new Date('2020-10-30T00:00:00.000Z'),
         receivedAt: new Date('2026-07-09T00:00:00.000Z'),
         status: 'ACTIVE',
-        sbType: 'RECOMMENDED',
+        
         complianceCategory: 7,
         effectivityType: 'GE90-100',
         effectivityRange,
@@ -290,7 +290,7 @@ async function seed() {
         issuer: 'GE Aerospace',
         issueDate: new Date('2020-10-30T00:00:00.000Z'),
         status: 'ACTIVE',
-        sbType: 'RECOMMENDED',
+        
         complianceCategory: 7,
         effectivityType: 'GE90-100',
         effectivityRange,

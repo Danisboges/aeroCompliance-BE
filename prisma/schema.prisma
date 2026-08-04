@@ -272,6 +272,7 @@ model EesDocument {
 
   // Dokumen Global Fields
   taskType           String?
+  recommendedAction  String?
   references         Json?
   effectedType       String?
   effectedModel      String?

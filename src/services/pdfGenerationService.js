@@ -222,10 +222,10 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
   const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
   if (templateType.toUpperCase() === 'CITILINK') {
-    const engRec = sb.engineeringRec || {};
-    const isComply = engRec.recommendedAction === 'COMPLY';
-    const isDefer = engRec.recommendedAction === 'DEFER';
-    const isNA = engRec.recommendedAction === 'NA';
+    const recAction = (sb.generatedEes?.recommendedAction || payload.recommendedAction || payload.recommended_action || '').toUpperCase();
+    const isComply = recAction === 'COMPLY';
+    const isDefer = recAction === 'DEFER';
+    const isNA = recAction === 'NA';
 
     const checkActionYes = isComply ? 'X' : '';
     const checkActionNo = isNA ? 'X' : '';
@@ -245,18 +245,17 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkReason7 = 'X'; // Improve Reliability
     const checkReason8 = ''; // Safety
 
-    const compType = (payload.compliance_time_type || '').toUpperCase();
+    const compType = (sb.generatedEes?.complianceTimeType || payload.compliance_time_type || '').toUpperCase();
     const checkMaint1 = compType === 'DATE' ? 'X' : '';
     const checkMaint2 = compType === 'HOUR_CYCLE' ? 'X' : '';
     const checkMaint3 = compType === 'SCHEDULED' || (sb.compliancePeriod && sb.compliancePeriod.toLowerCase().includes('scheduled')) ? 'X' : '';
     const checkMaint4 = (!checkMaint1 && !checkMaint2 && !checkMaint3) ? 'X' : '';
 
-    const compliancePeriod = (sb.compliancePeriod || payload.compliance_period || '').toLowerCase();
-    const isRecurring = compliancePeriod.includes('every');
+    const isRecurring = sb.generatedEes?.isRepetitive ?? (sb.compliancePeriod || payload.compliance_period || '').toLowerCase().includes('every');
     const checkInsp1 = !isRecurring ? 'X' : '';
     const checkInsp2 = isRecurring ? 'X' : '';
     
-    const componentType = (payload.component_type || 'COMPONENT').toUpperCase();
+    const componentType = (sb.generatedEes?.componentType || payload.component_type || 'COMPONENT').toUpperCase();
     const checkComponent = componentType === 'COMPONENT' ? 'X' : '';
     const checkTool = componentType === 'TOOL' ? 'X' : '';
     const checkPart = componentType === 'PART' ? 'X' : '';

@@ -1067,8 +1067,25 @@
                   "aircraftType": {
                     "type": "string",
                     "description": "Manual Aircraft Type text"
+                  },
+                  "eesTemplate": {
+                    "type": "string",
+                    "enum": [
+                      "GARUDA",
+                      "CITILINK"
+                    ],
+                    "description": "Template EES (GARUDA/CITILINK)"
+                  },
+                  "payload": {
+                    "type": "object",
+                    "description": "Opsional. Seluruh JSON AI Summary yang sudah diedit. Jika diberikan, Backend akan menggunakan payload ini untuk membuat EES, sehingga rawPayload AI tetap utuh."
                   }
                 }
+              },
+              "example": {
+                "eesNumber": "SB-DOC-DCCBEA8D",
+                "aircraftType": "B777-300ER",
+                "eesTemplate": "GARUDA"
               }
             }
           }

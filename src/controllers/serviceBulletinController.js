@@ -200,7 +200,9 @@ const generateEes = async (req, res) => {
   try {
     const customData = {
       eesNumber: req.body?.eesNumber,
-      aircraftType: req.body?.aircraftType
+      aircraftType: req.body?.aircraftType,
+      eesTemplate: req.headers['x-ees-template'] || req.body?.eesTemplate || req.query.eesTemplate,
+      payload: req.body?.payload
     };
     const result = await serviceBulletinService.generateEes(req.params.id, req.user?.id, customData);
     

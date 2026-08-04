@@ -142,7 +142,12 @@ const analyzePdf = async ({ fileName, checksum, buffer, storagePath }) => {
     };
 
     console.log(`[AI Client] ✅ Payload final: sb_code=${payload.sb_code}, items=${normalizedItems.length}, title=${payload.title}`);
-    return { provider: 'REAL_AI', payload };
+    return { 
+      provider: 'REAL_AI', 
+      payload,
+      confidence_score: result.confidenceScore || result.confidence_score || schema.confidenceScore || schema.confidence_score || null,
+      model_confidence_score: result.modelConfidenceScore || result.model_confidence_score || schema.modelConfidenceScore || schema.model_confidence_score || null
+    };
 
   } catch (error) {
     const errorMsg = error.response ? `HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}` : error.message;

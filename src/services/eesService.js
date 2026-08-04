@@ -223,6 +223,7 @@ const normalizeOcrPayload = (rawPayload) => {
     title: payload.tittle || payload.title || '',
     issuer: payload.manufacturer || payload.effected_type || payload.issuer || '',
     taskType: payload.task_type || payload.taskType || '',
+    recommendedAction: payload.recommendedAction || payload.recommended_action || null,
     references: payload.references || null,
     effectedType: payload.effected_type || payload.effectivityType || '',
     effectedModel,
@@ -237,6 +238,7 @@ const normalizeOcrPayload = (rawPayload) => {
     requiresManualEes,
     isManualEdited: normalizeBoolean(payload.isManualEdited) || false,
     esn: payload.esn || null,
+    eesTemplate: payload.eesTemplate || null,
     evaluations,
   };
 };
@@ -251,6 +253,7 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
     bulletinNumber,
     evaluations,
     taskType,
+    recommendedAction,
     references,
     effectedType,
     effectedModel,
@@ -304,7 +307,7 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
   // Teruskan ke repository dengan sourceSbId yang sudah di-resolve
   return await eesRepository.createEesDocument(
     { 
-      eesNumber, sourceSbId, taskType, references, effectedType, effectedModel, aircraftType, 
+      eesNumber, sourceSbId, taskType, recommendedAction, references, effectedType, effectedModel, aircraftType, 
       partNumber, componentType, complianceTimeType, isRepetitive, note, isManualEdited, esn,
       eesTemplate
     },

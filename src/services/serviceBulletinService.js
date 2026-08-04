@@ -69,7 +69,7 @@ const parsePagination = ({ page = 1, limit = 20, ocrStatus, draftStatus } = {}) 
 /**
  * Upload PDF → Save to DB (TEMP) → Store physically → Run AI → Resolve and Save/Merge SB.
  */
-const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', createdById = null, aircraftType = null, existingSbId = null, operatorId = null, inputSource = 'SYSTEM' }) => {
+const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', createdById = null, aircraftType = null, existingSbId = null, operatorId = null, inputSource = 'SYSTEM', selectedEesTemplate = null }) => {
   assertPdfBuffer(buffer);
 
   if (aircraftType) {
@@ -98,7 +98,8 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
     aircraftType,
     createdById: createdById ?? null,
     operatorId,
-    inputSource
+    inputSource,
+    selectedEesTemplate
   });
 
   let storedFile = null;
@@ -146,8 +147,12 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
           ...(aircraftType && { aircraftType }),
           ...(operatorId && { operatorId }),
           inputSource,
+          ...(selectedEesTemplate && { selectedEesTemplate }),
           
           revision: aiResult.payload.revision_number || aiResult.payload.revision || existingSb.revision,
+          title: aiResult.payload.title || aiResult.payload.tittle || existingSb.title,
+          issuer: aiResult.payload.manufacturer || aiResult.payload.issuer || aiResult.payload.effected_type || existingSb.issuer,
+          issueDate: aiResult.payload.issueDate || aiResult.payload.issued_date ? new Date(aiResult.payload.issueDate || aiResult.payload.issued_date) : existingSb.issueDate,
           compliancePeriod: aiResult.payload.compliance_period || existingSb.compliancePeriod,
           // Map AI extracted payload to root SB fields if they are available
           complianceCategory: aiResult.payload.compliance_category ? parseInt(aiResult.payload.compliance_category) : existingSb.complianceCategory,
@@ -182,6 +187,7 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
           ...(aircraftType && { aircraftType }),
           ...(operatorId && { operatorId }),
           inputSource,
+          ...(selectedEesTemplate && { selectedEesTemplate }),
           complianceCategory: aiResult.payload.compliance_category ? parseInt(aiResult.payload.compliance_category) : null,
           compliancePeriod: aiResult.payload.compliance_period || null,
           effectivityType: aiResult.payload.effected_type || null,
@@ -380,7 +386,7 @@ const generateEes = async (id, updatedById = null, customData = {}) => {
     return sb;
   }
 
-  const payload = sb.ocrResult?.rawPayload || {
+  const payload = customData.payload || sb.ocrResult?.rawPayload || {
     bulletinNumber: sb.sbNumber,
     title: sb.title,
     issuer: sb.issuer,
@@ -401,7 +407,7 @@ const generateEes = async (id, updatedById = null, customData = {}) => {
   }
 
   // Resolve Template
-  let templateToUse = sb.selectedEesTemplate;
+  let templateToUse = customData.eesTemplate || sb.selectedEesTemplate;
   if (!templateToUse) {
     if (sb.inputSource === 'USER_UPLOAD') {
       throw new Error('Validation Error: Template EES belum dipilih. Harap pilih template (GARUDA/CITILINK) sebelum memproses.');
