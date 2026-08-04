@@ -109,10 +109,6 @@ enum SbInputSource {
   USER_UPLOAD
 }
 
-enum EesTemplate {
-  GARUDA
-  CITILINK
-}
 
 // Engineering recommendation action
 enum EngRecAction {
@@ -217,7 +213,6 @@ model ServiceBulletin {
   aircraftType       String?
   impactType         String?
   inputSource        SbInputSource @default(SYSTEM)
-  selectedEesTemplate EesTemplate?
 
   // Operator Context
   operatorId String?
@@ -292,7 +287,6 @@ model EesDocument {
 
   reviewStatus   ApprovalStatus @default(PENDING)
   isManualEdited Boolean        @default(false)
-  eesTemplate    EesTemplate?
 
   evaluations       EesEvaluationItem[]
   reviewActions     ReviewAction[]
