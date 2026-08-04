@@ -98,8 +98,7 @@ const processPdf = async ({ buffer, fileName, mimeType = 'application/pdf', crea
     aircraftType,
     createdById: createdById ?? null,
     operatorId,
-    inputSource,
-    selectedEesTemplate
+    inputSource
   });
 
   let storedFile = null;

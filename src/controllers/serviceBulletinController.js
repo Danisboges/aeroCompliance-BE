@@ -512,32 +512,6 @@ async function updateEesDocument(req, res) {
 }
 
 /**
- * PATCH /api/service-bulletins/:id/ees-template
- * Menyimpan pilihan template manual.
- */
-);
-    }
-
-    const sb = await serviceBulletinService.getServiceBulletinById(id);
-    if (!sb) {
-      return res.status(404).json({ error: 'Service Bulletin not found' });
-    }
-
-    const updatedSb = await serviceBulletinService.updateServiceBulletin(id, {
-      selectedEesTemplate: eesTemplate
-    });
-
-    return res.status(200).json({
-      message: 'EES template selection saved',
-      data: formatSbResponse(updatedSb, req.originalUrl)
-    });
-  } catch (error) {
-    console.error('Error updating ees template:', error);
-    return handleControllerError(res, error);
-  }
-}
-
-/**
  * POST /api/service-bulletins/upload-new
  * Sumber B: Upload PDF SB baru yang belum ada di database.
  * Buat record SB baru → simpan file → jalankan AI → SB siap untuk Step 2-6.
@@ -546,11 +520,6 @@ async function uploadNewSb(req, res) {
   try {
     const fileName = req.headers['x-file-name'];
     const aircraftType = req.headers['x-aircraft-type'] || req.query.aircraftType;
-    let templateType = req.headers['x-ees-template'] || req.query.eesTemplate || null;
-
-    if (templateType && !['GARUDA', 'CITILINK'].includes(templateType.toUpperCase())) {
-      return res.status(400).json({ error: 'Validation Error: eesTemplate must be GARUDA or CITILINK' });
-    }
 
     const result = await serviceBulletinService.processPdf({
       buffer: req.body,

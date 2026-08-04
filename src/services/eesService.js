@@ -308,8 +308,7 @@ const processEesWebhook = async (payload, explicitSourceSbId = null) => {
   return await eesRepository.createEesDocument(
     { 
       eesNumber, sourceSbId, taskType, recommendedAction, references, effectedType, effectedModel, aircraftType, 
-      partNumber, componentType, complianceTimeType, isRepetitive, note, isManualEdited, esn,
-      eesTemplate
+      partNumber, componentType, complianceTimeType, isRepetitive, note, isManualEdited, esn
     },
     evaluations
   );
