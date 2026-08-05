@@ -162,16 +162,18 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
 
     const eesId = sb.generatedEes?.id;
     if (eesId) {
-      preparedBySigBase64 = getSigBase64(`prepared_by_${eesId}.png`);
-      
-      const reviews = await prisma.reviewAction.findMany({
-        where: { eesId, action: 'APPROVED' }
+      const allReviews = await prisma.reviewAction.findMany({
+        where: { eesId },
+        orderBy: { createdAt: 'desc' }
       });
       
-      const checkedReview = reviews.find(r => r.actorRole === 'ENGINEER' && r.signaturePath);
+      const preparedReview = allReviews.find(r => r.action === 'PENDING' && r.signaturePath);
+      if (preparedReview) preparedBySigBase64 = getSigBase64(preparedReview.signaturePath);
+      
+      const checkedReview = allReviews.find(r => r.action === 'APPROVED' && r.actorRole === 'ENGINEER' && r.signaturePath);
       if (checkedReview) checkedBySigBase64 = getSigBase64(checkedReview.signaturePath);
       
-      const approvedReview = reviews.find(r => r.actorRole === 'MANAGER' && r.signaturePath);
+      const approvedReview = allReviews.find(r => r.action === 'APPROVED' && r.actorRole === 'MANAGER' && r.signaturePath);
       if (approvedReview) approvedBySigBase64 = getSigBase64(approvedReview.signaturePath);
     }
   }
@@ -297,8 +299,40 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkMethod2 = isInsp ? 'X' : '';
     const checkMethod3 = (!isMod && !isInsp) ? 'X' : '';
 
-    const checkReason7 = 'X'; // Improve Reliability
+    const checkReason7 = 'X'; // Improve Reliability (default)
     const checkReason8 = ''; // Safety
+
+    // Unit Concern
+    const uc = payload.unitConcern || [];
+    const checkTEA1 = uc.includes('TEA-1') ? 'X' : '';
+    const checkTEA2 = uc.includes('TEA-2') ? 'X' : '';
+    const checkTEA3 = uc.includes('TEA-3') ? 'X' : '';
+    const checkTEA4 = uc.includes('TEA-4') ? 'X' : '';
+    const checkTEA5 = uc.includes('TEA-5') ? 'X' : '';
+    const checkTEA6 = uc.includes('TEA-6') ? 'X' : '';
+
+    // Reason of Evaluation
+    const roe = payload.reasonOfEvaluation || [];
+    const checkReason1 = roe.includes('Affects A/C Operation') ? 'X' : '';
+    const checkReason2 = roe.includes('To Meet Company policy') ? 'X' : '';
+    const checkReason3 = roe.includes('Improve A/C Performance') ? 'X' : '';
+    const checkReason4 = roe.includes('Regulatory') || roe.includes('To Comply with Government/ Authority Regulatory Requirement.') ? 'X' : '';
+    const checkReason5 = roe.includes('Pax or Crew Satisfaction') ? 'X' : '';
+    const checkReason6 = roe.includes('Improve Maintainability') ? 'X' : '';
+
+    // Further Implementation
+    const fi = payload.furtherImplementation || [];
+    const checkImpl1 = fi.includes('Technical Order') ? 'X' : '';
+    const checkImpl2 = fi.includes('Engineering Information') ? 'X' : '';
+    const checkImpl3 = fi.includes('M.S. Revision') ? 'X' : '';
+    const checkImpl4 = fi.includes('Manual revision') ? 'X' : '';
+    const checkImpl5 = fi.includes('Others') || fi.includes('Others (shop visit)') ? 'X' : '';
+
+    // Management Approval
+    const ma = payload.managementApproval || [];
+    const checkApproval1 = ma.includes('TEA') ? 'X' : '';
+    const checkApproval2 = ma.includes('WQR') ? 'X' : '';
+    const checkApproval3 = ma.includes('DE') ? 'X' : '';
 
     const ml = payload.maintenanceLevel || [];
     let compType = (sb.generatedEes?.complianceTimeType || payload.compliance_time_type || '').toUpperCase();
