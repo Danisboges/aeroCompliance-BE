@@ -21,7 +21,7 @@ router.get('/pending-second-engineer', verifyToken, requireRole([Role.ENGINEER, 
 router.get('/pending-manager', verifyToken, requireRole([Role.MANAGER, Role.ADMIN]), approvalController.getPendingManager);
 
 // GET /api/approvals (Get All Approvals - Admin / General purpose)
-router.get('/', verifyToken, requireRole([Role.ADMIN]), approvalController.getApprovals);
+router.get('/', verifyToken, requireRole([Role.ADMIN,Role.ENGINEER]), approvalController.getApprovals);
 
 // GET /api/approvals/:eesId (Get single approval detail)
 router.get('/:eesId', verifyToken, approvalController.getApprovalByEesId);
