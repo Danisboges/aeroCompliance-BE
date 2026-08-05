@@ -42,7 +42,10 @@ const extractPdfItems = (sb, dynamicEsnVal = '-') => {
   }
 
   const esnVal = sb.generatedEes?.esn ? sb.generatedEes.esn : dynamicEsnVal;
-  const globalRef = sb.generatedEes?.references || payload.references || '-';
+  let globalRef = sb.generatedEes?.references || payload.references || '-';
+  if (Array.isArray(globalRef) && globalRef.length === 0) {
+    globalRef = '-';
+  }
 
   return rawItems.map((item, index) => {
     const isApplicable = item.isApplicable !== undefined ? Boolean(item.isApplicable) : true;
@@ -51,12 +54,28 @@ const extractPdfItems = (sb, dynamicEsnVal = '-') => {
     if (itemWarranty === true || itemWarranty === 'true' || itemWarranty === 'Yes' || itemWarranty === 'Y') warrantyVal = 'Y';
     else if (itemWarranty === false || itemWarranty === 'false' || itemWarranty === 'No' || itemWarranty === 'N') warrantyVal = 'N';
     
+    let finalRef = item.ref || item.reference || item.references;
+    if (Array.isArray(finalRef) && finalRef.length === 0) {
+      finalRef = null;
+    }
+    finalRef = finalRef || globalRef;
+    
+    if (Array.isArray(finalRef)) {
+      if (finalRef.length === 0) {
+        finalRef = '-';
+      } else {
+        finalRef = finalRef.map(r => `- ${r}`).join('<br/>');
+      }
+    } else if (typeof finalRef === 'string') {
+      finalRef = finalRef.replace(/\n/g, '<br/>');
+    }
+
     return {
       no: item.itemNo !== undefined && item.itemNo !== null ? String(item.itemNo) : String(index + 1),
       par: item.paragraph || '-',
       desc: item.requirementDesc || '-',
       taskType: item.taskType || '-',
-      ref: item.ref || item.reference || item.references || globalRef,
+      ref: finalRef || '-',
       app: isApplicable ? 'Y' : 'N',
       adRelated: normalizeAdRelated(
         item.adRelated ??
@@ -176,6 +195,35 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     });
   });
 
+  // Pre-calculate Ref groups based on expandedItems to merge identical refs
+  let currentRef = null;
+  let currentRefStartIndex = 0;
+  let currentRefSpan = 0;
+
+  expandedItems.forEach((item, i) => {
+    if (i === 0) {
+      currentRef = item.ref;
+      currentRefStartIndex = 0;
+      currentRefSpan = 1;
+      item.isFirstInRefGroup = true;
+    } else {
+      if (item.ref === currentRef) {
+        currentRefSpan++;
+        item.isFirstInRefGroup = false;
+        expandedItems[currentRefStartIndex].refGroupLength = currentRefSpan;
+      } else {
+        currentRef = item.ref;
+        currentRefStartIndex = i;
+        currentRefSpan = 1;
+        item.isFirstInRefGroup = true;
+        item.refGroupLength = 1;
+      }
+    }
+  });
+  if (expandedItems.length > 0 && expandedItems[0].refGroupLength === undefined) {
+      expandedItems[0].refGroupLength = currentRefSpan;
+  }
+
   const totalRows = expandedItems.length;
 
   // Build the table rows HTML
@@ -195,13 +243,12 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     if (item.isFirstInGroup) {
       html += `<td rowspan="${item.groupLength}">${item.taskType}</td>`;
     }
-
-    // ALL merged column (Ref)
-    if (item.isVeryFirstRow) {
-      html += `<td rowspan="${totalRows}" style="text-align: justify;">${item.ref}</td>`;
+    
+    // Ref column merged independently
+    if (item.isFirstInRefGroup) {
+      html += `<td rowspan="${item.refGroupLength || 1}" style="text-align: left; vertical-align: top;">${item.ref || '-'}</td>`;
     }
 
-    // Group merged columns
     if (item.isFirstInGroup) {
       html += `<td rowspan="${item.groupLength}">${item.app}</td>`;
       html += `<td rowspan="${item.groupLength}">${item.adRelated}</td>`;
@@ -212,7 +259,7 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     }
     
     // Individual column
-    html += `<td style="text-align: justify;">${item.remarks}</td>`;
+    html += `<td style="text-align: left;">${item.remarks}</td>`;
     
     html += '</tr>';
     return html;
@@ -373,10 +420,13 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
-    // Print to A4 PDF (Citilink is Portrait, Garuda is Landscape)
-    const isLandscape = templateType.toUpperCase() !== 'CITILINK';
+    // Print to PDF (Citilink is A4 Portrait, Garuda is A3 Landscape)
+    const isCitilink = templateType.toUpperCase() === 'CITILINK';
+    const isLandscape = !isCitilink;
+    const paperFormat = isCitilink ? 'A4' : 'A3';
+
     const pdfBuffer = await page.pdf({
-      format: 'A4',
+      format: paperFormat,
       landscape: isLandscape,
       margin: {
         top: '10mm',

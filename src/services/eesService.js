@@ -193,7 +193,7 @@ const normalizeOcrPayload = (rawPayload) => {
       requirementDesc,
       remarks: item.remark || item.remarks || '',
       taskType: item.taskType || payload.task_type || '',
-      references: item.references || null,
+      references: item.references || item.reference || item.ref || null,
       adRelated: normalizeAdRelated(
         item.adRelated ??
         item.ad_related ??
@@ -203,7 +203,8 @@ const normalizeOcrPayload = (rawPayload) => {
       warranty: normalizeBoolean(item.warranty ?? payload.warranty),
       rep: item.rep ?? payload.rep ?? null,
       isApplicable,
-      dueAt
+      dueAt,
+      affectedAcEngine: item.affectedAcEngine || item.affected_engine || item.effected_engine || item.effectivity || null
     };
   });
 
