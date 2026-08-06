@@ -218,13 +218,21 @@ const normalizeOcrPayload = (rawPayload) => {
       ? payload.effected_model.trim()
       : null;
 
+    let recommendedAction = payload.recommendedAction || payload.recommended_action || null;
+    if (!recommendedAction && Array.isArray(payload.engineeringAction)) {
+      const ea = payload.engineeringAction;
+      if (ea.includes('Yes')) recommendedAction = 'COMPLY';
+      else if (ea.includes('Hold/Postpone')) recommendedAction = 'DEFER';
+      else if (ea.includes('No')) recommendedAction = 'NA';
+    }
+
   return {
     eesNumber,
     bulletinNumber,
     title: payload.tittle || payload.title || '',
     issuer: payload.manufacturer || payload.effected_type || payload.issuer || '',
     taskType: payload.task_type || payload.taskType || '',
-    recommendedAction: payload.recommendedAction || payload.recommended_action || null,
+    recommendedAction,
     references: payload.references || null,
     effectedType: payload.effected_type || payload.effectivityType || '',
     effectedModel,
