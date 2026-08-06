@@ -283,12 +283,21 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkActionYes = isComply ? 'X' : '';
     const checkActionNo = isNA ? 'X' : '';
     const checkActionHold = isDefer ? 'X' : '';
-
-    const isConseqAffected = isComply || isDefer;
-    const checkConseq1 = isConseqAffected ? 'X' : '';
-    const checkConseq2 = !isConseqAffected ? 'X' : '';
-
-    const am = payload.accomplishmentMethod || [];
+  
+      // Consequence based on applicability
+      const applicableEnginesList = sb.applicabilitySummary?.applicableEngines || [];
+      const hasApplicabilityEvaluated = applicableEnginesList.length > 0 || (sb.applicabilitySummary && sb.applicabilitySummary.notApplicableEngines && sb.applicabilitySummary.notApplicableEngines.length > 0);
+      
+      // If applicability has been evaluated, base consequence on that. Otherwise, base it on recommendedAction.
+      let isConseqAffected = isComply || isDefer;
+      if (hasApplicabilityEvaluated) {
+        isConseqAffected = applicableEnginesList.length > 0;
+      }
+      
+      const checkConseq1 = isConseqAffected ? 'X' : '';
+      const checkConseq2 = !isConseqAffected ? 'X' : '';
+  
+      const am = payload.accomplishmentMethod || [];
     let taskTypeClean = (sb.generatedEes?.taskType || payload.task_type || '').toUpperCase();
     if (am.includes('Modification')) taskTypeClean = 'MOD';
     if (am.includes('Inspection')) taskTypeClean = 'INSP';
@@ -298,9 +307,6 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkMethod1 = isMod ? 'X' : '';
     const checkMethod2 = isInsp ? 'X' : '';
     const checkMethod3 = (!isMod && !isInsp) ? 'X' : '';
-
-    const checkReason7 = 'X'; // Improve Reliability (default)
-    const checkReason8 = ''; // Safety
 
     // Unit Concern
     const uc = payload.unitConcern || [];
@@ -321,7 +327,9 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       const checkReason3 = roe.some(r => r.includes('improve a/c performance')) ? 'X' : '';
       const checkReason4 = roe.some(r => r.includes('regulatory') || r.includes('government')) ? 'X' : '';
       const checkReason5 = roe.some(r => r.includes('pax') || r.includes('crew satisfaction')) ? 'X' : '';
-      const checkReason6 = roe.some(r => r.includes('improve maintainability') || r.includes('improve reliability')) ? 'X' : '';
+      const checkReason6 = roe.some(r => r.includes('improve maintainability')) ? 'X' : '';
+      const checkReason7 = roe.some(r => r.includes('improve reliability')) ? 'X' : '';
+      const checkReason8 = roe.some(r => r.includes('safety')) ? 'X' : '';
 
     // Further Implementation
     const fi = payload.furtherImplementation || [];
@@ -331,17 +339,18 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkImpl4 = fi.includes('Manual revision') ? 'X' : '';
     const checkImpl5 = fi.includes('Others') || fi.includes('Others (shop visit)') ? 'X' : '';
 
-    // Management Approval
-    const ma = payload.managementApproval || [];
-    const checkApproval1 = ma.includes('TEA') ? 'X' : '';
-    const checkApproval2 = ma.includes('WQR') ? 'X' : '';
-    const checkApproval3 = ma.includes('DE') ? 'X' : '';
+      // Management Approval (Default to TEA)
+      const ma = payload.managementApproval || [];
+      const hasMa = ma.length > 0;
+      const checkApproval1 = (!hasMa || ma.includes('TEA')) ? 'X' : '';
+      const checkApproval2 = ma.includes('WQR') ? 'X' : '';
+      const checkApproval3 = ma.includes('DE') ? 'X' : '';
 
     const ml = payload.maintenanceLevel || [];
     let compType = (sb.generatedEes?.complianceTimeType || payload.compliance_time_type || '').toUpperCase();
     if (ml.includes('To be performed prior to certain date')) compType = 'DATE';
     if (ml.includes('To be performed prior to certain hours/cycles')) compType = 'HOUR_CYCLE';
-    if (ml.includes('To be performed at next maint. Scheduled')) compType = 'SCHEDULED';
+    if (ml.includes('To be performed at next maintenance scheduled')) compType = 'SCHEDULED';
     if (ml.includes('To be performed at attrition basis')) compType = 'ATTRITION';
     const checkMaint1 = compType === 'DATE' ? 'X' : '';
     const checkMaint2 = compType === 'HOUR_CYCLE' ? 'X' : '';
@@ -377,6 +386,22 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       }
     }
 
+    // Build note with evaluation result and applicable engines
+    let noteStr = payload.note || '';
+    const evalResult = payload.evaluation_result || payload.evaluationResult || [];
+    if (Array.isArray(evalResult) && evalResult.length > 0) {
+      if (noteStr) noteStr += '\n\n';
+      noteStr += 'Evaluation Result:\n- ' + evalResult.join('\n- ');
+    }
+    
+    const applicableEngines = sb.applicabilitySummary?.applicableEngines || [];
+    if (applicableEngines.length > 0) {
+      const esns = applicableEngines.map(e => e.esn).join(', ');
+      if (noteStr) noteStr += '\n\n';
+      noteStr += `Affected ESNs: ${esns}`;
+    }
+    noteStr = noteStr ? noteStr.replace(/\n/g, '<br>') : '-';
+
     htmlContent = htmlContent
       .replace(/\{\{eesNumber\}\}/g, eesNumber)
       .replace(/\{\{sbNumber\}\}/g, sbNumber)
@@ -391,7 +416,7 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       .replace(/\{\{otherRef\}\}/g, sb.generatedEes?.references || '-')
       .replace(/\{\{aircraftType\}\}/g, sb.effectivityType || '-')
       .replace(/\{\{partNumber\}\}/g, norm.partNumber || '-')
-      .replace(/\{\{note\}\}/g, payload.note || '-')
+      .replace(/\{\{note\}\}/g, noteStr)
       .replace(/\{\{effectivity\}\}/g, sb.effectivityRange || '-')
       .replace(/\{\{warrantyType\}\}/g, payload.warranty === true || payload.warranty === 'true' ? 'Yes' : (payload.warranty === false || payload.warranty === 'false' ? 'No' : (payload.warranty || '-')))
       .replace(/\{\{warrantyDueDate\}\}/g, payload.warranty_due_date || '-')
