@@ -311,14 +311,17 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     const checkTEA5 = uc.includes('TEA-5') ? 'X' : '';
     const checkTEA6 = uc.includes('TEA-6') ? 'X' : '';
 
-    // Reason of Evaluation
-    const roe = payload.reasonOfEvaluation || [];
-    const checkReason1 = roe.includes('Affects A/C Operation') ? 'X' : '';
-    const checkReason2 = roe.includes('To Meet Company policy') ? 'X' : '';
-    const checkReason3 = roe.includes('Improve A/C Performance') ? 'X' : '';
-    const checkReason4 = roe.includes('Regulatory') || roe.includes('To Comply with Government/ Authority Regulatory Requirement.') ? 'X' : '';
-    const checkReason5 = roe.includes('Pax or Crew Satisfaction') ? 'X' : '';
-    const checkReason6 = roe.includes('Improve Maintainability') ? 'X' : '';
+      // Reason of Evaluation
+      let rawRoe = payload.reasonOfEvaluation || payload.reason_of_evaluation || (payload.mro_schema && payload.mro_schema.reason_of_evaluation) || [];
+      if (typeof rawRoe === 'string') rawRoe = [rawRoe];
+      const roe = rawRoe.map(r => String(r).toLowerCase());
+      
+      const checkReason1 = roe.some(r => r.includes('affects a/c operation')) ? 'X' : '';
+      const checkReason2 = roe.some(r => r.includes('meet company policy')) ? 'X' : '';
+      const checkReason3 = roe.some(r => r.includes('improve a/c performance')) ? 'X' : '';
+      const checkReason4 = roe.some(r => r.includes('regulatory') || r.includes('government')) ? 'X' : '';
+      const checkReason5 = roe.some(r => r.includes('pax') || r.includes('crew satisfaction')) ? 'X' : '';
+      const checkReason6 = roe.some(r => r.includes('improve maintainability') || r.includes('improve reliability')) ? 'X' : '';
 
     // Further Implementation
     const fi = payload.furtherImplementation || [];
