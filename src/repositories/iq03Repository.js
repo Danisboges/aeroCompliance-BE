@@ -19,15 +19,24 @@ const includeRelations = {
  */
 const createIq03Report = async (data) => {
   const { configurationReport, llpStatus, sbStatus, adStatus, ...headerData } = data;
-  
-  // Find associated Engine in database by ESN (Engine Serial Number)
-  let engineId = null;
-  if (headerData.engineSerialNumber) {
-    const engine = await prisma.engine.findFirst({
-      where: { esn: headerData.engineSerialNumber }
-    });
-    if (engine) engineId = engine.id;
-  }
+    // Find associated Engine in database by ESN (Engine Serial Number)
+    let engineId = null;
+    if (headerData.engineSerialNumber) {
+      let engine = await prisma.engine.findFirst({
+        where: { esn: headerData.engineSerialNumber }
+      });
+      if (!engine) {
+        // Auto-create Engine if it doesn't exist
+        engine = await prisma.engine.create({
+          data: {
+            id: `ENG-${headerData.engineSerialNumber}`,
+            esn: headerData.engineSerialNumber,
+            model: headerData.engineType || 'UNKNOWN'
+          }
+        });
+      }
+      engineId = engine.id;
+    }
 
   const mappedConfigs = (configurationReport || []).map(item => ({
     ...item,
@@ -48,6 +57,16 @@ const createIq03Report = async (data) => {
     ...item,
     engineSerialNumber: headerData.engineSerialNumber
   }));
+
+  // Prevent duplicates by deleting existing document with same ESN and filename
+  if (headerData.engineSerialNumber && headerData.originalFileName) {
+    await prisma.iq03Report.deleteMany({
+      where: {
+        engineSerialNumber: headerData.engineSerialNumber,
+        originalFileName: headerData.originalFileName
+      }
+    });
+  }
 
   return prisma.iq03Report.create({
     data: {

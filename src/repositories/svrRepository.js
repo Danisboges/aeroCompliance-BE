@@ -64,6 +64,16 @@ const createShopVisitReport = async (data) => {
     engineSerialNumber: headerData.engineSerialNumber
   }));
 
+  // Prevent duplicates by deleting existing document with same ESN and filename
+  if (headerData.engineSerialNumber && headerData.originalFileName) {
+    await prisma.shopVisitReport.deleteMany({
+      where: {
+        engineSerialNumber: headerData.engineSerialNumber,
+        originalFileName: headerData.originalFileName
+      }
+    });
+  }
+
   return prisma.shopVisitReport.create({
     data: {
       ...headerData,
