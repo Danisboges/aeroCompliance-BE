@@ -61,9 +61,50 @@ const downloadEdsPdf = async (req, res) => {
   }
 };
 
+const uploadEdsPdf = async (req, res) => {
+  try {
+    const buffer = req.body;
+    const fileName = req.headers['x-file-name'] || 'eds-upload.pdf';
+
+    if (!buffer || buffer.length === 0 || (Buffer.isBuffer(buffer) === false && !(buffer instanceof Uint8Array) && typeof buffer !== 'string' && Object.keys(buffer).length === 0)) {
+      return res.status(400).json({ error: 'Validation Error: No PDF file provided' });
+    }
+
+    const result = await edsService.processEdsPdf({ buffer, fileName, docType: 'EDS' });
+
+    return res.status(201).json({
+      message: 'EDS PDF received and processed by pipeline',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error uploading EDS PDF:', error);
+    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
+};
+
+const uploadEdsJson = async (req, res) => {
+  try {
+    const result = await edsService.processEdsJson(
+      req.body,
+      req.headers['x-file-name'] || 'eds-ingested-payload.json',
+      'PENDING',
+      'EDS'
+    );
+    return res.status(201).json({
+      message: 'EDS JSON ingested successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error ingesting EDS JSON:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   listEds,
   getEdsById,
   viewEdsPdf,
-  downloadEdsPdf
+  downloadEdsPdf,
+  uploadEdsPdf,
+  uploadEdsJson
 };

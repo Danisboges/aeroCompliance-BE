@@ -22,12 +22,10 @@ router.post(
   (req, res, next) => { req.params.docType = 'SVR'; next(); }, 
   svrController.uploadEngineDocPdf
 );
-router.post('/engine-data-sheets/upload/EDS', verifyToken, pdfBodyParser, (req, res, next) => { req.params.docType = 'EDS'; next(); }, svrController.uploadEngineDocPdf);
 router.post('/iq03-reports/upload/IQ03', verifyToken, pdfBodyParser, (req, res, next) => { req.params.docType = 'IQ03'; next(); }, svrController.uploadEngineDocPdf);
 
-// Webhook for SVR, EDS, and IQ03 JSON ingestion
+// Webhook for SVR and IQ03 JSON ingestion
 router.post('/webhooks/svr', svrController.uploadSvrJson);
-router.post('/webhooks/eds', svrController.uploadEdsJson);
 router.post('/webhooks/iq03', svrController.uploadIq03Json);
 
 // SVR lists and details

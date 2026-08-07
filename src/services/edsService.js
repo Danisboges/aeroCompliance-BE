@@ -220,7 +220,7 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
   edsData.configurationReport = rawConfigs.map(item => ({
     module: item.module || '',
     partName: item.part_name || '',
-    inOut: item.in_out || '',
+    inOut: item.in_out || 'INSTALLED', // Default to INSTALLED for EDS if not specified
     partNumber: item.part_number || '',
     serial: item.serial || '',
     qty: item.qty !== undefined && item.qty !== null ? String(item.qty) : '',

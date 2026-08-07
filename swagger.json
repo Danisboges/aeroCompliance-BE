@@ -2314,35 +2314,12 @@
         }
       }
     },
-    "/api/webhooks/eds": {
-      "post": {
-        "summary": "Webhook: Ingest JSON EDS dari AI",
-        "description": "Endpoint untuk menerima hasil parsing JSON dari tim AI untuk Engine Data Submittal (EDS)",
-        "tags": [
-          "Shop Visit Report (SVR)"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "EDS JSON ingested successfully"
-          }
-        }
-      }
-    },
     "/api/webhooks/iq03": {
       "post": {
         "summary": "Webhook: Ingest JSON IQ03 dari AI",
         "description": "Endpoint untuk menerima hasil parsing JSON dari tim AI untuk IQ03 Report",
         "tags": [
-          "Shop Visit Report (SVR)"
+          "IQ03 Report"
         ],
         "requestBody": {
           "content": {
@@ -2418,54 +2395,12 @@
         }
       }
     },
-    "/api/engine-data-sheets/upload/EDS": {
-      "post": {
-        "summary": "Upload PDF EDS Document",
-        "description": "Upload file PDF binary langsung (raw body). docType yang valid: **SVR, EDS, IQ03**",
-        "tags": [
-          "Shop Visit Report (SVR)"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "x-file-name",
-            "in": "header",
-            "required": true,
-            "description": "Nama file PDF asli (misal: SVR_660235_2026.pdf)",
-            "schema": {
-              "type": "string",
-              "example": "SVR_660235_2026.pdf"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/pdf": {
-              "schema": {
-                "type": "string",
-                "format": "binary"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "SVR PDF received and processed by SVR pipeline"
-          }
-        }
-      }
-    },
     "/api/iq03-reports/upload/IQ03": {
       "post": {
         "summary": "Upload PDF IQ03 Document",
         "description": "Upload file PDF binary langsung (raw body). docType yang valid: **SVR, EDS, IQ03**",
         "tags": [
-          "Shop Visit Report (SVR)"
+          "IQ03 Report"
         ],
         "security": [
           {
@@ -2476,11 +2411,11 @@
           {
             "name": "x-file-name",
             "in": "header",
-            "required": true,
-            "description": "Nama file PDF asli (misal: SVR_660235_2026.pdf)",
+            "required": false,
+            "description": "Nama file PDF asli (opsional, misal: IQ03_12345.pdf)",
             "schema": {
               "type": "string",
-              "example": "SVR_660235_2026.pdf"
+              "example": "IQ03_12345.pdf"
             }
           }
         ],
@@ -2497,7 +2432,7 @@
         },
         "responses": {
           "201": {
-            "description": "SVR PDF received and processed by SVR pipeline"
+            "description": "IQ03 PDF received and processed by IQ03 pipeline"
           }
         }
       }
@@ -3385,6 +3320,71 @@
           },
           "404": {
             "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/eds/upload": {
+      "post": {
+        "summary": "Upload PDF EDS Document",
+        "description": "Upload file PDF binary langsung (raw body). docType yang valid: **SVR, EDS, IQ03**",
+        "tags": [
+          "Engine Data Submittal (EDS)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-file-name",
+            "in": "header",
+            "required": false,
+            "description": "Nama file PDF asli (opsional, misal: EDS_12345.pdf)",
+            "schema": {
+              "type": "string",
+              "example": "EDS_12345.pdf"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "EDS PDF received and processed by EDS pipeline"
+          }
+        }
+      }
+    },
+    "/api/eds/webhook": {
+      "post": {
+        "summary": "Webhook: Ingest JSON EDS dari AI",
+        "description": "Endpoint untuk menerima hasil parsing JSON dari tim AI untuk Engine Data Submittal (EDS)",
+        "tags": [
+          "Engine Data Submittal (EDS)"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "EDS JSON ingested successfully"
           }
         }
       }

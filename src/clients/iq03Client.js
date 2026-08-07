@@ -1,5 +1,11 @@
 const axios = require('axios');
 const FormData = require('form-data');
+const https = require('https');
+
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  rejectUnauthorized: false
+});
 
 const IQ03_AI_SERVICE_URL = process.env.IQ03_AI_SERVICE_URL;
 const IQ03_AI_SERVICE_API_KEY = process.env.IQ03_AI_SERVICE_API_KEY;
@@ -17,16 +23,23 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
 
   try {
     const formData = new FormData();
-    formData.append('file', buffer, { filename: fileName || 'IQ03-document.pdf', contentType: 'application/pdf' });
+    formData.append('files', buffer, { filename: fileName || 'IQ03-document.pdf', contentType: 'application/pdf' });
 
-    const headers = { ...formData.getHeaders() };
+    const headers = { 
+      ...formData.getHeaders(),
+      'Content-Length': formData.getLengthSync(),
+      'ngrok-skip-browser-warning': 'true'
+    };
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
     const response = await axios.post(endpoint, formData, {
       headers,
-      timeout: 0
+      timeout: 0,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+      httpsAgent
     });
 
     let result = response.data;

@@ -20,15 +20,23 @@ const includeRelations = {
  */
 const createShopVisitReport = async (data) => {
   const { configurationReport, llpStatus, sbStatus, adStatus, accessoriesList, ...headerData } = data;
-  
-  // Find associated Engine in database by ESN (Engine Serial Number)
-  let engineId = null;
-  if (headerData.engineSerialNumber) {
-    const engine = await prisma.engine.findFirst({
-      where: { esn: headerData.engineSerialNumber }
-    });
-    if (engine) engineId = engine.id;
-  }
+    // Find associated Engine in database by ESN
+    let engineId = null;
+    if (headerData.engineSerialNumber) {
+      let engine = await prisma.engine.findFirst({
+        where: { esn: headerData.engineSerialNumber }
+      });
+      if (!engine) {
+        // Auto-create Engine if it doesn't exist
+        engine = await prisma.engine.create({
+          data: {
+            esn: headerData.engineSerialNumber,
+            model: headerData.engineType || 'UNKNOWN'
+          }
+        });
+      }
+      engineId = engine.id;
+    }
 
   const mappedConfigs = (configurationReport || []).map(item => ({
     ...item,

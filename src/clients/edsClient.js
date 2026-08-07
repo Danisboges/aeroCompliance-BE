@@ -1,5 +1,11 @@
 const axios = require('axios');
 const FormData = require('form-data');
+const https = require('https');
+
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  rejectUnauthorized: false
+});
 
 const EDS_AI_SERVICE_URL = process.env.EDS_AI_SERVICE_URL;
 const EDS_AI_SERVICE_API_KEY = process.env.EDS_AI_SERVICE_API_KEY;
@@ -17,16 +23,23 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
 
   try {
     const formData = new FormData();
-    formData.append('file', buffer, { filename: fileName || 'EDS-document.pdf', contentType: 'application/pdf' });
+    formData.append('files', buffer, { filename: fileName || 'EDS-document.pdf', contentType: 'application/pdf' });
 
-    const headers = { ...formData.getHeaders() };
+    const headers = { 
+      ...formData.getHeaders(),
+      'Content-Length': formData.getLengthSync(),
+      'ngrok-skip-browser-warning': 'true'
+    };
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
     const response = await axios.post(endpoint, formData, {
       headers,
-      timeout: 0
+      timeout: 0,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+      httpsAgent
     });
 
     let result = response.data;
@@ -46,8 +59,9 @@ const analyzeEngineDocumentPdf = async ({ fileName, buffer, docType }) => {
 
     return result;
   } catch (error) {
-    console.error('[EDS AI Client] ❌ EDS AI service connection failed:', error.message);
-    throw new Error(`EDS extraction failed: ${error.message}`);
+    const errorDetail = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+    console.error('[EDS AI Client] ❌ EDS AI service connection failed:', errorDetail);
+    throw new Error(`EDS extraction failed: ${errorDetail}`);
   }
 };
 
