@@ -302,12 +302,17 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
   // Sync EngineActiveComponent (Data Terkini) berdasarkan Hirarki Waktu
   if (eds.engineId) {
     console.log(`[EDS Service] Syncing Active Components for Engine: ${eds.engineId}`);
+    console.log(`[EDS Service] Extracted ${edsData.configurationReport.length} components from EDS`);
+    let syncedCount = 0;
     
     // Parse tanggal dokumen saat ini
     const currentDocDate = new Date(data.report_date || data.shop_out_date || eds.createdAt);
     
     for (const item of edsData.configurationReport) {
-      if (!item.partNumber) continue;
+      if (!item.partNumber) {
+        console.log(`[EDS Service] Skipping component because partNumber is missing: ${JSON.stringify(item)}`);
+        continue;
+      }
 
       const existing = await prisma.engineActiveComponent.findFirst({
         where: { engineId: eds.engineId, partNumber: item.partNumber }
@@ -319,39 +324,37 @@ const processEdsJson = async (rawPayload, originalFileName = 'payload.json', sto
         continue;
       }
 
-      if (item.inOut === 'IN' || item.inOut === 'INSTALLED') {
-        if (!existing) {
-          await prisma.engineActiveComponent.create({
-            data: {
-              engineId: eds.engineId,
-              partNumber: item.partNumber,
-              partName: item.partName,
-              module: item.module,
-              tsn: item.tsn,
-              csn: item.csn,
-              lastUpdatedFrom: `EDS-${eds.id}`,
-              sourceDate: currentDocDate
-            }
-          });
-        } else {
-          await prisma.engineActiveComponent.update({
-            where: { id: existing.id },
-            data: {
-              partName: item.partName,
-              module: item.module,
-              tsn: item.tsn,
-              csn: item.csn,
-              lastUpdatedFrom: `EDS-${eds.id}`,
-              sourceDate: currentDocDate
-            }
-          });
-        }
-      } else if (item.inOut === 'OUT' || item.inOut === 'REMOVED') {
-        await prisma.engineActiveComponent.deleteMany({
-          where: { engineId: eds.engineId, partNumber: item.partNumber }
+      // For EDS, all items are inherently "INSTALLED" as it's a baseline document
+      if (!existing) {
+        await prisma.engineActiveComponent.create({
+          data: {
+            engineId: eds.engineId,
+            partNumber: item.partNumber,
+            partName: item.partName,
+            module: item.module,
+            tsn: item.tsn,
+            csn: item.csn,
+            lastUpdatedFrom: `EDS-${eds.id}`,
+            sourceDate: currentDocDate
+          }
         });
+        syncedCount++;
+      } else {
+        await prisma.engineActiveComponent.update({
+          where: { id: existing.id },
+          data: {
+            partName: item.partName,
+            module: item.module,
+            tsn: item.tsn,
+            csn: item.csn,
+            lastUpdatedFrom: `EDS-${eds.id}`,
+            sourceDate: currentDocDate
+          }
+        });
+        syncedCount++;
       }
     }
+    console.log(`[EDS Service] Successfully synced ${syncedCount} components to EngineActiveComponent.`);
   }
 
   // Trigger compliance matching
