@@ -52,6 +52,16 @@ const analyzePdf = async ({ fileName, checksum, buffer, storagePath }) => {
     // Struktur: { filename, mro_schema: {...}, routing_directive: {...}, raw_ocr_content }
     // ============================================================
     const schema = result.mro_schema?.mro_schema || result.mro_schema || result; // fallback ke root jika mro_schema tidak ada
+
+    // DETECT EMPTY/FAILED AI RESPONSE
+    // Jika AI mengirimkan JSON kosong atau gagal mengekstrak karena high demand
+    const isSchemaEmpty = !schema || (Object.keys(schema).length === 0);
+    const hasNoBasicFields = schema && !schema.sb_code && !schema.tittle && !schema.title && (!schema.items || Object.keys(schema.items || {}).length === 0);
+
+    if (isSchemaEmpty || hasNoBasicFields || schema.error || result.error) {
+      throw new Error("AI Server returned empty data (High demand or failed extraction).");
+    }
+
     const routing = result.routing_directive || {};
     const rawOcrContent = result.raw_ocr_content || null;
 
