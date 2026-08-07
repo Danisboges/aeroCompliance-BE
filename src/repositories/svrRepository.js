@@ -30,6 +30,7 @@ const createShopVisitReport = async (data) => {
         // Auto-create Engine if it doesn't exist
         engine = await prisma.engine.create({
           data: {
+            id: `ENG-${headerData.engineSerialNumber}`,
             esn: headerData.engineSerialNumber,
             model: headerData.engineType || 'UNKNOWN'
           }
