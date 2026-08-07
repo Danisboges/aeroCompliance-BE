@@ -70,9 +70,14 @@ const extractPdfItems = (sb, dynamicEsnVal = '-') => {
       finalRef = finalRef.replace(/\n/g, '<br/>');
     }
 
+    const toTitleCase = (str) => {
+      if (!str || typeof str !== 'string') return str;
+      return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
+    };
+
     return {
       no: item.itemNo !== undefined && item.itemNo !== null ? String(item.itemNo) : String(index + 1),
-      par: item.paragraph || '-',
+      par: item.paragraph ? toTitleCase(item.paragraph) : '-',
       desc: item.requirementDesc || '-',
       taskType: item.taskType || '-',
       ref: finalRef || '-',
@@ -197,34 +202,43 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
     });
   });
 
-  // Pre-calculate Ref groups based on expandedItems to merge identical refs
-  let currentRef = null;
-  let currentRefStartIndex = 0;
-  let currentRefSpan = 0;
-
-  expandedItems.forEach((item, i) => {
-    if (i === 0) {
-      currentRef = item.ref;
-      currentRefStartIndex = 0;
-      currentRefSpan = 1;
-      item.isFirstInRefGroup = true;
-    } else {
-      if (item.ref === currentRef) {
-        currentRefSpan++;
-        item.isFirstInRefGroup = false;
-        expandedItems[currentRefStartIndex].refGroupLength = currentRefSpan;
+  // Pre-calculate merged groups based on expandedItems to merge identical values consecutively
+  const calculateGroups = (items, key, isFirstKey, lengthKey) => {
+    let currentVal = null;
+    let startIndex = 0;
+    let span = 0;
+    items.forEach((item, i) => {
+      if (i === 0) {
+        currentVal = item[key];
+        startIndex = 0;
+        span = 1;
+        item[isFirstKey] = true;
       } else {
-        currentRef = item.ref;
-        currentRefStartIndex = i;
-        currentRefSpan = 1;
-        item.isFirstInRefGroup = true;
-        item.refGroupLength = 1;
+        if (item[key] === currentVal) {
+          span++;
+          item[isFirstKey] = false;
+          items[startIndex][lengthKey] = span;
+        } else {
+          currentVal = item[key];
+          startIndex = i;
+          span = 1;
+          item[isFirstKey] = true;
+          item[lengthKey] = 1;
+        }
       }
+    });
+    if (items.length > 0 && items[0][lengthKey] === undefined) {
+      items[0][lengthKey] = span;
     }
-  });
-  if (expandedItems.length > 0 && expandedItems[0].refGroupLength === undefined) {
-      expandedItems[0].refGroupLength = currentRefSpan;
-  }
+  };
+
+  calculateGroups(expandedItems, 'ref', 'isFirstInRefGroup', 'refGroupLength');
+  calculateGroups(expandedItems, 'app', 'isFirstInAppGroup', 'appGroupLength');
+  calculateGroups(expandedItems, 'adRelated', 'isFirstInAdRelatedGroup', 'adRelatedGroupLength');
+  calculateGroups(expandedItems, 'warranty', 'isFirstInWarrantyGroup', 'warrantyGroupLength');
+  calculateGroups(expandedItems, 'affectedAcEngine', 'isFirstInAffectedGroup', 'affectedGroupLength');
+  calculateGroups(expandedItems, 'rep', 'isFirstInRepGroup', 'repGroupLength');
+  calculateGroups(expandedItems, 'dueAt', 'isFirstInDueAtGroup', 'dueAtGroupLength');
 
   const totalRows = expandedItems.length;
 
@@ -251,14 +265,12 @@ const generateEesPdf = async ({ sb, templateType = 'GARUDA', evaluatorName }) =>
       html += `<td rowspan="${item.refGroupLength || 1}" style="text-align: left; vertical-align: top;">${item.ref || '-'}</td>`;
     }
 
-    if (item.isFirstInGroup) {
-      html += `<td rowspan="${item.groupLength}">${item.app}</td>`;
-      html += `<td rowspan="${item.groupLength}">${item.adRelated}</td>`;
-      html += `<td rowspan="${item.groupLength}">${item.warranty}</td>`;
-      html += `<td rowspan="${item.groupLength}">${item.affectedAcEngine}</td>`;
-      html += `<td rowspan="${item.groupLength}">${item.rep}</td>`;
-      html += `<td rowspan="${item.groupLength}">${item.dueAt}</td>`;
-    }
+    if (item.isFirstInAppGroup) html += `<td rowspan="${item.appGroupLength || 1}">${item.app}</td>`;
+    if (item.isFirstInAdRelatedGroup) html += `<td rowspan="${item.adRelatedGroupLength || 1}">${item.adRelated}</td>`;
+    if (item.isFirstInWarrantyGroup) html += `<td rowspan="${item.warrantyGroupLength || 1}">${item.warranty}</td>`;
+    if (item.isFirstInAffectedGroup) html += `<td rowspan="${item.affectedGroupLength || 1}">${item.affectedAcEngine}</td>`;
+    if (item.isFirstInRepGroup) html += `<td rowspan="${item.repGroupLength || 1}">${item.rep}</td>`;
+    if (item.isFirstInDueAtGroup) html += `<td rowspan="${item.dueAtGroupLength || 1}">${item.dueAt}</td>`;
     
     // Individual column
     html += `<td style="text-align: left;">${item.remarks}</td>`;
